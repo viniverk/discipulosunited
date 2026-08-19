@@ -143,6 +143,7 @@ a{color:var(--quadra)}
 .selo.pago{background:#E4F5EA;color:var(--pago)}
 .selo.deve{background:#FCE8E8;color:var(--deve)}
 .selo.neutro{background:var(--linha);color:var(--cinza)}
+.selo.convidado{background:#FFF3D1;color:#8A6100}
 .selo[data-clique]{cursor:pointer}
 .eu-mesmo{background:#FFF8E3;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
 
@@ -357,7 +358,11 @@ async function gravarPresenca(jogoId, atletaId, dados){
 function semear(){
   const nomes = ["Vinícios","Rafael","Marcos","Thiago","Diego","Bruno","Leandro","Everton",
                  "Juliano","Fábio","Caio","Renan","Anderson","Gustavo","Pedro","Lucas"];
-  estado.atletas = nomes.map(n => ({ id:"a-"+n.toLowerCase(), nome:n, apelido:"", telefone:"", ativo:true }));
+  estado.atletas = nomes.map((n,i) => ({
+    id:"a-"+n.toLowerCase(), nome:n, apelido:"", telefone:"", ativo:true,
+    situacao: i>=14 ? "convidado" : "fixo",
+    convidadoPor: i===14 ? "a-vinícios" : i===15 ? "a-rafael" : ""
+  }));
   estado.config = { ...estado.config, pixChave:"47 99999-0000", pixTipo:"Celular",
                     pixNome:"Organizador da pelada", custoPadrao:180, valorFixo:0, vagas:14, pin:"1234" };
 
@@ -374,7 +379,7 @@ function semear(){
     { id:"j2", data:emDias(-7), hora:"20:00", local:"Quadra do Bairro", custo:180, valorFixo:20, vagas:14,
       presencas: presencasDe([0,1,2,4,5,6,8,9,10,12,13], [0,1,2,4,5,6,8,9,10,12]) },
     { id:"j3", data:emDias(3), hora:"20:00", local:"Quadra do Bairro", custo:180, valorFixo:0, vagas:14,
-      presencas: (()=>{ const p = presencasDe([0,1,3,5,7,9,11], []);
+      presencas: (()=>{ const p = presencasDe([0,1,3,5,7,9,11,14], []);
                         p["a-"+nomes[2].toLowerCase()] = { status:"out" }; return p; })() },
     { id:"j4", data:emDias(10), hora:"20:00", local:"Quadra do Bairro", custo:180, valorFixo:0, vagas:14, presencas:{} }
   ];
@@ -411,6 +416,14 @@ function saldoAtleta(id){
   return { devido, pago, aberto: devido - pago };
 }
 const presencasDoAtleta = id => estado.jogos.filter(j => (j.presencas||{})[id]?.status === "in").length;
+const situacaoDe = a => a?.situacao || (a?.ativo === false ? "inativo" : "fixo");
+const plural = (n, um, varios) => n + " " + (n === 1 ? um : varios);
+const atletaDe = id => estado.atletas.find(a => a.id === id);
+function quemConvidou(id){
+  const a = atletaDe(id);
+  if (situacaoDe(a) !== "convidado") return "";
+  return a.convidadoPor ? "convidado de "+nomeDe(a.convidadoPor) : "convidado";
+}
 
 /* ---------- formatação ---------- */
 const dinheiro = v => (Number(v)||0).toLocaleString("pt-BR",{ style:"currency", currency:"BRL" });
@@ -459,8 +472,10 @@ function telaJogo(){
       : (s.aberto > 0.005 ? `<span class="selo deve">deve ${dinheiro(s.aberto)}</span>` : '<span class="selo neutro">em dia</span>');
     linhas.push(`<li class="vaga ${id===estado.eu?"eu-mesmo":""}">
       <span class="num">${String(i+1).padStart(2,"0")}</span>
-      <div class="vaga-corpo"><div class="nome">${escapar(nomeDe(id))}</div>
-        ${estado.admin ? `<div class="sub">toque no selo para ${p.pago?"desmarcar":"marcar como pago"}</div>` : ""}</div>
+      <div class="vaga-corpo">
+        <div class="nome">${escapar(nomeDe(id))}${quemConvidou(id)?' <span class="selo convidado">convidado</span>':""}</div>
+        ${quemConvidou(id) ? `<div class="sub">${escapar(quemConvidou(id))}</div>`
+          : (estado.admin ? `<div class="sub">toque no selo para ${p.pago?"desmarcar":"marcar como pago"}</div>` : "")}</div>
       ${estado.admin
         ? `<button class="selo ${p.pago?"pago":"deve"}" data-clique="1" data-pagar="${id}" data-jogo="${proximo.id}">${p.pago?"pago":"marcar pago"}</button>`
         : selo}
@@ -551,13 +566,13 @@ function telaAtletas(){
     ${estado.admin?`<button class="btn-main" style="width:100%;margin-bottom:14px" data-acao="novo-atleta">+ Cadastrar atleta</button>`
       :`<div class="aviso">Só o organizador cadastra e remove atletas. Não achou seu nome? Peça pra ele incluir.</div>`}
     <div class="cartao">
-      <div class="titulo">${lista.length} atletas</div>
+      <div class="titulo">${plural(lista.filter(a=>situacaoDe(a)==="fixo").length,"fixo","fixos")} · ${plural(lista.filter(a=>situacaoDe(a)==="convidado").length,"convidado","convidados")}${lista.filter(a=>situacaoDe(a)==="inativo").length?" · "+plural(lista.filter(a=>situacaoDe(a)==="inativo").length,"inativo","inativos"):""}</div>
       ${lista.length ? lista.map(a => {
-        const s = saldoAtleta(a.id);
+        const s = saldoAtleta(a.id), sit = situacaoDe(a);
         return `<div class="item">
           <div class="item-corpo">
-            <div class="nome">${escapar(a.nome)}${a.ativo===false?' <span class="selo neutro">inativo</span>':""}</div>
-            <div class="sub">${presencasDoAtleta(a.id)} jogos${a.telefone?" · "+escapar(a.telefone):""}</div>
+            <div class="nome">${escapar(a.nome)}${sit==="inativo"?' <span class="selo neutro">inativo</span>':sit==="convidado"?' <span class="selo convidado">convidado</span>':""}</div>
+            <div class="sub">${quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${presencasDoAtleta(a.id)} jogos${a.telefone?" · "+escapar(a.telefone):""}</div>
           </div>
           <div class="valor ${s.aberto>0.005?"neg":"pos"}">${s.aberto>0.005?dinheiro(s.aberto):"em dia"}</div>
           ${estado.admin?`<button class="btn-sec" data-editar-atleta="${a.id}">Editar</button>`:""}
@@ -602,8 +617,9 @@ function telaCaixa(){
     <div class="cartao">
       <div class="titulo">Quem está devendo</div>
       ${devedores.length ? devedores.map(a => `<div class="item">
-        <div class="item-corpo"><div class="nome">${escapar(a.nome)}</div>
-          <div class="sub">${dinheiro(a.pago)} pagos de ${dinheiro(a.devido)}</div></div>
+        <div class="item-corpo">
+          <div class="nome">${escapar(a.nome)}${quemConvidou(a.id)?' <span class="selo convidado">convidado</span>':""}</div>
+          <div class="sub">${quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${dinheiro(a.pago)} pagos de ${dinheiro(a.devido)}</div></div>
         <div class="valor neg">${dinheiro(a.aberto)}</div></div>`).join("")
         : `<div class="vazio"><b>Ninguém devendo</b>Caixa em dia. Raro e bonito.</div>`}
     </div>
@@ -626,7 +642,7 @@ function telaCaixa(){
 function desenhar(){
   if (!estado.eu) lerEndereco();
   const sel = document.getElementById("selEu");
-  const ativos = estado.atletas.filter(a => a.ativo !== false).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+  const ativos = estado.atletas.filter(a => situacaoDe(a) !== "inativo").sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
   sel.innerHTML = `<option value="">— escolha seu nome —</option>` +
     ativos.map(a => `<option value="${a.id}" ${a.id===estado.eu?"selected":""}>${escapar(a.nome)}</option>`).join("");
 
@@ -688,23 +704,41 @@ function formJogo(jogo){
 }
 
 function formAtleta(atleta){
-  const a = atleta || { nome:"", apelido:"", telefone:"", ativo:true };
+  const a = atleta || { nome:"", apelido:"", telefone:"", situacao:"fixo", convidadoPor:"" };
+  const sit = situacaoDe(a);
+  const anfitrioes = estado.atletas
+    .filter(x => x.id !== a.id && situacaoDe(x) === "fixo")
+    .sort((x,y) => x.nome.localeCompare(y.nome,"pt-BR"));
+
   abrirModal(atleta?"Editar atleta":"Cadastrar atleta", `
     <div class="campo"><label>Nome</label><input id="f_nome" value="${escapar(a.nome)}" placeholder="Como aparece no grupo"></div>
     <div class="dupla"><div class="campo"><label>Apelido</label><input id="f_apelido" value="${escapar(a.apelido)}"></div>
       <div class="campo"><label>Telefone</label><input id="f_tel" value="${escapar(a.telefone)}" placeholder="47 99999-0000"></div></div>
-    <div class="campo"><label>Situação</label><select id="f_ativo">
-      <option value="1" ${a.ativo!==false?"selected":""}>Ativo — aparece na lista</option>
-      <option value="0" ${a.ativo===false?"selected":""}>Inativo — sai da lista, histórico fica</option></select></div>
+    <div class="campo"><label>Situação</label><select id="f_sit">
+      <option value="fixo" ${sit==="fixo"?"selected":""}>Fixo — é da turma</option>
+      <option value="convidado" ${sit==="convidado"?"selected":""}>Convidado — veio com alguém</option>
+      <option value="inativo" ${sit==="inativo"?"selected":""}>Inativo — sai da lista, histórico fica</option></select></div>
+    <div class="campo" id="f_bloco_conv" style="display:${sit==="convidado"?"block":"none"}">
+      <label>Quem convidou</label>
+      <select id="f_conv"><option value="">— não informado —</option>
+        ${anfitrioes.map(x => `<option value="${x.id}" ${a.convidadoPor===x.id?"selected":""}>${escapar(x.nome)}</option>`).join("")}</select>
+      <div class="sub" style="margin-top:5px">Quem trouxe responde pela diária se o convidado sumir sem pagar.</div>
+    </div>
     <div class="btn-linha"><button class="btn-main" id="f_salvar">Salvar atleta</button>
       ${atleta?`<button class="btn-sec" id="f_apagar" style="color:var(--deve)">Remover</button>`:""}</div>`);
+
+  document.getElementById("f_sit").onchange = e => {
+    document.getElementById("f_bloco_conv").style.display = e.target.value === "convidado" ? "block" : "none";
+  };
 
   document.getElementById("f_salvar").onclick = async () => {
     const nome = document.getElementById("f_nome").value.trim();
     if (!nome) return avisar("Digite o nome do atleta.");
+    const situacao = document.getElementById("f_sit").value;
     await gravar("atletas", { nome, apelido:document.getElementById("f_apelido").value.trim(),
       telefone:document.getElementById("f_tel").value.trim(),
-      ativo:document.getElementById("f_ativo").value === "1" }, atleta?.id);
+      situacao, ativo: situacao !== "inativo",
+      convidadoPor: situacao === "convidado" ? document.getElementById("f_conv").value : "" }, atleta?.id);
     fecharModal(); desenhar(); avisar("Atleta salvo.");
   };
   if (atleta) document.getElementById("f_apagar").onclick = async () => {
