@@ -20,9 +20,9 @@ A senha de admin na demonstração é `1234` (botão 🔒 no topo).
    Sem isso as regras do passo 3 bloqueiam tudo.
 4. Ícone de engrenagem → **Configurações do projeto** → role até **Seus apps** → ícone `</>` (Web) → registre o app → copie o bloco `firebaseConfig`.
 
-## 2. Colar a configuração
+## 2. Colar a configuração — **já feito**
 
-Abra o `index.html`, procure `COLE_AQUI` (por volta da linha 300) e substitua o bloco inteiro pelo que o Firebase te deu:
+O `index.html` já aponta para o projeto `futfilhos`. Este passo só interessa se um dia você trocar de projeto: procure `firebaseConfig` (por volta da linha 268) e substitua o bloco pelo que o Firebase te der.
 
 ```js
 const firebaseConfig = {
@@ -35,7 +35,7 @@ const firebaseConfig = {
 };
 ```
 
-Assim que o `apiKey` deixar de ser `COLE_AQUI`, o modo demonstração desliga e o app passa a ler e gravar de verdade. Os dados de exemplo somem — você começa do zero.
+Com o `apiKey` preenchido, o modo demonstração está desligado: o app lê e grava de verdade. Os 16 atletas de exemplo não existem mais — a tela abre vazia até você cadastrar o pessoal.
 
 > Essa `apiKey` fica visível no código-fonte da página, e tudo bem: no Firebase Web ela identifica o projeto, não autentica ninguém. Quem protege os dados são as regras abaixo.
 
@@ -71,7 +71,7 @@ Cada `index.html` novo que você subir republica sozinho.
 
 1. Abra o site, clique em 🔒 e entre com a senha `1234`.
 2. **Caixa → Ajustes da pelada**: chave Pix, favorecido, custo padrão da quadra, vagas por rodada e — importante — **troque a senha**.
-3. **Atletas**: cadastre a galera.
+3. **Atletas**: cadastre a galera. Cada um entra como **fixo**, **convidado** (aí você indica quem trouxe) ou **inativo**.
 4. **Agenda → Marcar jogo**: data, local e custo.
 5. Mande o link no grupo do WhatsApp.
 
@@ -101,5 +101,6 @@ Zero, na prática. O plano gratuito do Firebase dá 50 mil leituras e 20 mil gra
 
 - Sem histórico de quem alterou o quê.
 - Remover um atleta apaga o histórico de presença dele junto. Para tirar alguém da lista mantendo o histórico, marque como **inativo**.
+- Convidado é uma situação do cadastro, não um tipo de cobrança: ele paga a mesma diária dos fixos. Se na sua pelada o convidado paga mais, cadastre a rodada com *valor fixo por cabeça* e acerte a diferença por fora.
 - Não gera QR Code de Pix (copia e cola a chave). Dá para acrescentar depois com uma biblioteca de payload EMV.
 - Um pagamento avulso (adiantar três rodadas de uma vez) precisa ser marcado rodada a rodada.
