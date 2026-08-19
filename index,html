@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D4E89">
+<title>Fut dos Filhos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   FUT DOS FILHOS — identidade
+   quadra pintada de azul, linhas de cal, número de camisa
+   ============================================================ */
+:root{
+  --tinta:#101826;
+  --quadra:#1D4E89;
+  --quadra-esc:#143A66;
+  --cal:#ffffff;
+  --linha:#EEF1F4;
+  --borda:#D9E0E7;
+  --cinza:#6B7787;
+  --canarinho:#FFC531;
+  --pago:#1F9D55;
+  --deve:#D64545;
+  --raio:14px;
+  --sombra:0 1px 2px rgba(16,24,38,.06), 0 8px 24px rgba(16,24,38,.06);
+  --display:'Anton','Arial Narrow',Impact,sans-serif;
+  --corpo:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--corpo);
+  background:var(--linha);
+  color:var(--tinta);
+  font-size:16px;
+  line-height:1.45;
+  padding-bottom:92px;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--quadra)}
+
+/* ---------- cabeçalho: faixa de quadra ---------- */
+.topo{
+  background:var(--quadra);
+  color:#fff;
+  padding:14px 16px 16px;
+  position:relative;
+  overflow:hidden;
+}
+.topo::after{ /* linha de cal + círculo central */
+  content:'';position:absolute;right:-56px;top:-40px;width:190px;height:190px;
+  border:3px solid rgba(255,255,255,.16);border-radius:50%;
+}
+.topo::before{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:3px;background:rgba(255,255,255,.16);
+}
+.topo-linha{display:flex;align-items:center;gap:10px;position:relative;z-index:1}
+.marca{font-family:var(--display);font-size:26px;letter-spacing:.5px;line-height:1;text-transform:uppercase}
+.marca span{color:var(--canarinho)}
+.chave{
+  margin-left:auto;background:rgba(255,255,255,.14);border-radius:999px;
+  padding:6px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px
+}
+.chave.on{background:var(--canarinho);color:var(--tinta)}
+.eu{margin-top:12px;position:relative;z-index:1}
+.eu label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.75;margin-bottom:5px;font-weight:600}
+.eu select{
+  width:100%;padding:11px 12px;border-radius:10px;border:none;
+  background:rgba(255,255,255,.95);color:var(--tinta);font-weight:600;appearance:none;
+}
+
+/* ---------- navegação ---------- */
+.abas{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  background:var(--cal);border-top:1px solid var(--borda);
+  display:grid;grid-template-columns:repeat(4,1fr);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.aba{
+  padding:10px 4px 12px;text-align:center;font-size:11px;font-weight:600;
+  color:var(--cinza);letter-spacing:.4px;text-transform:uppercase;
+  border-top:3px solid transparent;margin-top:-1px;
+}
+.aba.on{color:var(--quadra);border-top-color:var(--quadra)}
+.aba i{display:block;font-size:19px;font-style:normal;margin-bottom:2px}
+
+.tela{padding:16px;max-width:760px;margin:0 auto;display:none}
+.tela.on{display:block}
+
+/* ---------- blocos ---------- */
+.cartao{background:var(--cal);border-radius:var(--raio);box-shadow:var(--sombra);padding:16px;margin-bottom:14px}
+.titulo{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;
+  color:var(--cinza);margin-bottom:10px;display:flex;align-items:center;gap:8px
+}
+.titulo::after{content:'';flex:1;height:1px;background:var(--borda)}
+
+/* ---------- destaque do próximo jogo ---------- */
+.jogo-capa{background:var(--tinta);color:#fff;border-radius:var(--raio);padding:18px;margin-bottom:14px;position:relative;overflow:hidden}
+.jogo-capa::after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;
+  background:repeating-linear-gradient(90deg,var(--canarinho) 0 18px,transparent 18px 36px)}
+.jogo-quando{font-family:var(--display);font-size:40px;line-height:.95;text-transform:uppercase;letter-spacing:.5px}
+.jogo-quando em{font-style:normal;color:var(--canarinho)}
+.jogo-onde{margin-top:8px;font-size:15px;opacity:.85}
+.jogo-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.tag{background:rgba(255,255,255,.12);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600}
+.tag.destaque{background:var(--canarinho);color:var(--tinta)}
+
+.acoes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.btn{
+  padding:15px 12px;border-radius:12px;font-weight:700;font-size:15px;text-align:center;
+  border:2px solid transparent;transition:transform .08s ease;
+}
+.btn:active{transform:scale(.98)}
+.btn-vou{background:var(--pago);color:#fff}
+.btn-vou.on{box-shadow:inset 0 0 0 3px rgba(255,255,255,.55)}
+.btn-fora{background:var(--cal);color:var(--deve);border-color:var(--deve)}
+.btn-fora.on{background:var(--deve);color:#fff}
+.btn-sec{background:var(--cal);border:1px solid var(--borda);padding:10px 14px;border-radius:10px;font-weight:600;font-size:14px}
+.btn-main{background:var(--quadra);color:#fff;padding:12px 16px;border-radius:10px;font-weight:700}
+.btn-linha{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* ---------- A LISTA (assinatura) ---------- */
+.lista{list-style:none}
+.vaga{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--borda)}
+.vaga:last-child{border-bottom:none}
+.num{
+  font-family:var(--display);font-size:26px;line-height:1;width:38px;flex:none;text-align:center;
+  color:var(--quadra);
+}
+.vaga.livre .num{color:var(--borda)}
+.vaga.livre .nome{color:var(--cinza);font-style:italic;font-size:14px}
+.vaga-corpo{flex:1;min-width:0}
+.nome{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub{font-size:12.5px;color:var(--cinza)}
+.selo{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:4px 9px;border-radius:999px;flex:none}
+.selo.pago{background:#E4F5EA;color:var(--pago)}
+.selo.deve{background:#FCE8E8;color:var(--deve)}
+.selo.neutro{background:var(--linha);color:var(--cinza)}
+.selo[data-clique]{cursor:pointer}
+.eu-mesmo{background:#FFF8E3;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
+
+.foras{display:flex;flex-wrap:wrap;gap:6px}
+.fora-chip{background:var(--linha);color:var(--cinza);border-radius:999px;padding:5px 11px;font-size:13px}
+
+/* ---------- pix ---------- */
+.pix-chave{
+  display:flex;align-items:center;gap:10px;background:var(--linha);
+  border:1px dashed var(--borda);border-radius:10px;padding:12px;margin-top:4px
+}
+.pix-chave code{font-size:15px;font-weight:600;word-break:break-all;flex:1;font-family:var(--corpo)}
+
+/* ---------- listas genéricas ---------- */
+.item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--borda)}
+.item:last-child{border-bottom:none}
+.item-corpo{flex:1;min-width:0}
+.valor{font-weight:700;white-space:nowrap}
+.valor.neg{color:var(--deve)}
+.valor.pos{color:var(--pago)}
+.data-caixa{
+  font-family:var(--display);text-align:center;width:46px;flex:none;line-height:1;
+  color:var(--quadra);border-right:2px solid var(--borda);padding-right:10px
+}
+.data-caixa b{display:block;font-size:22px;font-weight:400}
+.data-caixa span{font-size:11px;letter-spacing:.5px}
+
+/* ---------- caixa ---------- */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi{background:var(--cal);border-radius:var(--raio);padding:14px;box-shadow:var(--sombra)}
+.kpi.forte{grid-column:1/-1;background:var(--quadra);color:#fff}
+.kpi b{display:block;font-family:var(--display);font-size:30px;line-height:1.1;margin-top:4px;font-weight:400}
+.kpi small{font-size:11px;text-transform:uppercase;letter-spacing:1.1px;font-weight:600;opacity:.7}
+.barra-linha{margin:12px 0}
+.barra-topo{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+.barra{height:9px;background:var(--linha);border-radius:99px;overflow:hidden;display:flex}
+.barra i{display:block;height:100%}
+.barra .b-in{background:var(--pago)}
+.barra .b-out{background:var(--deve);opacity:.35}
+
+/* ---------- formulários ---------- */
+.campo{margin-bottom:12px}
+.campo label{display:block;font-size:12px;font-weight:600;color:var(--cinza);margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px}
+.campo input,.campo select{width:100%;padding:11px 12px;border:1px solid var(--borda);border-radius:10px;background:var(--cal)}
+.campo input:focus,.campo select:focus{outline:2px solid var(--quadra);outline-offset:1px;border-color:var(--quadra)}
+.dupla{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.modal{position:fixed;inset:0;background:rgba(16,24,38,.55);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.modal-caixa{background:var(--cal);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:20px;max-height:88vh;overflow-y:auto}
+.modal-topo{display:flex;align-items:center;margin-bottom:14px}
+.modal-topo h2{font-family:var(--display);font-size:22px;font-weight:400;text-transform:uppercase;letter-spacing:.5px}
+.modal-topo button{margin-left:auto;font-size:22px;color:var(--cinza);line-height:1}
+
+.vazio{text-align:center;padding:26px 14px;color:var(--cinza)}
+.vazio b{display:block;font-family:var(--display);font-size:19px;color:var(--tinta);font-weight:400;margin-bottom:6px;text-transform:uppercase}
+.aviso{background:#FFF8E3;border-left:3px solid var(--canarinho);padding:11px 13px;border-radius:0 8px 8px 0;font-size:13.5px;margin-bottom:14px}
+
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:104px;z-index:200;
+  background:var(--tinta);color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;
+  opacity:0;pointer-events:none;transition:opacity .2s ease
+}
+.toast.on{opacity:1}
+
+@media (min-width:720px){
+  body{padding-bottom:24px}
+  .abas{position:static;display:flex;justify-content:center;gap:6px;border-top:none;background:transparent;padding:12px 0 0}
+  .aba{border-top:none;border-bottom:3px solid transparent;padding:8px 18px;font-size:12px}
+  .aba.on{border-bottom-color:var(--quadra)}
+  .aba i{display:inline;margin-right:6px;font-size:15px}
+  .modal{align-items:center}
+  .modal-caixa{border-radius:18px}
+  .jogo-quando{font-size:52px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-linha">
+    <div class="marca">Fut dos <span>Filhos</span></div>
+    <button class="chave" id="btnAdmin">🔒 <span>Admin</span></button>
+  </div>
+  <div class="eu">
+    <label for="selEu">Quem é você</label>
+    <select id="selEu"></select>
+  </div>
+</header>
+
+<main>
+  <section class="tela on" id="tela-jogo"></section>
+  <section class="tela" id="tela-agenda"></section>
+  <section class="tela" id="tela-atletas"></section>
+  <section class="tela" id="tela-caixa"></section>
+</main>
+
+<nav class="abas">
+  <button class="aba on" data-tela="jogo"><i>📋</i>A lista</button>
+  <button class="aba" data-tela="agenda"><i>📅</i>Agenda</button>
+  <button class="aba" data-tela="atletas"><i>👟</i>Atletas</button>
+  <button class="aba" data-tela="caixa"><i>💰</i>Caixa</button>
+</nav>
+
+<div class="modal" id="modal">
+  <div class="modal-caixa">
+    <div class="modal-topo"><h2 id="modalTitulo"></h2><button id="modalFechar" aria-label="Fechar">✕</button></div>
+    <div id="modalCorpo"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+/* ============================================================
+   1. CONFIGURAÇÃO DO FIREBASE
+   Cole aqui os dados do seu projeto (Console do Firebase →
+   Configurações do projeto → Seus apps → Configuração do SDK).
+   Enquanto o campo apiKey continuar como "COLE_AQUI", o site
+   roda em modo demonstração: funciona, mas não salva nada.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "COLE_AQUI",
+  authDomain: "SEU-PROJETO.firebaseapp.com",
+  projectId: "SEU-PROJETO",
+  storageBucket: "SEU-PROJETO.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:0000000000000000000000"
+};
+
+const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
+
+/* ---------- estado ---------- */
+const estado = {
+  atletas: [], jogos: [], despesas: [],
+  config: { pixChave:"", pixTipo:"Celular", pixNome:"", custoPadrao:0, valorFixo:0, vagas:14, pin:"1234" },
+  eu: null, admin: false, tela: "jogo"
+};
+
+/* ---------- camada de dados ---------- */
+let fb = null;
+
+async function iniciar(){
+  if (CONECTADO) {
+    try {
+      const [app, fs, auth] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
+        import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js")
+      ]);
+      const application = app.initializeApp(firebaseConfig);
+      const db = fs.getFirestore(application);
+      try { await auth.signInAnonymously(auth.getAuth(application)); } catch(e){ console.warn("Login anônimo indisponível:", e.message); }
+      fb = { fs, db };
+
+      fs.onSnapshot(fs.collection(db,"atletas"), s => {
+        estado.atletas = s.docs.map(d => ({ id:d.id, ...d.data() })); desenhar();
+      }, erroFirebase);
+      fs.onSnapshot(fs.collection(db,"jogos"), s => {
+        estado.jogos = s.docs.map(d => ({ id:d.id, ...d.data() })); desenhar();
+      }, erroFirebase);
+      fs.onSnapshot(fs.collection(db,"despesas"), s => {
+        estado.despesas = s.docs.map(d => ({ id:d.id, ...d.data() })); desenhar();
+      }, erroFirebase);
+      fs.onSnapshot(fs.doc(db,"config","geral"), d => {
+        if (d.exists()) estado.config = { ...estado.config, ...d.data() }; desenhar();
+      }, erroFirebase);
+    } catch (e) {
+      console.error(e);
+      avisar("Não consegui conectar no Firebase. Confira a configuração.");
+      semear();
+    }
+  } else {
+    semear();
+  }
+  lerEndereco();
+  desenhar();
+}
+function erroFirebase(e){
+  console.error(e);
+  avisar("Sem permissão para ler os dados. Revise as regras do Firestore.");
+}
+
+const novoId = () => (crypto.randomUUID ? crypto.randomUUID() : "id"+Date.now()+Math.random().toString(16).slice(2));
+
+async function gravar(colecao, dados, id){
+  if (fb) {
+    const { fs, db } = fb;
+    if (id) { await fs.setDoc(fs.doc(db,colecao,id), dados, { merge:true }); return id; }
+    const ref = await fs.addDoc(fs.collection(db,colecao), dados); return ref.id;
+  }
+  const lista = estado[colecao];
+  if (id) { const i = lista.findIndex(x=>x.id===id); if(i>=0) lista[i] = { ...lista[i], ...dados }; return id; }
+  const nid = novoId(); lista.push({ id:nid, ...dados }); return nid;
+}
+async function apagar(colecao, id){
+  if (fb) { await fb.fs.deleteDoc(fb.fs.doc(fb.db,colecao,id)); return; }
+  estado[colecao] = estado[colecao].filter(x => x.id !== id);
+}
+async function gravarConfig(dados){
+  estado.config = { ...estado.config, ...dados };
+  if (fb) await fb.fs.setDoc(fb.fs.doc(fb.db,"config","geral"), dados, { merge:true });
+}
+async function gravarPresenca(jogoId, atletaId, dados){
+  const jogo = estado.jogos.find(j => j.id === jogoId); if (!jogo) return;
+  jogo.presencas = jogo.presencas || {};
+  jogo.presencas[atletaId] = { ...(jogo.presencas[atletaId]||{}), ...dados };
+  if (fb) await fb.fs.updateDoc(fb.fs.doc(fb.db,"jogos",jogoId), { ["presencas."+atletaId]: jogo.presencas[atletaId] });
+}
+
+/* ---------- dados de demonstração ---------- */
+function semear(){
+  const nomes = ["Vinícios","Rafael","Marcos","Thiago","Diego","Bruno","Leandro","Everton",
+                 "Juliano","Fábio","Caio","Renan","Anderson","Gustavo","Pedro","Lucas"];
+  estado.atletas = nomes.map(n => ({ id:"a-"+n.toLowerCase(), nome:n, apelido:"", telefone:"", ativo:true }));
+  estado.config = { ...estado.config, pixChave:"47 99999-0000", pixTipo:"Celular",
+                    pixNome:"Organizador da pelada", custoPadrao:180, valorFixo:0, vagas:14, pin:"1234" };
+
+  const hoje = new Date();
+  const emDias = d => { const x = new Date(hoje); x.setDate(x.getDate()+d); return x.toISOString().slice(0,10); };
+  const presencasDe = (ids, pagos) => {
+    const p = {};
+    ids.forEach(i => p["a-"+nomes[i].toLowerCase()] = { status:"in", pago: pagos.includes(i) });
+    return p;
+  };
+  estado.jogos = [
+    { id:"j1", data:emDias(-14), hora:"20:00", local:"Quadra do Bairro", custo:180, valorFixo:20, vagas:14,
+      presencas: presencasDe([0,1,2,3,4,5,6,7,8,9,10,11], [0,1,2,3,4,5,6,7,8,9,10,11]) },
+    { id:"j2", data:emDias(-7), hora:"20:00", local:"Quadra do Bairro", custo:180, valorFixo:20, vagas:14,
+      presencas: presencasDe([0,1,2,4,5,6,8,9,10,12,13], [0,1,2,4,5,6,8,9,10,12]) },
+    { id:"j3", data:emDias(3), hora:"20:00", local:"Quadra do Bairro", custo:180, valorFixo:0, vagas:14,
+      presencas: (()=>{ const p = presencasDe([0,1,3,5,7,9,11], []);
+                        p["a-"+nomes[2].toLowerCase()] = { status:"out" }; return p; })() },
+    { id:"j4", data:emDias(10), hora:"20:00", local:"Quadra do Bairro", custo:180, valorFixo:0, vagas:14, presencas:{} }
+  ];
+  estado.despesas = [{ id:"d1", data:emDias(-20), descricao:"Bola nova", valor:60 }];
+}
+
+/* ---------- cálculos ---------- */
+const hojeISO = () => new Date().toLocaleDateString("sv-SE");
+const confirmados = j => Object.entries(j.presencas||{}).filter(([,p]) => p.status==="in").map(([id])=>id);
+const recusados   = j => Object.entries(j.presencas||{}).filter(([,p]) => p.status==="out").map(([id])=>id);
+
+function valorPorJogador(j){
+  if (Number(j.valorFixo) > 0) return Number(j.valorFixo);
+  const n = confirmados(j).length;
+  return n > 0 ? Math.round((Number(j.custo)||0)/n*100)/100 : 0;
+}
+const recebidoNoJogo = j => confirmados(j).filter(id => j.presencas[id].pago).length * valorPorJogador(j);
+const jogosPassados  = () => estado.jogos.filter(j => j.data <= hojeISO());
+
+function caixa(){
+  const entrou = jogosPassados().reduce((s,j) => s + recebidoNoJogo(j), 0);
+  const quadra = jogosPassados().reduce((s,j) => s + (Number(j.custo)||0), 0);
+  const extras = estado.despesas.reduce((s,d) => s + (Number(d.valor)||0), 0);
+  const aReceber = jogosPassados().reduce((s,j) =>
+    s + confirmados(j).filter(id => !j.presencas[id].pago).length * valorPorJogador(j), 0);
+  return { entrou, saiu: quadra+extras, quadra, extras, saldo: entrou-quadra-extras, aReceber };
+}
+function saldoAtleta(id){
+  let devido = 0, pago = 0;
+  jogosPassados().forEach(j => {
+    const p = (j.presencas||{})[id];
+    if (p && p.status === "in") { const v = valorPorJogador(j); devido += v; if (p.pago) pago += v; }
+  });
+  return { devido, pago, aberto: devido - pago };
+}
+const presencasDoAtleta = id => estado.jogos.filter(j => (j.presencas||{})[id]?.status === "in").length;
+
+/* ---------- formatação ---------- */
+const dinheiro = v => (Number(v)||0).toLocaleString("pt-BR",{ style:"currency", currency:"BRL" });
+const asData = iso => new Date(iso+"T12:00:00");
+function dataLonga(iso){
+  const d = asData(iso);
+  const dia = d.toLocaleDateString("pt-BR",{ weekday:"short" }).replace(".","").toUpperCase();
+  const mes = d.toLocaleDateString("pt-BR",{ month:"short" }).replace(".","").toUpperCase();
+  return { dia, num:String(d.getDate()).padStart(2,"0"), mes };
+}
+const dataCurta = iso => asData(iso).toLocaleDateString("pt-BR",{ day:"2-digit", month:"2-digit" });
+const escapar = t => String(t??"").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const nomeDe = id => estado.atletas.find(a => a.id === id)?.nome || "—";
+
+/* ============================================================
+   TELA 1 — A LISTA
+   ============================================================ */
+function telaJogo(){
+  const proximo = estado.jogos.filter(j => j.data >= hojeISO()).sort((a,b) => a.data.localeCompare(b.data))[0];
+  const el = document.getElementById("tela-jogo");
+
+  if (!proximo) {
+    el.innerHTML = `<div class="cartao"><div class="vazio">
+      <b>Nenhum jogo marcado</b>
+      A lista abre quando a próxima rodada entrar na agenda.
+      ${estado.admin ? '<div class="btn-linha" style="justify-content:center"><button class="btn-main" data-acao="novo-jogo">Marcar jogo</button></div>' : ""}
+    </div></div>`;
+    return;
+  }
+
+  const { dia, num, mes } = dataLonga(proximo.data);
+  const dentro = confirmados(proximo), fora = recusados(proximo);
+  const vagas = Number(proximo.vagas) || 14;
+  const valor = valorPorJogador(proximo);
+  const meu = estado.eu ? (proximo.presencas||{})[estado.eu]?.status : null;
+
+  const titulares = dentro.slice(0, vagas), espera = dentro.slice(vagas);
+  const linhas = [];
+  for (let i = 0; i < Math.max(vagas, titulares.length); i++) {
+    const id = titulares[i];
+    if (!id) { linhas.push(`<li class="vaga livre"><span class="num">${String(i+1).padStart(2,"0")}</span>
+      <div class="vaga-corpo"><div class="nome">vaga livre</div></div></li>`); continue; }
+    const p = proximo.presencas[id], s = saldoAtleta(id);
+    const selo = p.pago
+      ? '<span class="selo pago">pago</span>'
+      : (s.aberto > 0.005 ? `<span class="selo deve">deve ${dinheiro(s.aberto)}</span>` : '<span class="selo neutro">em dia</span>');
+    linhas.push(`<li class="vaga ${id===estado.eu?"eu-mesmo":""}">
+      <span class="num">${String(i+1).padStart(2,"0")}</span>
+      <div class="vaga-corpo"><div class="nome">${escapar(nomeDe(id))}</div>
+        ${estado.admin ? `<div class="sub">toque no selo para ${p.pago?"desmarcar":"marcar como pago"}</div>` : ""}</div>
+      ${estado.admin
+        ? `<button class="selo ${p.pago?"pago":"deve"}" data-clique="1" data-pagar="${id}" data-jogo="${proximo.id}">${p.pago?"pago":"marcar pago"}</button>`
+        : selo}
+    </li>`);
+  }
+
+  el.innerHTML = `
+    <div class="jogo-capa">
+      <div class="jogo-quando">${dia}<br><em>${num} ${mes}</em></div>
+      <div class="jogo-onde">${escapar(proximo.local||"Local a definir")} · ${escapar(proximo.hora||"")}</div>
+      <div class="jogo-tags">
+        <span class="tag destaque">${dinheiro(valor)} por cabeça</span>
+        <span class="tag">${dentro.length}/${vagas} confirmados</span>
+        <span class="tag">quadra ${dinheiro(proximo.custo)}</span>
+      </div>
+    </div>
+
+    ${estado.eu ? `<div class="acoes">
+      <button class="btn btn-vou ${meu==="in"?"on":""}" data-confirmar="in" data-jogo="${proximo.id}">Vou jogar</button>
+      <button class="btn btn-fora ${meu==="out"?"on":""}" data-confirmar="out" data-jogo="${proximo.id}">Não vou</button>
+    </div>` : `<div class="aviso">Escolha seu nome lá em cima para confirmar presença.</div>`}
+
+    <div class="cartao">
+      <div class="titulo">A lista${dentro.length>vagas?` · ${espera.length} na espera`:""}</div>
+      <ul class="lista">${linhas.join("")}</ul>
+      ${espera.length ? `<div class="titulo" style="margin-top:16px">Lista de espera</div>
+        <ul class="lista">${espera.map((id,i) => `<li class="vaga"><span class="num">E${i+1}</span>
+          <div class="vaga-corpo"><div class="nome">${escapar(nomeDe(id))}</div>
+          <div class="sub">entra se alguém cair</div></div></li>`).join("")}</ul>` : ""}
+      ${fora.length ? `<div class="titulo" style="margin-top:16px">Fora dessa</div>
+        <div class="foras">${fora.map(id => `<span class="fora-chip">${escapar(nomeDe(id))}</span>`).join("")}</div>` : ""}
+    </div>
+
+    <div class="cartao">
+      <div class="titulo">Pagamento por Pix</div>
+      ${estado.config.pixChave ? `
+        <div class="sub">${escapar(estado.config.pixTipo||"Chave")}${estado.config.pixNome?" · "+escapar(estado.config.pixNome):""}</div>
+        <div class="pix-chave"><code>${escapar(estado.config.pixChave)}</code>
+          <button class="btn-sec" data-copiar="${escapar(estado.config.pixChave)}">Copiar</button></div>
+        <div class="sub" style="margin-top:10px">Mande ${dinheiro(valor)} e avise no grupo. ${estado.admin?"Você marca aqui quem pagou.":"O organizador confirma aqui na lista."}</div>
+      ` : `<div class="vazio"><b>Sem chave cadastrada</b>${estado.admin?"Cadastre a chave em Caixa → Ajustes.":"Peça a chave ao organizador."}</div>`}
+      ${estado.eu ? (()=>{ const s = saldoAtleta(estado.eu); return `<div class="item" style="border-top:1px solid var(--borda);margin-top:12px;padding-top:14px">
+        <div class="item-corpo"><div class="nome">Sua situação</div>
+          <div class="sub">${presencasDoAtleta(estado.eu)} jogos · ${dinheiro(s.pago)} já pagos</div></div>
+        <div class="valor ${s.aberto>0.005?"neg":"pos"}">${s.aberto>0.005?dinheiro(s.aberto):"Em dia"}</div></div>`; })() : ""}
+    </div>`;
+}
+
+/* ============================================================
+   TELA 2 — AGENDA
+   ============================================================ */
+function telaAgenda(){
+  const jogos = [...estado.jogos].sort((a,b) => b.data.localeCompare(a.data));
+  const futuros = jogos.filter(j => j.data >= hojeISO()).reverse();
+  const passados = jogos.filter(j => j.data < hojeISO());
+
+  const linha = j => {
+    const { num, mes } = dataLonga(j.data);
+    const n = confirmados(j).length, pagos = confirmados(j).filter(id => j.presencas[id].pago).length;
+    return `<div class="item">
+      <div class="data-caixa"><b>${num}</b><span>${mes}</span></div>
+      <div class="item-corpo">
+        <div class="nome">${escapar(j.local||"Local a definir")}</div>
+        <div class="sub">${escapar(j.hora||"")} · ${n} confirmados · ${dinheiro(valorPorJogador(j))} por cabeça${j.data<hojeISO()?` · ${pagos}/${n} pagaram`:""}</div>
+      </div>
+      ${estado.admin?`<button class="btn-sec" data-editar-jogo="${j.id}">Editar</button>`:""}
+    </div>`;
+  };
+
+  document.getElementById("tela-agenda").innerHTML = `
+    ${estado.admin?`<button class="btn-main" style="width:100%;margin-bottom:14px" data-acao="novo-jogo">+ Marcar jogo</button>`:""}
+    <div class="cartao">
+      <div class="titulo">Próximos jogos</div>
+      ${futuros.length ? futuros.map(linha).join("") : `<div class="vazio"><b>Agenda vazia</b>Nenhuma rodada marcada daqui pra frente.</div>`}
+    </div>
+    <div class="cartao">
+      <div class="titulo">Jogos anteriores</div>
+      ${passados.length ? passados.map(linha).join("") : `<div class="vazio">Ainda não rolou nenhuma rodada.</div>`}
+    </div>`;
+}
+
+/* ============================================================
+   TELA 3 — ATLETAS
+   ============================================================ */
+function telaAtletas(){
+  const lista = [...estado.atletas].sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
+  document.getElementById("tela-atletas").innerHTML = `
+    ${estado.admin?`<button class="btn-main" style="width:100%;margin-bottom:14px" data-acao="novo-atleta">+ Cadastrar atleta</button>`
+      :`<div class="aviso">Só o organizador cadastra e remove atletas. Não achou seu nome? Peça pra ele incluir.</div>`}
+    <div class="cartao">
+      <div class="titulo">${lista.length} atletas</div>
+      ${lista.length ? lista.map(a => {
+        const s = saldoAtleta(a.id);
+        return `<div class="item">
+          <div class="item-corpo">
+            <div class="nome">${escapar(a.nome)}${a.ativo===false?' <span class="selo neutro">inativo</span>':""}</div>
+            <div class="sub">${presencasDoAtleta(a.id)} jogos${a.telefone?" · "+escapar(a.telefone):""}</div>
+          </div>
+          <div class="valor ${s.aberto>0.005?"neg":"pos"}">${s.aberto>0.005?dinheiro(s.aberto):"em dia"}</div>
+          ${estado.admin?`<button class="btn-sec" data-editar-atleta="${a.id}">Editar</button>`:""}
+        </div>`;
+      }).join("") : `<div class="vazio"><b>Ninguém cadastrado</b>Comece pelos que jogam sempre.</div>`}
+    </div>`;
+}
+
+/* ============================================================
+   TELA 4 — CAIXA
+   ============================================================ */
+function telaCaixa(){
+  const c = caixa();
+  const ultimos = jogosPassados().sort((a,b) => b.data.localeCompare(a.data)).slice(0,8);
+  const teto = Math.max(1, ...ultimos.map(j => Math.max(recebidoNoJogo(j), Number(j.custo)||0)));
+
+  const devedores = estado.atletas.map(a => ({ ...a, ...saldoAtleta(a.id) }))
+    .filter(a => a.aberto > 0.005).sort((a,b) => b.aberto - a.aberto);
+
+  document.getElementById("tela-caixa").innerHTML = `
+    <div class="kpis">
+      <div class="kpi forte"><small>Saldo em caixa</small><b>${dinheiro(c.saldo)}</b></div>
+      <div class="kpi"><small>Recebido</small><b style="color:var(--pago)">${dinheiro(c.entrou)}</b></div>
+      <div class="kpi"><small>Gasto</small><b style="color:var(--deve)">${dinheiro(c.saiu)}</b></div>
+      <div class="kpi" style="grid-column:1/-1"><small>A receber dos atletas</small><b>${dinheiro(c.aReceber)}</b>
+        <div class="sub">${devedores.length} ${devedores.length===1?"pessoa deve":"pessoas devem"}</div></div>
+    </div>
+
+    <div class="cartao">
+      <div class="titulo">Últimas rodadas · entrou x custou</div>
+      ${ultimos.length ? ultimos.map(j => {
+        const rec = recebidoNoJogo(j), cus = Number(j.custo)||0;
+        return `<div class="barra-linha">
+          <div class="barra-topo"><span>${dataCurta(j.data)} · ${escapar(j.local||"")}</span>
+            <span class="valor ${rec-cus>=0?"pos":"neg"}">${dinheiro(rec-cus)}</span></div>
+          <div class="barra"><i class="b-in" style="width:${rec/teto*50}%"></i><i class="b-out" style="width:${cus/teto*50}%"></i></div>
+        </div>`;
+      }).join("") : `<div class="vazio">Sem rodadas fechadas ainda.</div>`}
+      <div class="sub" style="margin-top:8px">Barra verde: o que os atletas pagaram. Barra vermelha: o que a rodada custou.</div>
+    </div>
+
+    <div class="cartao">
+      <div class="titulo">Quem está devendo</div>
+      ${devedores.length ? devedores.map(a => `<div class="item">
+        <div class="item-corpo"><div class="nome">${escapar(a.nome)}</div>
+          <div class="sub">${dinheiro(a.pago)} pagos de ${dinheiro(a.devido)}</div></div>
+        <div class="valor neg">${dinheiro(a.aberto)}</div></div>`).join("")
+        : `<div class="vazio"><b>Ninguém devendo</b>Caixa em dia. Raro e bonito.</div>`}
+    </div>
+
+    <div class="cartao">
+      <div class="titulo">Despesas fora do jogo</div>
+      ${estado.despesas.length ? [...estado.despesas].sort((a,b)=>b.data.localeCompare(a.data)).map(d => `<div class="item">
+        <div class="data-caixa"><b>${dataLonga(d.data).num}</b><span>${dataLonga(d.data).mes}</span></div>
+        <div class="item-corpo"><div class="nome">${escapar(d.descricao)}</div></div>
+        <div class="valor neg">${dinheiro(d.valor)}</div>
+        ${estado.admin?`<button class="btn-sec" data-apagar-despesa="${d.id}">✕</button>`:""}</div>`).join("")
+        : `<div class="vazio">Bola, colete, camisa — o que não é aluguel de quadra entra aqui.</div>`}
+      ${estado.admin?`<div class="btn-linha">
+        <button class="btn-sec" data-acao="nova-despesa">+ Lançar despesa</button>
+        <button class="btn-sec" data-acao="ajustes">Ajustes da pelada</button></div>`:""}
+    </div>`;
+}
+
+/* ---------- desenho geral ---------- */
+function desenhar(){
+  if (!estado.eu) lerEndereco();
+  const sel = document.getElementById("selEu");
+  const ativos = estado.atletas.filter(a => a.ativo !== false).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
+  sel.innerHTML = `<option value="">— escolha seu nome —</option>` +
+    ativos.map(a => `<option value="${a.id}" ${a.id===estado.eu?"selected":""}>${escapar(a.nome)}</option>`).join("");
+
+  document.getElementById("btnAdmin").className = "chave" + (estado.admin ? " on" : "");
+  document.querySelector("#btnAdmin span").textContent = estado.admin ? "Admin ativo" : "Admin";
+  document.querySelector("#btnAdmin").firstChild.textContent = estado.admin ? "🔓 " : "🔒 ";
+
+  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa();
+}
+
+/* ---------- avisos ---------- */
+let tempoToast;
+function avisar(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(tempoToast); tempoToast = setTimeout(() => t.classList.remove("on"), 2600);
+}
+
+/* ---------- modal ---------- */
+function abrirModal(titulo, html){
+  document.getElementById("modalTitulo").textContent = titulo;
+  document.getElementById("modalCorpo").innerHTML = html;
+  document.getElementById("modal").classList.add("on");
+}
+const fecharModal = () => document.getElementById("modal").classList.remove("on");
+document.getElementById("modalFechar").onclick = fecharModal;
+document.getElementById("modal").onclick = e => { if (e.target.id === "modal") fecharModal(); };
+
+function formJogo(jogo){
+  const j = jogo || { data:"", hora:"20:00", local:estado.jogos.at(-1)?.local||"", custo:estado.config.custoPadrao||"", valorFixo:"", vagas:estado.config.vagas||14 };
+  abrirModal(jogo?"Editar jogo":"Marcar jogo", `
+    <div class="dupla"><div class="campo"><label>Data</label><input type="date" id="f_data" value="${j.data}"></div>
+      <div class="campo"><label>Hora</label><input type="time" id="f_hora" value="${j.hora||""}"></div></div>
+    <div class="campo"><label>Local</label><input id="f_local" value="${escapar(j.local)}" placeholder="Quadra do bairro"></div>
+    <div class="dupla"><div class="campo"><label>Custo da quadra (R$)</label><input type="number" step="0.01" id="f_custo" value="${j.custo}"></div>
+      <div class="campo"><label>Vagas</label><input type="number" id="f_vagas" value="${j.vagas||14}"></div></div>
+    <div class="campo"><label>Valor fixo por cabeça (opcional)</label><input type="number" step="0.01" id="f_fixo" value="${j.valorFixo||""}" placeholder="deixe vazio para ratear o custo">
+      <div class="sub" style="margin-top:5px">Vazio: o custo é dividido pelos confirmados. Preenchido: todo mundo paga esse valor.</div></div>
+    <div class="btn-linha"><button class="btn-main" id="f_salvar">Salvar jogo</button>
+      ${jogo?`<button class="btn-sec" id="f_apagar" style="color:var(--deve)">Apagar</button>`:""}</div>`);
+
+  document.getElementById("f_salvar").onclick = async () => {
+    const data = document.getElementById("f_data").value;
+    if (!data) return avisar("Escolha a data do jogo.");
+    await gravar("jogos", {
+      data, hora:document.getElementById("f_hora").value,
+      local:document.getElementById("f_local").value,
+      custo:Number(document.getElementById("f_custo").value)||0,
+      vagas:Number(document.getElementById("f_vagas").value)||14,
+      valorFixo:Number(document.getElementById("f_fixo").value)||0,
+      presencas: jogo?.presencas || {}
+    }, jogo?.id);
+    fecharModal(); desenhar(); avisar("Jogo salvo.");
+  };
+  if (jogo) document.getElementById("f_apagar").onclick = async () => {
+    if (!confirm("Apagar este jogo e as presenças dele?")) return;
+    await apagar("jogos", jogo.id); fecharModal(); desenhar(); avisar("Jogo apagado.");
+  };
+}
+
+function formAtleta(atleta){
+  const a = atleta || { nome:"", apelido:"", telefone:"", ativo:true };
+  abrirModal(atleta?"Editar atleta":"Cadastrar atleta", `
+    <div class="campo"><label>Nome</label><input id="f_nome" value="${escapar(a.nome)}" placeholder="Como aparece no grupo"></div>
+    <div class="dupla"><div class="campo"><label>Apelido</label><input id="f_apelido" value="${escapar(a.apelido)}"></div>
+      <div class="campo"><label>Telefone</label><input id="f_tel" value="${escapar(a.telefone)}" placeholder="47 99999-0000"></div></div>
+    <div class="campo"><label>Situação</label><select id="f_ativo">
+      <option value="1" ${a.ativo!==false?"selected":""}>Ativo — aparece na lista</option>
+      <option value="0" ${a.ativo===false?"selected":""}>Inativo — sai da lista, histórico fica</option></select></div>
+    <div class="btn-linha"><button class="btn-main" id="f_salvar">Salvar atleta</button>
+      ${atleta?`<button class="btn-sec" id="f_apagar" style="color:var(--deve)">Remover</button>`:""}</div>`);
+
+  document.getElementById("f_salvar").onclick = async () => {
+    const nome = document.getElementById("f_nome").value.trim();
+    if (!nome) return avisar("Digite o nome do atleta.");
+    await gravar("atletas", { nome, apelido:document.getElementById("f_apelido").value.trim(),
+      telefone:document.getElementById("f_tel").value.trim(),
+      ativo:document.getElementById("f_ativo").value === "1" }, atleta?.id);
+    fecharModal(); desenhar(); avisar("Atleta salvo.");
+  };
+  if (atleta) document.getElementById("f_apagar").onclick = async () => {
+    if (!confirm("Remover "+atleta.nome+"? O histórico de presenças some junto.")) return;
+    await apagar("atletas", atleta.id); fecharModal(); desenhar(); avisar("Atleta removido.");
+  };
+}
+
+function formDespesa(){
+  abrirModal("Lançar despesa", `
+    <div class="campo"><label>Data</label><input type="date" id="f_data" value="${hojeISO()}"></div>
+    <div class="campo"><label>Descrição</label><input id="f_desc" placeholder="Bola nova, coletes, camisa..."></div>
+    <div class="campo"><label>Valor (R$)</label><input type="number" step="0.01" id="f_valor"></div>
+    <button class="btn-main" id="f_salvar">Lançar</button>`);
+  document.getElementById("f_salvar").onclick = async () => {
+    const descricao = document.getElementById("f_desc").value.trim();
+    const valor = Number(document.getElementById("f_valor").value);
+    if (!descricao || !valor) return avisar("Preencha descrição e valor.");
+    await gravar("despesas", { data:document.getElementById("f_data").value, descricao, valor });
+    fecharModal(); desenhar(); avisar("Despesa lançada.");
+  };
+}
+
+function formAjustes(){
+  const c = estado.config;
+  abrirModal("Ajustes da pelada", `
+    <div class="campo"><label>Chave Pix</label><input id="f_pix" value="${escapar(c.pixChave)}" placeholder="celular, e-mail, CPF ou aleatória"></div>
+    <div class="dupla"><div class="campo"><label>Tipo da chave</label><select id="f_tipo">
+      ${["Celular","E-mail","CPF/CNPJ","Aleatória"].map(t => `<option ${c.pixTipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
+      <div class="campo"><label>Nome do favorecido</label><input id="f_nomepix" value="${escapar(c.pixNome)}"></div></div>
+    <div class="dupla"><div class="campo"><label>Custo padrão da quadra</label><input type="number" step="0.01" id="f_custo" value="${c.custoPadrao||""}"></div>
+      <div class="campo"><label>Vagas por jogo</label><input type="number" id="f_vagas" value="${c.vagas||14}"></div></div>
+    <div class="campo"><label>Senha de admin</label><input id="f_pin" value="${escapar(c.pin)}">
+      <div class="sub" style="margin-top:5px">Trava simples, só para evitar toque errado. Não protege contra quem entende do assunto.</div></div>
+    <button class="btn-main" id="f_salvar">Salvar ajustes</button>`);
+  document.getElementById("f_salvar").onclick = async () => {
+    await gravarConfig({
+      pixChave:document.getElementById("f_pix").value.trim(),
+      pixTipo:document.getElementById("f_tipo").value,
+      pixNome:document.getElementById("f_nomepix").value.trim(),
+      custoPadrao:Number(document.getElementById("f_custo").value)||0,
+      vagas:Number(document.getElementById("f_vagas").value)||14,
+      pin:document.getElementById("f_pin").value.trim() || "1234"
+    });
+    fecharModal(); desenhar(); avisar("Ajustes salvos.");
+  };
+}
+
+/* ---------- eventos ---------- */
+document.querySelectorAll(".aba").forEach(b => b.onclick = () => {
+  estado.tela = b.dataset.tela;
+  document.querySelectorAll(".aba").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".tela").forEach(t => t.classList.toggle("on", t.id === "tela-"+estado.tela));
+  window.scrollTo({ top:0, behavior:"instant" });
+});
+
+document.getElementById("selEu").onchange = e => {
+  estado.eu = e.target.value || null;
+  try { location.hash = estado.eu ? "eu="+estado.eu : ""; } catch(_){}
+  desenhar();
+};
+function lerEndereco(){
+  const m = (location.hash||"").match(/eu=([^&]+)/);
+  if (m && estado.atletas.some(a => a.id === decodeURIComponent(m[1]))) estado.eu = decodeURIComponent(m[1]);
+}
+
+document.getElementById("btnAdmin").onclick = () => {
+  if (estado.admin) { estado.admin = false; desenhar(); return avisar("Modo admin desligado."); }
+  const pin = prompt("Senha de admin:");
+  if (pin === null) return;
+  if (pin === String(estado.config.pin)) { estado.admin = true; desenhar(); avisar("Modo admin ligado."); }
+  else avisar("Senha errada.");
+};
+
+document.body.addEventListener("click", async e => {
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa]");
+  if (!alvo) return;
+  const d = alvo.dataset;
+
+  if (d.confirmar) {
+    if (!estado.eu) return avisar("Escolha seu nome lá em cima primeiro.");
+    const jogo = estado.jogos.find(j => j.id === d.jogo);
+    const atual = (jogo.presencas||{})[estado.eu]?.status;
+    const novo = atual === d.confirmar ? null : d.confirmar;
+    await gravarPresenca(d.jogo, estado.eu, { status:novo, pago:(jogo.presencas||{})[estado.eu]?.pago||false });
+    desenhar();
+    avisar(novo === "in" ? "Confirmado. Bola pra frente." : novo === "out" ? "Anotado, fica pra próxima." : "Presença desmarcada.");
+  }
+  else if (d.pagar) {
+    const jogo = estado.jogos.find(j => j.id === d.jogo);
+    const p = jogo.presencas[d.pagar];
+    await gravarPresenca(d.jogo, d.pagar, { pago: !p.pago, pagoEm: !p.pago ? hojeISO() : null });
+    desenhar();
+    avisar(!p.pago ? nomeDe(d.pagar)+" pagou." : "Pagamento desmarcado.");
+  }
+  else if (d.copiar) {
+    try { await navigator.clipboard.writeText(d.copiar); avisar("Chave Pix copiada."); }
+    catch(_) { avisar("Copie manualmente: "+d.copiar); }
+  }
+  else if (d.editarJogo)   formJogo(estado.jogos.find(j => j.id === d.editarJogo));
+  else if (d.editarAtleta) formAtleta(estado.atletas.find(a => a.id === d.editarAtleta));
+  else if (d.apagarDespesa){ if (confirm("Apagar esta despesa?")) { await apagar("despesas", d.apagarDespesa); desenhar(); } }
+  else if (d.acao === "novo-jogo")    formJogo(null);
+  else if (d.acao === "novo-atleta")  formAtleta(null);
+  else if (d.acao === "nova-despesa") formDespesa();
+  else if (d.acao === "ajustes")      formAjustes();
+});
+
+iniciar();
+if (!CONECTADO) setTimeout(() => avisar("Modo demonstração — nada é salvo ainda."), 900);
+</script>
+</body>
+</html>
