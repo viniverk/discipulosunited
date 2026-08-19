@@ -62,6 +62,7 @@ Para uma pelada de amigos isso costuma bastar. Se um dia incomodar, o caminho é
 
 1. Crie um repositório público, por exemplo `fut-dos-filhos`.
 2. Suba o `index.html` na raiz (dá para arrastar pelo próprio site do GitHub, em **Add file → Upload files**).
+   O escudo está embutido dentro do próprio HTML, então o site funciona só com esse arquivo. O `logo.png` é opcional: suba junto se quiser o ícone certo quando alguém adicionar o site à tela inicial do celular.
 3. **Settings** → **Pages** → em *Source* escolha **Deploy from a branch** → branch `main`, pasta `/ (root)` → **Save**.
 4. Em um ou dois minutos o site fica em `https://SEU-USUARIO.github.io/fut-dos-filhos/`.
 
@@ -70,7 +71,7 @@ Cada `index.html` novo que você subir republica sozinho.
 ## 5. Primeiro uso
 
 1. Abra o site, clique em 🔒 e entre com a senha `1234`.
-2. **Caixa → Ajustes da pelada**: chave Pix, favorecido, custo padrão da quadra, vagas por rodada e — importante — **troque a senha**.
+2. **Caixa → Ajustes da pelada**: chave Pix, favorecido, dia e hora da pelada, custo padrão da quadra, vagas por rodada e — importante — **troque a senha**. O dia escolhido vira o padrão ao marcar um jogo novo e aparece embaixo do escudo.
 3. **Atletas**: cadastre a galera. Cada um entra como **fixo**, **convidado** (aí você indica quem trouxe) ou **inativo**.
 4. **Agenda → Marcar jogo**: data, local e custo.
 5. Mande o link no grupo do WhatsApp.
