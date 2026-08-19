@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -37,7 +37,7 @@ body{
   color:var(--tinta);
   font-size:16px;
   line-height:1.45;
-  padding-bottom:92px;
+  padding-bottom:calc(28px + env(safe-area-inset-bottom));
   -webkit-font-smoothing:antialiased;
 }
 button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
@@ -76,18 +76,19 @@ a{color:var(--quadra)}
 
 /* ---------- navegação ---------- */
 .abas{
-  position:fixed;bottom:0;left:0;right:0;z-index:50;
-  background:var(--cal);border-top:1px solid var(--borda);
+  position:sticky;top:0;z-index:50;
+  background:var(--cal);border-bottom:1px solid var(--borda);
   display:grid;grid-template-columns:repeat(4,1fr);
-  padding-bottom:env(safe-area-inset-bottom);
+  box-shadow:0 2px 10px rgba(16,24,38,.05);
 }
 .aba{
-  padding:10px 4px 12px;text-align:center;font-size:11px;font-weight:600;
+  padding:9px 4px 0;text-align:center;font-size:11px;font-weight:600;
   color:var(--cinza);letter-spacing:.4px;text-transform:uppercase;
-  border-top:3px solid transparent;margin-top:-1px;
+  border-bottom:3px solid transparent;
 }
-.aba.on{color:var(--quadra);border-top-color:var(--quadra)}
-.aba i{display:block;font-size:19px;font-style:normal;margin-bottom:2px}
+.aba.on{color:var(--quadra);border-bottom-color:var(--quadra)}
+.aba i{display:block;font-size:19px;font-style:normal;margin-bottom:1px}
+.aba em{display:block;font-style:normal;padding-bottom:8px}
 
 .tela{padding:16px;max-width:760px;margin:0 auto;display:none}
 .tela.on{display:block}
@@ -201,18 +202,17 @@ a{color:var(--quadra)}
 .aviso{background:#FFF8E3;border-left:3px solid var(--canarinho);padding:11px 13px;border-radius:0 8px 8px 0;font-size:13.5px;margin-bottom:14px}
 
 .toast{
-  position:fixed;left:50%;transform:translateX(-50%);bottom:104px;z-index:200;
+  position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom));z-index:200;
   background:var(--tinta);color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;
   opacity:0;pointer-events:none;transition:opacity .2s ease
 }
 .toast.on{opacity:1}
 
 @media (min-width:720px){
-  body{padding-bottom:24px}
-  .abas{position:static;display:flex;justify-content:center;gap:6px;border-top:none;background:transparent;padding:12px 0 0}
-  .aba{border-top:none;border-bottom:3px solid transparent;padding:8px 18px;font-size:12px}
-  .aba.on{border-bottom-color:var(--quadra)}
-  .aba i{display:inline;margin-right:6px;font-size:15px}
+  .abas{display:flex;justify-content:center;gap:4px}
+  .aba{padding:14px 22px 11px;font-size:12px}
+  .aba i{display:inline;margin-right:7px;font-size:15px;vertical-align:-1px}
+  .aba em{display:inline;padding-bottom:0}
   .modal{align-items:center}
   .modal-caixa{border-radius:18px}
   .jogo-quando{font-size:52px}
@@ -233,19 +233,19 @@ a{color:var(--quadra)}
   </div>
 </header>
 
+<nav class="abas">
+  <button class="aba on" data-tela="jogo"><i>📋</i><em>A lista</em></button>
+  <button class="aba" data-tela="agenda"><i>📅</i><em>Agenda</em></button>
+  <button class="aba" data-tela="atletas"><i>👟</i><em>Atletas</em></button>
+  <button class="aba" data-tela="caixa"><i>💰</i><em>Caixa</em></button>
+</nav>
+
 <main>
   <section class="tela on" id="tela-jogo"></section>
   <section class="tela" id="tela-agenda"></section>
   <section class="tela" id="tela-atletas"></section>
   <section class="tela" id="tela-caixa"></section>
 </main>
-
-<nav class="abas">
-  <button class="aba on" data-tela="jogo"><i>📋</i>A lista</button>
-  <button class="aba" data-tela="agenda"><i>📅</i>Agenda</button>
-  <button class="aba" data-tela="atletas"><i>👟</i>Atletas</button>
-  <button class="aba" data-tela="caixa"><i>💰</i>Caixa</button>
-</nav>
 
 <div class="modal" id="modal">
   <div class="modal-caixa">
