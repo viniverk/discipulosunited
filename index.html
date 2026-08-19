@@ -259,19 +259,21 @@ a{color:var(--quadra)}
 
 <script type="module">
 /* ============================================================
-   1. CONFIGURAÇÃO DO FIREBASE
-   Cole aqui os dados do seu projeto (Console do Firebase →
-   Configurações do projeto → Seus apps → Configuração do SDK).
-   Enquanto o campo apiKey continuar como "COLE_AQUI", o site
-   roda em modo demonstração: funciona, mas não salva nada.
+   1. CONFIGURAÇÃO DO FIREBASE — projeto "futfilhos"
+   Já preenchido. Para apontar para outro projeto, troque este
+   bloco pelo que aparece em Console do Firebase → Configurações
+   do projeto → Seus apps → Configuração do SDK.
+   Voltando o apiKey para "COLE_AQUI", o site cai em modo
+   demonstração: funciona com dados de exemplo e não salva nada.
    ============================================================ */
 const firebaseConfig = {
-  apiKey: "COLE_AQUI",
-  authDomain: "SEU-PROJETO.firebaseapp.com",
-  projectId: "SEU-PROJETO",
-  storageBucket: "SEU-PROJETO.appspot.com",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:0000000000000000000000"
+  apiKey: "AIzaSyDUb-I5YLnxTpcCOOK-zkRmhVEO54w0FMg",
+  authDomain: "futfilhos.firebaseapp.com",
+  projectId: "futfilhos",
+  storageBucket: "futfilhos.firebasestorage.app",
+  messagingSenderId: "660550364399",
+  appId: "1:660550364399:web:a041faed127a5504537f1a",
+  measurementId: "G-RVNMDNSDRL"
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
