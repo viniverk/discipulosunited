@@ -77,6 +77,19 @@ Cada `index.html` novo que você subir republica sozinho.
 
 Cada um escolhe o próprio nome no topo e toca em **Vou jogar**. Quem passar do número de vagas cai na lista de espera automaticamente.
 
+## 6. Fechar a rodada depois que o jogo acontece
+
+Na **Agenda**, toque em qualquer rodada — passada ou futura — para abrir a lista dela. Em modo admin aparece o botão **Fechar a rodada**, que abre o painel com todos os atletas e dois botões por linha:
+
+- **jogou / fora** — quem realmente apareceu, independente do que confirmou antes
+- **pago / a pagar** — só fica ativo para quem jogou
+
+O topo do painel mostra ao vivo quantos jogaram, quanto ficou por cabeça e quanto já entrou. No rateio o valor por cabeça muda a cada pessoa que você inclui — 180 divididos por 9 dá 20, por 10 dá 18. Tem também **Todos pagaram**, para quando a rodada fecha redonda.
+
+Nada disso mexe no caixa até você tocar em **Salvar rodada**.
+
+Para voltar à próxima partida, use o botão na faixa preta do topo ou toque na aba *A lista*.
+
 ### Link direto por atleta
 
 Quando alguém escolhe o nome, a URL vira `.../#eu=a-xxxx`. Se a pessoa salvar esse link, ela já entra com o nome selecionado. Serve para mandar no privado de quem esquece toda semana.
@@ -103,4 +116,4 @@ Zero, na prática. O plano gratuito do Firebase dá 50 mil leituras e 20 mil gra
 - Remover um atleta apaga o histórico de presença dele junto. Para tirar alguém da lista mantendo o histórico, marque como **inativo**.
 - Convidado é uma situação do cadastro, não um tipo de cobrança: ele paga a mesma diária dos fixos. Se na sua pelada o convidado paga mais, cadastre a rodada com *valor fixo por cabeça* e acerte a diferença por fora.
 - Não gera QR Code de Pix (copia e cola a chave). Dá para acrescentar depois com uma biblioteca de payload EMV.
-- Um pagamento avulso (adiantar três rodadas de uma vez) precisa ser marcado rodada a rodada.
+- Um pagamento avulso (adiantar três rodadas de uma vez) precisa ser marcado rodada a rodada, no painel de cada uma.
