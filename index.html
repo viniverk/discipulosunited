@@ -213,6 +213,7 @@ a{color:var(--quadra)}
 .modal-topo h2{font-family:var(--display);font-size:22px;font-weight:400;text-transform:uppercase;letter-spacing:.5px}
 .modal-topo button{margin-left:auto;font-size:22px;color:var(--cinza);line-height:1}
 
+
 .vazio{text-align:center;padding:26px 14px;color:var(--cinza)}
 .vazio b{display:block;font-family:var(--display);font-size:19px;color:var(--tinta);font-weight:400;margin-bottom:6px;text-transform:uppercase}
 .aviso{background:#FFF8E3;border-left:3px solid var(--canarinho);padding:11px 13px;border-radius:0 8px 8px 0;font-size:13.5px;margin-bottom:14px}
@@ -275,6 +276,7 @@ a{color:var(--quadra)}
 </div>
 
 <div class="toast" id="toast"></div>
+
 
 <script type="module">
 /* ============================================================
@@ -427,20 +429,28 @@ const recebidoNoJogo = j => confirmados(j).filter(id => j.presencas[id].pago).le
 const jogosPassados  = () => estado.jogos.filter(j => j.data <= hojeISO());
 
 function caixa(){
-  const entrou = jogosPassados().reduce((s,j) => s + recebidoNoJogo(j), 0);
+  // entrada = dinheiro que já pingou, inclusive adiantado da rodada que ainda vem
+  const entrou = estado.jogos.reduce((s,j) => s + recebidoNoJogo(j), 0);
+  const adiantado = estado.jogos.filter(j => j.data > hojeISO()).reduce((s,j) => s + recebidoNoJogo(j), 0);
+  // saída = só o que já foi gasto de fato
   const quadra = jogosPassados().reduce((s,j) => s + (Number(j.custo)||0), 0);
   const extras = estado.despesas.reduce((s,d) => s + (Number(d.valor)||0), 0);
+  // a receber = só rodada já jogada; ninguém deve por jogo que ainda não aconteceu
   const aReceber = jogosPassados().reduce((s,j) =>
     s + confirmados(j).filter(id => !j.presencas[id].pago).length * valorPorJogador(j), 0);
-  return { entrou, saiu: quadra+extras, quadra, extras, saldo: entrou-quadra-extras, aReceber };
+  return { entrou, adiantado, saiu: quadra+extras, quadra, extras, saldo: entrou-quadra-extras, aReceber };
 }
 function saldoAtleta(id){
-  let devido = 0, pago = 0;
-  jogosPassados().forEach(j => {
+  let devido = 0, pago = 0, adiantado = 0;
+  const hoje = hojeISO();
+  estado.jogos.forEach(j => {
     const p = (j.presencas||{})[id];
-    if (p && p.status === "in") { const v = valorPorJogador(j); devido += v; if (p.pago) pago += v; }
+    if (!p || p.status !== "in") return;
+    const v = valorPorJogador(j);
+    if (j.data <= hoje) devido += v;
+    if (p.pago) { pago += v; if (j.data > hoje) adiantado += v; }
   });
-  return { devido, pago, aberto: devido - pago };
+  return { devido, pago, adiantado, aberto: devido - pago };
 }
 const presencasDoAtleta = id => estado.jogos.filter(j => (j.presencas||{})[id]?.status === "in").length;
 const presencasJogadas = id => jogosPassados().filter(j => (j.presencas||{})[id]?.status === "in").length;
@@ -544,10 +554,15 @@ function telaJogo(){
         : `<div class="capa-rot">Pix</div>
            <div class="capa-pix"><code style="opacity:.6;font-weight:400">${estado.admin?"Cadastre a chave em Caixa → Ajustes.":"Chave ainda não cadastrada — peça ao organizador."}</code></div>`}
 
-        ${estado.eu ? (()=>{ const sa = saldoAtleta(estado.eu); return `<div class="capa-eu">
-          <span>${plural(presencasJogadas(estado.eu),"rodada jogada","rodadas jogadas")} · ${dinheiro(sa.pago)} de ${dinheiro(sa.devido)}</span>
-          <b class="${sa.aberto>0.005?"pend":"ok"}">${sa.aberto>0.005?"você deve "+dinheiro(sa.aberto):"você está em dia"}</b>
-        </div>`; })() : ""}
+        ${estado.eu ? (()=>{
+          const sa = saldoAtleta(estado.eu);
+          const rodadas = plural(presencasJogadas(estado.eu),"rodada jogada","rodadas jogadas");
+          const [detalhe, veredito, cor] =
+            sa.aberto > 0.005   ? [`${dinheiro(sa.pago)} de ${dinheiro(sa.devido)}`, "você deve "+dinheiro(sa.aberto), "pend"]
+          : sa.adiantado > 0.005? ["tudo quitado", "adiantou "+dinheiro(sa.adiantado), "ok"]
+          :                       [`${dinheiro(sa.pago)} pagos`, "você está em dia", "ok"];
+          return `<div class="capa-eu"><span>${rodadas} · ${detalhe}</span><b class="${cor}">${veredito}</b></div>`;
+        })() : ""}
       </div>
     </div>
 
@@ -645,11 +660,14 @@ function telaCaixa(){
   document.getElementById("tela-caixa").innerHTML = `
     <div class="kpis">
       <div class="kpi forte"><small>Saldo em caixa</small><b>${dinheiro(c.saldo)}</b></div>
-      <div class="kpi"><small>Recebido</small><b style="color:var(--pago)">${dinheiro(c.entrou)}</b></div>
-      <div class="kpi"><small>Gasto</small><b style="color:var(--deve)">${dinheiro(c.saiu)}</b></div>
+      <div class="kpi"><small>Recebido</small><b style="color:var(--pago)">${dinheiro(c.entrou)}</b>
+        ${c.adiantado>0.005?`<div class="sub">${dinheiro(c.adiantado)} adiantados da próxima</div>`:""}</div>
+      <div class="kpi"><small>Gasto</small><b style="color:var(--deve)">${dinheiro(c.saiu)}</b>
+        <div class="sub">${plural(jogosPassados().length,"rodada","rodadas")} + despesas</div></div>
       <div class="kpi" style="grid-column:1/-1"><small>A receber dos atletas</small><b>${dinheiro(c.aReceber)}</b>
-        <div class="sub">${devedores.length} ${devedores.length===1?"pessoa deve":"pessoas devem"}</div></div>
+        <div class="sub">${devedores.length===1?"1 pessoa deve":plural(devedores.length,"pessoa deve","pessoas devem")} de rodadas já jogadas</div></div>
     </div>
+    <div class="sub" style="margin:-4px 2px 14px">Entra no caixa todo pagamento marcado, inclusive adiantado. Sai o custo das rodadas que já aconteceram mais as despesas avulsas.</div>
 
     <div class="cartao">
       <div class="titulo">Últimas rodadas · entrou x custou</div>
