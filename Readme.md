@@ -97,6 +97,26 @@ Quando alguém escolhe o nome, a URL vira `.../#eu=a-xxxx`. Se a pessoa salvar e
 
 ---
 
+## QR Code e baixa de pagamento
+
+O botão **QR Code**, na caixa do jogo, monta um BR Code no padrão EMV do Banco Central com chave, valor da diária, nome, cidade e um identificador (`FUT` + data + nome do atleta). Quem escaneia já vê o valor preenchido no app do banco. Abaixo do código vem o **copia e cola**, para quem prefere colar.
+
+Se o atleta tiver dívida de rodadas anteriores, aparecem duas opções: pagar só a rodada ou tudo em aberto.
+
+Depois de pagar, ele toca em **Já fiz o Pix**. Isso não dá baixa — marca a linha dele como *avisou o Pix* (selo âmbar). O organizador confere o extrato e confirma tocando no selo. Se o atleta não estiver escalado na rodada aberta, o aviso cai automaticamente na pendência mais antiga dele.
+
+### Por que a baixa não é automática
+
+Para o site marcar "pago" sozinho, alguém precisa avisá-lo de que o dinheiro caiu — e só o banco sabe disso. Isso exige três coisas que uma página estática no GitHub Pages não tem:
+
+1. Uma conta com **API Pix** (bancos como Inter, Sicredi, Efí, ou gateways como Mercado Pago e Asaas). Boa parte exige CNPJ.
+2. Um **servidor** para receber o webhook do banco e guardar o certificado/segredo. Não dá para deixar isso no JavaScript da página: qualquer visitante leria as credenciais.
+3. Cobranças com identificador único por atleta, para casar o Pix recebido com a pessoa certa.
+
+O caminho natural, já que o projeto usa Firebase, seria uma **Cloud Function** recebendo o webhook e escrevendo `pago: true` no Firestore. Funciona bem, mas exige o plano Blaze (pré-pago, com cota gratuita) e uma conta habilitada na API do banco. Se um dia você quiser seguir por aí, o identificador que já vai dentro do QR (`FUT2308GUSTAVO`) é exatamente o que amarra o Pix recebido ao atleta.
+
+Enquanto isso, o fluxo *avisou → organizador confirma* resolve o essencial: você para de garimpar mensagem no grupo e passa a olhar só quem levantou a mão.
+
 ## Como as contas funcionam
 
 - **Rateio (padrão)**: o custo da quadra é dividido pelos confirmados daquela rodada. Vieram 12, a quadra custou 180 → R$ 15 cada. Vieram 8 → R$ 22,50 cada.
@@ -116,5 +136,4 @@ Zero, na prática. O plano gratuito do Firebase dá 50 mil leituras e 20 mil gra
 - Sem histórico de quem alterou o quê.
 - Remover um atleta apaga o histórico de presença dele junto. Para tirar alguém da lista mantendo o histórico, marque como **inativo**.
 - Convidado é uma situação do cadastro, não um tipo de cobrança: ele paga a mesma diária dos fixos. Se na sua pelada o convidado paga mais, cadastre a rodada com *valor fixo por cabeça* e acerte a diferença por fora.
-- Não gera QR Code de Pix (copia e cola a chave). Dá para acrescentar depois com uma biblioteca de payload EMV.
 - Um pagamento avulso (adiantar três rodadas de uma vez) precisa ser marcado rodada a rodada, no painel de cada uma.
