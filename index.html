@@ -438,6 +438,10 @@ function valorPorJogador(j){
 }
 const recebidoNoJogo = j => confirmados(j).filter(id => j.presencas[id].pago).length * valorPorJogador(j);
 const jogosPassados  = () => estado.jogos.filter(j => j.data <= hojeISO());
+// só a terça que vem entra na conta; rodadas mais adiante ficam de fora
+const proximaRodada  = () => estado.jogos.filter(j => j.data > hojeISO())
+                                         .sort((a,b) => a.data.localeCompare(b.data))[0];
+const contaNaDivida  = j => j.data <= hojeISO() || j.id === proximaRodada()?.id;
 
 function caixa(){
   // entrada = dinheiro que já pingou, inclusive adiantado da rodada que ainda vem
@@ -447,10 +451,11 @@ function caixa(){
   const quadra = jogosPassados().reduce((s,j) => s + (Number(j.custo)||0), 0);
   const extras = estado.despesas.reduce((s,d) => s + (Number(d.valor)||0), 0);
   // a receber = só rodada já jogada; ninguém deve por jogo que ainda não aconteceu
-  // a receber = quem marcou o nome e não pagou, na rodada que vem também
+  // a receber = quem marcou o nome e não pagou, contando só até a próxima rodada
   const naoPago = j => confirmados(j).filter(id => !j.presencas[id].pago).length * valorPorJogador(j);
   const atrasado = jogosPassados().reduce((s,j) => s + naoPago(j), 0);
-  const pendente = estado.jogos.filter(j => j.data > hojeISO()).reduce((s,j) => s + naoPago(j), 0);
+  const prox = proximaRodada();
+  const pendente = prox ? naoPago(prox) : 0;
   return { entrou, adiantado, saiu: quadra+extras, quadra, extras,
            saldo: entrou-quadra-extras, aReceber: atrasado+pendente, atrasado, pendente };
 }
@@ -462,6 +467,7 @@ function saldoAtleta(id){
   estado.jogos.forEach(j => {
     const p = (j.presencas||{})[id];
     if (!p || p.status !== "in") return;
+    if (!contaNaDivida(j)) return;   // confirmou pra daqui a duas semanas? ainda não é dívida
     const v = valorPorJogador(j);
     devido += v;
     if (p.pago) { pago += v; return; }
@@ -743,7 +749,7 @@ function telaCaixa(){
     .sort((a,b) => (b.atrasado - a.atrasado) || (b.aberto - a.aberto));
   const comAtraso = devedores.filter(a => a.atrasado > 0.005).length;
   // rodada com gente confirmada mas diária em R$ 0 não gera dívida nenhuma — avisa em vez de sumir calado
-  const semValor = estado.jogos.filter(j => confirmados(j).length && valorPorJogador(j) < 0.005);
+  const semValor = estado.jogos.filter(j => contaNaDivida(j) && confirmados(j).length && valorPorJogador(j) < 0.005);
 
   document.getElementById("tela-caixa").innerHTML = `
     <div class="kpis">
@@ -794,7 +800,7 @@ function telaCaixa(){
              + (soProxima.length ? `<div class="grupo-rot">Confirmados na rodada de ${prox?dataCurta(prox.data):"—"} · ainda sem Pix</div>${soProxima.map(linha).join("")}` : "");
       })()
         : (()=>{
-            const semValor = estado.jogos.filter(j => confirmados(j).length && valorPorJogador(j) < 0.005);
+            const semValor = estado.jogos.filter(j => contaNaDivida(j) && confirmados(j).length && valorPorJogador(j) < 0.005);
             const proxima = estado.jogos.filter(j => j.data > hojeISO()).sort((a,b)=>a.data.localeCompare(b.data))[0];
             if (semValor.length) return `<div class="vazio"><b>Falta o valor da rodada</b>
               ${plural(semValor.length,"rodada tem","rodadas têm")} gente confirmada mas a diária está em R$ 0,00.
