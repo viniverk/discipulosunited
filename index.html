@@ -159,6 +159,10 @@ a{color:var(--quadra)}
 .selo.deve{background:#FCE8E8;color:var(--deve)}
 .selo.neutro{background:var(--linha);color:var(--cinza)}
 .selo.convidado{background:#FFF3D1;color:#8A6100}
+.grupo-rot{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--cinza);
+  margin:14px 0 2px;padding:5px 9px;background:var(--linha);border-radius:6px}
+.grupo-rot:first-child{margin-top:4px}
+.grupo-rot.atraso{background:#FCE8E8;color:var(--deve)}
 .selo[data-clique]{cursor:pointer}
 .eu-mesmo{background:#FFF8E3;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
 
@@ -217,6 +221,8 @@ a{color:var(--quadra)}
 .vazio{text-align:center;padding:26px 14px;color:var(--cinza)}
 .vazio b{display:block;font-family:var(--display);font-size:19px;color:var(--tinta);font-weight:400;margin-bottom:6px;text-transform:uppercase}
 .aviso{background:#FFF8E3;border-left:3px solid var(--canarinho);padding:11px 13px;border-radius:0 8px 8px 0;font-size:13.5px;margin-bottom:14px}
+.aviso.grave{background:#FCE8E8;border-left-color:var(--deve)}
+.versao{text-align:center;font-size:11px;color:var(--cinza);margin-top:14px;letter-spacing:.4px}
 
 .toast{
   position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom));z-index:200;
@@ -298,6 +304,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
+const VERSAO = "2026-08-21";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -436,21 +443,27 @@ function caixa(){
   const quadra = jogosPassados().reduce((s,j) => s + (Number(j.custo)||0), 0);
   const extras = estado.despesas.reduce((s,d) => s + (Number(d.valor)||0), 0);
   // a receber = só rodada já jogada; ninguém deve por jogo que ainda não aconteceu
-  const aReceber = jogosPassados().reduce((s,j) =>
-    s + confirmados(j).filter(id => !j.presencas[id].pago).length * valorPorJogador(j), 0);
-  return { entrou, adiantado, saiu: quadra+extras, quadra, extras, saldo: entrou-quadra-extras, aReceber };
+  // a receber = quem marcou o nome e não pagou, na rodada que vem também
+  const naoPago = j => confirmados(j).filter(id => !j.presencas[id].pago).length * valorPorJogador(j);
+  const atrasado = jogosPassados().reduce((s,j) => s + naoPago(j), 0);
+  const pendente = estado.jogos.filter(j => j.data > hojeISO()).reduce((s,j) => s + naoPago(j), 0);
+  return { entrou, adiantado, saiu: quadra+extras, quadra, extras,
+           saldo: entrou-quadra-extras, aReceber: atrasado+pendente, atrasado, pendente };
 }
+// quem põe o nome na lista já deve a diária — atrasado é de rodada jogada,
+// pendente é da que ainda vem
 function saldoAtleta(id){
-  let devido = 0, pago = 0, adiantado = 0;
+  let devido = 0, pago = 0, atrasado = 0, pendente = 0;
   const hoje = hojeISO();
   estado.jogos.forEach(j => {
     const p = (j.presencas||{})[id];
     if (!p || p.status !== "in") return;
     const v = valorPorJogador(j);
-    if (j.data <= hoje) devido += v;
-    if (p.pago) { pago += v; if (j.data > hoje) adiantado += v; }
+    devido += v;
+    if (p.pago) { pago += v; return; }
+    if (j.data <= hoje) atrasado += v; else pendente += v;
   });
-  return { devido, pago, adiantado, aberto: devido - pago };
+  return { devido, pago, atrasado, pendente, aberto: atrasado + pendente };
 }
 const presencasDoAtleta = id => estado.jogos.filter(j => (j.presencas||{})[id]?.status === "in").length;
 const presencasJogadas = id => jogosPassados().filter(j => (j.presencas||{})[id]?.status === "in").length;
@@ -556,15 +569,19 @@ function telaJogo(){
 
         ${estado.eu ? (()=>{
           const sa = saldoAtleta(estado.eu);
-          const rodadas = plural(presencasJogadas(estado.eu),"rodada jogada","rodadas jogadas");
+          const rodadas = plural(presencasDoAtleta(estado.eu),"rodada","rodadas");
           const [detalhe, veredito, cor] =
-            sa.aberto > 0.005   ? [`${dinheiro(sa.pago)} de ${dinheiro(sa.devido)}`, "você deve "+dinheiro(sa.aberto), "pend"]
-          : sa.adiantado > 0.005? ["tudo quitado", "adiantou "+dinheiro(sa.adiantado), "ok"]
-          :                       [`${dinheiro(sa.pago)} pagos`, "você está em dia", "ok"];
+            sa.aberto > 0.005 ? [`${dinheiro(sa.pago)} de ${dinheiro(sa.devido)}${sa.atrasado>0.005&&sa.pendente>0.005?" · "+dinheiro(sa.atrasado)+" atrasado":""}`,
+                                 "você deve "+dinheiro(sa.aberto), "pend"]
+          :                     [`${dinheiro(sa.pago)} pagos`, "você está em dia", "ok"];
           return `<div class="capa-eu"><span>${rodadas} · ${detalhe}</span><b class="${cor}">${veredito}</b></div>`;
         })() : ""}
       </div>
     </div>
+
+    ${valor < 0.005 && dentro.length ? `<div class="aviso grave">
+      <b>Diária em R$ 0,00.</b> Esta rodada não tem custo da quadra nem valor fixo por cabeça, então ninguém
+      aparece como devendo. Toque em <b>Editar jogo</b> e preencha um dos dois.</div>` : ""}
 
     ${passado ? "" : (estado.eu ? `<div class="acoes">
       <button class="btn btn-vou ${meu==="in"?"on":""}" data-confirmar="in" data-jogo="${proximo.id}">Vou jogar</button>
@@ -655,7 +672,11 @@ function telaCaixa(){
   const teto = Math.max(1, ...ultimos.map(j => Math.max(recebidoNoJogo(j), Number(j.custo)||0)));
 
   const devedores = estado.atletas.map(a => ({ ...a, ...saldoAtleta(a.id) }))
-    .filter(a => a.aberto > 0.005).sort((a,b) => b.aberto - a.aberto);
+    .filter(a => a.aberto > 0.005)
+    .sort((a,b) => (b.atrasado - a.atrasado) || (b.aberto - a.aberto));
+  const comAtraso = devedores.filter(a => a.atrasado > 0.005).length;
+  // rodada com gente confirmada mas diária em R$ 0 não gera dívida nenhuma — avisa em vez de sumir calado
+  const semValor = estado.jogos.filter(j => confirmados(j).length && valorPorJogador(j) < 0.005);
 
   document.getElementById("tela-caixa").innerHTML = `
     <div class="kpis">
@@ -665,9 +686,9 @@ function telaCaixa(){
       <div class="kpi"><small>Gasto</small><b style="color:var(--deve)">${dinheiro(c.saiu)}</b>
         <div class="sub">${plural(jogosPassados().length,"rodada","rodadas")} + despesas</div></div>
       <div class="kpi" style="grid-column:1/-1"><small>A receber dos atletas</small><b>${dinheiro(c.aReceber)}</b>
-        <div class="sub">${devedores.length===1?"1 pessoa deve":plural(devedores.length,"pessoa deve","pessoas devem")} de rodadas já jogadas</div></div>
+        <div class="sub">${c.atrasado>0.005?dinheiro(c.atrasado)+" atrasado":"nada atrasado"}${c.pendente>0.005?" · "+dinheiro(c.pendente)+" da próxima rodada":""}</div></div>
     </div>
-    <div class="sub" style="margin:-4px 2px 14px">Entra no caixa todo pagamento marcado, inclusive adiantado. Sai o custo das rodadas que já aconteceram mais as despesas avulsas.</div>
+    <div class="sub" style="margin:-4px 2px 14px">Quem marca o nome na lista já entra como devendo a diária. Entra no caixa todo pagamento marcado; sai o custo das rodadas já jogadas mais as despesas avulsas.</div>
 
     <div class="cartao">
       <div class="titulo">Últimas rodadas · entrou x custou</div>
@@ -683,13 +704,39 @@ function telaCaixa(){
     </div>
 
     <div class="cartao">
-      <div class="titulo">Quem está devendo</div>
-      ${devedores.length ? devedores.map(a => `<div class="item">
-        <div class="item-corpo">
-          <div class="nome">${escapar(a.nome)}${quemConvidou(a.id)?' <span class="selo convidado">convidado</span>':""}</div>
-          <div class="sub">${quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${dinheiro(a.pago)} pagos de ${dinheiro(a.devido)}</div></div>
-        <div class="valor neg">${dinheiro(a.aberto)}</div></div>`).join("")
-        : `<div class="vazio"><b>Ninguém devendo</b>Caixa em dia. Raro e bonito.</div>`}
+      <div class="titulo">Quem está devendo${comAtraso?` · ${plural(comAtraso,"em atraso","em atraso")}`:""}</div>
+      ${semValor.length ? `<div class="aviso"><b>Falta o valor da rodada.</b>
+        ${semValor.map(j => dataCurta(j.data)).join(", ")} ${semValor.length===1?"tem":"têm"} gente confirmada mas a diária está em R$ 0,00,
+        então ninguém entra como devendo. Abra a rodada, toque em <b>Editar jogo</b> e informe o custo da quadra
+        ou o valor fixo por cabeça.</div>` : ""}
+      ${devedores.length ? (()=>{
+        const prox = estado.jogos.filter(j => j.data > hojeISO()).sort((a,b)=>a.data.localeCompare(b.data))[0];
+        const linha = a => {
+          const partes = [];
+          if (a.atrasado > 0.005) partes.push(`${dinheiro(a.atrasado)} de rodada já jogada`);
+          if (a.pendente > 0.005) partes.push(`${dinheiro(a.pendente)} da próxima`);
+          return `<div class="item">
+            <div class="item-corpo">
+              <div class="nome">${escapar(a.nome)}${quemConvidou(a.id)?' <span class="selo convidado">convidado</span>':""}</div>
+              <div class="sub">${quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${partes.join(" + ")}</div></div>
+            <div class="valor ${a.atrasado>0.005?"neg":""}">${dinheiro(a.aberto)}</div></div>`;
+        };
+        const atrasados = devedores.filter(a => a.atrasado > 0.005);
+        const soProxima = devedores.filter(a => a.atrasado <= 0.005);
+        return (atrasados.length ? `<div class="grupo-rot atraso">Em atraso · rodada já jogada</div>${atrasados.map(linha).join("")}` : "")
+             + (soProxima.length ? `<div class="grupo-rot">Confirmados na rodada de ${prox?dataCurta(prox.data):"—"} · ainda sem Pix</div>${soProxima.map(linha).join("")}` : "");
+      })()
+        : (()=>{
+            const semValor = estado.jogos.filter(j => confirmados(j).length && valorPorJogador(j) < 0.005);
+            const proxima = estado.jogos.filter(j => j.data > hojeISO()).sort((a,b)=>a.data.localeCompare(b.data))[0];
+            if (semValor.length) return `<div class="vazio"><b>Falta o valor da rodada</b>
+              ${plural(semValor.length,"rodada tem","rodadas têm")} gente confirmada mas a diária está em R$ 0,00.
+              Abra o jogo, toque em Editar jogo e informe o custo da quadra ou o valor fixo por cabeça.</div>`;
+            if (!estado.atletas.length) return `<div class="vazio"><b>Nenhum atleta cadastrado</b>Comece pela aba Atletas.</div>`;
+            if (proxima && !confirmados(proxima).length) return `<div class="vazio"><b>Lista vazia</b>Ninguém confirmou presença na próxima rodada ainda.</div>`;
+            if (!estado.jogos.length) return `<div class="vazio"><b>Sem jogos marcados</b>Marque a próxima rodada na Agenda.</div>`;
+            return `<div class="vazio"><b>Ninguém devendo</b>Todo mundo da lista já mandou o Pix. Raro e bonito.</div>`;
+          })()}
     </div>
 
     <div class="cartao">
@@ -926,7 +973,8 @@ function formAjustes(){
       <div class="campo"><label>Vagas por jogo</label><input type="number" id="f_vagas" value="${c.vagas||14}"></div></div>
     <div class="campo"><label>Senha de admin</label><input id="f_pin" value="${escapar(c.pin)}">
       <div class="sub" style="margin-top:5px">Trava simples, só para evitar toque errado. Não protege contra quem entende do assunto.</div></div>
-    <button class="btn-main" id="f_salvar">Salvar ajustes</button>`);
+    <button class="btn-main" id="f_salvar">Salvar ajustes</button>
+    <div class="versao">versão ${VERSAO}</div>`);
   document.getElementById("f_salvar").onclick = async () => {
     await gravarConfig({
       pixChave:document.getElementById("f_pix").value.trim(),
