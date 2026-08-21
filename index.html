@@ -140,6 +140,10 @@ a{color:var(--quadra)}
 .btn-sec{background:var(--cal);border:1px solid var(--borda);padding:10px 14px;border-radius:10px;font-weight:600;font-size:14px}
 .btn-main{background:var(--quadra);color:#fff;padding:12px 16px;border-radius:10px;font-weight:700}
 .btn-linha{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn-zap{background:#25D366;color:#06331C;padding:13px 16px;border-radius:10px;font-weight:700;font-size:15px;
+  display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-zap:active{transform:scale(.98)}
+a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(--tinta)}
 
 /* ---------- A LISTA (assinatura) ---------- */
 .lista{list-style:none}
@@ -309,7 +313,7 @@ const VERSAO = "2026-08-21";
 /* ---------- estado ---------- */
 const estado = {
   atletas: [], jogos: [], despesas: [],
-  config: { pixChave:"", pixTipo:"Celular", pixNome:"", custoPadrao:0, valorFixo:0, vagas:14, pin:"1234", diaSemana:2, hora:"20:00" },
+  config: { pixChave:"", pixTipo:"Celular", pixNome:"", custoPadrao:0, valorFixo:0, vagas:14, pin:"1234", diaSemana:2, hora:"20:00", linkGrupo:"" },
   eu: null, admin: false, tela: "jogo", jogoAberto: null
 };
 
@@ -495,6 +499,64 @@ function proximoDiaDaSemana(alvo){
 const escapar = t => String(t??"").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const nomeDe = id => estado.atletas.find(a => a.id === id)?.nome || "—";
 
+/* ---------- texto para mandar no grupo ---------- */
+function textoDaLista(j){
+  const d = asData(j.data);
+  const diaSem = d.toLocaleDateString("pt-BR",{ weekday:"long" });
+  const dentro = confirmados(j), fora = recusados(j);
+  const vagas = Number(j.vagas) || 14;
+  const titulares = dentro.slice(0, vagas), espera = dentro.slice(vagas);
+  const v = valorPorJogador(j);
+  const livres = Math.max(0, vagas - titulares.length);
+  const marca = id => (j.presencas[id].pago ? "✅" : "⏳");
+
+  const L = [];
+  L.push("*⚽ FUT DOS FILHOS*");
+  L.push(`${diaSem.charAt(0).toUpperCase()+diaSem.slice(1)}, ${dataCurta(j.data)} · ${j.hora||""}`);
+  if (j.local) L.push(j.local);
+  L.push(`*${dinheiro(v)} por cabeça* · ${titulares.length}/${vagas} confirmados`);
+
+  L.push("");
+  L.push("*NA LISTA*");
+  if (titulares.length) titulares.forEach((id,i) => L.push(`${i+1}. ${nomeDe(id)} ${marca(id)}`));
+  else L.push("_ninguém confirmou ainda_");
+  if (livres) L.push(`_${plural(livres,"vaga livre","vagas livres")}_`);
+
+  if (espera.length) {
+    L.push("");
+    L.push("*ESPERA*");
+    espera.forEach((id,i) => L.push(`${i+1}. ${nomeDe(id)} ${marca(id)}`));
+  }
+  if (fora.length) {
+    L.push("");
+    L.push(`*FORA:* ${fora.map(nomeDe).join(", ")}`);
+  }
+
+  const faltam = dentro.filter(id => !j.presencas[id].pago).length;
+  L.push("");
+  L.push("✅ pago  ⏳ falta o Pix" + (faltam ? ` — ${faltam===1?"falta":"faltam"} *${plural(faltam,"pessoa","pessoas")}*` : " — *todos pagaram!*"));
+  if (estado.config.pixChave) L.push(`*Pix:* ${estado.config.pixChave}${estado.config.pixNome?" ("+estado.config.pixNome+")":""}`);
+
+  const url = location.href.split("#")[0];
+  if (/^https?:/.test(url)) { L.push(""); L.push(`Confirme sua presença: ${url}`); }
+  return L.join("\n");
+}
+
+async function compartilharLista(jogoId){
+  const j = estado.jogos.find(x => x.id === jogoId); if (!j) return;
+  const texto = textoDaLista(j);
+  if (navigator.share) {
+    try { await navigator.share({ text: texto }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  const zap = "https://wa.me/?text=" + encodeURIComponent(texto);
+  const aberta = window.open(zap, "_blank", "noopener");
+  if (!aberta) {
+    try { await navigator.clipboard.writeText(texto); avisar("Lista copiada — é só colar no grupo."); }
+    catch(_) { avisar("Não consegui abrir o WhatsApp."); }
+  }
+}
+
 /* ============================================================
    TELA 1 — A LISTA
    ============================================================ */
@@ -587,6 +649,11 @@ function telaJogo(){
       <button class="btn btn-vou ${meu==="in"?"on":""}" data-confirmar="in" data-jogo="${proximo.id}">Vou jogar</button>
       <button class="btn btn-fora ${meu==="out"?"on":""}" data-confirmar="out" data-jogo="${proximo.id}">Não vou</button>
     </div>` : `<div class="aviso">Escolha seu nome lá em cima para confirmar presença.</div>`)}
+
+    <div class="btn-linha" style="margin:0 0 14px">
+      <button class="btn-zap" style="flex:1" data-compartilhar="${proximo.id}">📤 Mandar a lista no grupo</button>
+      ${estado.config.linkGrupo ? `<a class="btn-sec" href="${escapar(estado.config.linkGrupo)}" target="_blank" rel="noopener">Abrir grupo</a>` : ""}
+    </div>
 
     ${estado.admin ? `<div class="btn-linha" style="margin:0 0 14px">
       <button class="btn-main" style="flex:1" data-fechar="${proximo.id}">${passado?"Fechar a rodada":"Ajustar a lista"}</button>
@@ -971,6 +1038,8 @@ function formAjustes(){
       <div class="campo"><label>Hora</label><input type="time" id="f_hora" value="${c.hora||"20:00"}"></div></div>
     <div class="dupla"><div class="campo"><label>Custo padrão da quadra</label><input type="number" step="0.01" id="f_custo" value="${c.custoPadrao||""}"></div>
       <div class="campo"><label>Vagas por jogo</label><input type="number" id="f_vagas" value="${c.vagas||14}"></div></div>
+    <div class="campo"><label>Link do grupo no WhatsApp</label><input id="f_grupo" value="${escapar(c.linkGrupo||"")}" placeholder="https://chat.whatsapp.com/...">
+      <div class="sub" style="margin-top:5px">Opcional. Só liga o botão "Abrir grupo" na tela da lista. Fica salvo no Firestore, não no código do site.</div></div>
     <div class="campo"><label>Senha de admin</label><input id="f_pin" value="${escapar(c.pin)}">
       <div class="sub" style="margin-top:5px">Trava simples, só para evitar toque errado. Não protege contra quem entende do assunto.</div></div>
     <button class="btn-main" id="f_salvar">Salvar ajustes</button>
@@ -982,6 +1051,7 @@ function formAjustes(){
       pixNome:document.getElementById("f_nomepix").value.trim(),
       diaSemana:Number(document.getElementById("f_dia").value),
       hora:document.getElementById("f_hora").value || "20:00",
+      linkGrupo:document.getElementById("f_grupo").value.trim(),
       custoPadrao:Number(document.getElementById("f_custo").value)||0,
       vagas:Number(document.getElementById("f_vagas").value)||14,
       pin:document.getElementById("f_pin").value.trim() || "1234"
@@ -1022,7 +1092,7 @@ document.getElementById("btnAdmin").onclick = () => {
 };
 
 document.body.addEventListener("click", async e => {
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -1046,6 +1116,7 @@ document.body.addEventListener("click", async e => {
     try { await navigator.clipboard.writeText(d.copiar); avisar("Chave Pix copiada."); }
     catch(_) { avisar("Copie manualmente: "+d.copiar); }
   }
+  else if (d.compartilhar) await compartilharLista(d.compartilhar);
   else if (d.abrirJogo)  { estado.jogoAberto = d.abrirJogo; irPara("jogo"); desenhar(); }
   else if (d.fechar)       formFechamento(estado.jogos.find(j => j.id === d.fechar));
   else if (d.editarJogo)   formJogo(estado.jogos.find(j => j.id === d.editarJogo));
