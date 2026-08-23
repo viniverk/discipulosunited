@@ -410,7 +410,9 @@ function semear(){
   const emDias = d => { const x = new Date(hoje); x.setDate(x.getDate()+d); return x.toISOString().slice(0,10); };
   const presencasDe = (ids, pagos) => {
     const p = {};
-    ids.forEach(i => p["a-"+nomes[i].toLowerCase()] = { status:"in", pago: pagos.includes(i) });
+    const base = Date.now() - 3*86400000;
+    ids.forEach((i,k) => p["a-"+nomes[i].toLowerCase()] =
+      { status:"in", pago: pagos.includes(i), em: base + k*47*60000 });
     return p;
   };
   estado.jogos = [
@@ -428,7 +430,12 @@ function semear(){
 
 /* ---------- cálculos ---------- */
 const hojeISO = () => new Date().toLocaleDateString("sv-SE");
-const confirmados = j => Object.entries(j.presencas||{}).filter(([,p]) => p.status==="in").map(([id])=>id);
+// ordem de chegada: quem confirmou primeiro pega a vaga primeiro.
+// quem confirmou antes desta mudança não tem carimbo e fica no topo, na ordem antiga.
+const confirmados = j => Object.entries(j.presencas||{})
+  .filter(([,p]) => p.status === "in")
+  .sort((a,b) => (a[1].em || 0) - (b[1].em || 0))
+  .map(([id]) => id);
 const recusados   = j => Object.entries(j.presencas||{}).filter(([,p]) => p.status==="out").map(([id])=>id);
 
 function valorPorJogador(j){
@@ -496,6 +503,9 @@ function dataLonga(iso){
   return { dia, num:String(d.getDate()).padStart(2,"0"), mes };
 }
 const dataCurta = iso => asData(iso).toLocaleDateString("pt-BR",{ day:"2-digit", month:"2-digit" });
+const quandoConfirmou = ms => ms
+  ? new Date(ms).toLocaleString("pt-BR",{ day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })
+  : "";
 const DIAS = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
 function proximoDiaDaSemana(alvo){
   const d = new Date();
@@ -671,7 +681,7 @@ function telaJogo(){
       ${espera.length ? `<div class="titulo" style="margin-top:16px">Lista de espera</div>
         <ul class="lista">${espera.map((id,i) => `<li class="vaga"><span class="num">E${i+1}</span>
           <div class="vaga-corpo"><div class="nome">${escapar(nomeDe(id))}</div>
-          <div class="sub">entra se alguém cair</div></div></li>`).join("")}</ul>` : ""}
+          <div class="sub">${quandoConfirmou(proximo.presencas[id].em) || "entra se alguém cair"}</div></div></li>`).join("")}</ul>` : ""}
       ${fora.length ? `<div class="titulo" style="margin-top:16px">Fora dessa</div>
         <div class="foras">${fora.map(id => `<span class="fora-chip">${escapar(nomeDe(id))}</span>`).join("")}</div>` : ""}
     </div>
@@ -993,7 +1003,8 @@ function formFechamento(jogo){
     const p = rascunho[id] = rascunho[id] || {};
     if (b.dataset.fchJogou) {
       p.status = p.status === "in" ? null : "in";
-      if (p.status !== "in") p.pago = false;
+      if (p.status === "in") p.em = p.em || Date.now();
+      else p.pago = false;
     } else {
       p.pago = !p.pago;
       p.pagoEm = p.pago ? hojeISO() : null;
@@ -1107,7 +1118,11 @@ document.body.addEventListener("click", async e => {
     const jogo = estado.jogos.find(j => j.id === d.jogo);
     const atual = (jogo.presencas||{})[estado.eu]?.status;
     const novo = atual === d.confirmar ? null : d.confirmar;
-    await gravarPresenca(d.jogo, estado.eu, { status:novo, pago:(jogo.presencas||{})[estado.eu]?.pago||false });
+    await gravarPresenca(d.jogo, estado.eu, {
+      status:novo,
+      pago:(jogo.presencas||{})[estado.eu]?.pago||false,
+      em: novo === "in" ? Date.now() : null   // saiu e voltou? vai para o fim da fila
+    });
     desenhar();
     avisar(novo === "in" ? "Confirmado. Bola pra frente." : novo === "out" ? "Anotado, fica pra próxima." : "Presença desmarcada.");
   }
