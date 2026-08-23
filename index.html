@@ -69,7 +69,8 @@ a{color:var(--quadra)}
   padding:6px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px
 }
 .chave.on{background:var(--canarinho);color:var(--tinta)}
-@media (max-width:400px){ .chave span{display:none} .chave{padding:8px 10px} .marca{font-size:20px} .brasao{width:48px} }
+@media (max-width:400px){ .chave span{display:none} .chave{padding:8px 10px} .marca{font-size:20px} .brasao{width:48px}
+  .aba{font-size:10px;letter-spacing:0} .aba i{font-size:17px} }
 .eu{margin-top:12px;position:relative;z-index:1}
 .eu label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.75;margin-bottom:5px;font-weight:600}
 .eu select{
@@ -81,7 +82,7 @@ a{color:var(--quadra)}
 .abas{
   position:sticky;top:0;z-index:50;
   background:var(--cal);border-bottom:1px solid var(--borda);
-  display:grid;grid-template-columns:repeat(4,1fr);
+  display:grid;grid-template-columns:repeat(5,1fr);
   box-shadow:0 2px 10px rgba(16,24,38,.05);
 }
 .aba{
@@ -222,6 +223,18 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .modal-topo button{margin-left:auto;font-size:22px;color:var(--cinza);line-height:1}
 
 
+.est-tit{font-family:var(--display);font-size:17px;font-weight:400;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--quadra);margin:22px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--canarinho)}
+.est-tit:first-child{margin-top:0}
+.est-p{margin:0 0 10px;font-size:15px}
+.est-lista{list-style:none;margin:0 0 12px}
+.est-lista li{position:relative;padding-left:20px;margin-bottom:7px;font-size:15px}
+.est-lista li::before{content:'';position:absolute;left:4px;top:9px;width:7px;height:7px;
+  border-radius:50%;background:var(--canarinho)}
+.campo textarea{width:100%;padding:11px 12px;border:1px solid var(--borda);border-radius:10px;
+  background:var(--cal);font-size:14px;line-height:1.5;min-height:340px;resize:vertical}
+.campo textarea:focus{outline:2px solid var(--quadra);outline-offset:1px;border-color:var(--quadra)}
+
 .vazio{text-align:center;padding:26px 14px;color:var(--cinza)}
 .vazio b{display:block;font-family:var(--display);font-size:19px;color:var(--tinta);font-weight:400;margin-bottom:6px;text-transform:uppercase}
 .aviso{background:#FFF8E3;border-left:3px solid var(--canarinho);padding:11px 13px;border-radius:0 8px 8px 0;font-size:13.5px;margin-bottom:14px}
@@ -269,6 +282,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   <button class="aba" data-tela="agenda"><i>📅</i><em>Agenda</em></button>
   <button class="aba" data-tela="atletas"><i>👟</i><em>Atletas</em></button>
   <button class="aba" data-tela="caixa"><i>💰</i><em>Caixa</em></button>
+  <button class="aba" data-tela="estatuto"><i>📜</i><em>Estatuto</em></button>
 </nav>
 
 <main>
@@ -276,6 +290,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   <section class="tela" id="tela-agenda"></section>
   <section class="tela" id="tela-atletas"></section>
   <section class="tela" id="tela-caixa"></section>
+  <section class="tela" id="tela-estatuto"></section>
 </main>
 
 <div class="modal" id="modal">
@@ -836,6 +851,83 @@ function telaCaixa(){
     </div>`;
 }
 
+/* ---------- estatuto ---------- */
+const ESTATUTO_MODELO = `## 1. A pelada
+Jogamos toda **terça-feira às 20h**. São **14 vagas** por rodada, mais lista de espera.
+
+A rodada só acontece com no mínimo 10 confirmados. Sem esse número até a segunda à noite, o jogo é cancelado e ninguém paga.
+
+## 2. Quem joga
+- **Fixo** — é da turma, entra na lista toda semana.
+- **Convidado** — entra pelo nome de um fixo. Quem convidou responde pela diária dele.
+- **Inativo** — parou de jogar. Sai da lista, o histórico fica guardado.
+
+Convidado que vier três rodadas seguidas pode virar fixo, se a turma topar.
+
+## 3. A lista
+- Vale a **ordem de chegada**: quem confirma primeiro pega a vaga.
+- Passou das 14, entra na espera, também por ordem.
+- Quem desmarca e confirma de novo **volta para o fim da fila**.
+- Cancelou depois das 18h de terça? A diária continua devida — a quadra já está paga.
+- Vaga que abre é oferecida ao primeiro da espera.
+
+## 4. Dinheiro
+- **Confirmar presença gera a diária.** Colocou o nome, deve.
+- O valor sai do rateio: custo da quadra dividido pelos que jogaram.
+- Pagamento por **Pix até o dia do jogo**.
+- Quem tem rodada anterior em aberto só entra na lista depois de acertar.
+- Convidado que sumir sem pagar: a conta fica com quem trouxe.
+
+## 5. Em campo
+- Chegou 20h, bola rolando. Quem atrasa espera a próxima partida.
+- **Sem carrinho.** É pelada, todo mundo trabalha no dia seguinte.
+- Time perdedor sai; empate, sai quem está há mais tempo em campo.
+- Reclamação com o companheiro fica no campo e acaba junto com o jogo.
+
+## 6. O caixa
+- O que sobra fica para bola, colete e a confraternização de fim de ano.
+- As contas são abertas: qualquer um vê tudo na aba Caixa.
+
+## 7. Este estatuto
+Mudanças são combinadas no grupo e atualizadas aqui pelo organizador.`;
+
+const forte = t => t.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+function renderEstatuto(txt){
+  const out = []; let emLista = false;
+  const fechar = () => { if (emLista) { out.push("</ul>"); emLista = false; } };
+  escapar(txt).split("\n").forEach(bruta => {
+    const l = bruta.trim();
+    if (!l) { fechar(); return; }
+    if (l.startsWith("## ")) { fechar(); out.push(`<h3 class="est-tit">${forte(l.slice(3))}</h3>`); }
+    else if (l.startsWith("- ")) {
+      if (!emLista) { out.push('<ul class="est-lista">'); emLista = true; }
+      out.push(`<li>${forte(l.slice(2))}</li>`);
+    } else { fechar(); out.push(`<p class="est-p">${forte(l)}</p>`); }
+  });
+  fechar();
+  return out.join("");
+}
+
+/* ============================================================
+   TELA 5 — ESTATUTO
+   ============================================================ */
+function telaEstatuto(){
+  const txt = estado.config.estatuto || "";
+  const quando = estado.config.estatutoEm
+    ? new Date(estado.config.estatutoEm).toLocaleDateString("pt-BR",{ day:"2-digit", month:"long", year:"numeric" })
+    : "";
+  document.getElementById("tela-estatuto").innerHTML = `
+    ${estado.admin ? `<div class="btn-linha" style="margin:0 0 14px">
+      <button class="btn-main" style="flex:1" data-acao="editar-estatuto">${txt?"Editar estatuto":"Escrever o estatuto"}</button>
+    </div>` : ""}
+    <div class="cartao">
+      ${txt ? renderEstatuto(txt) : `<div class="vazio"><b>Estatuto em branco</b>
+        As regras da pelada moram aqui — lista, pagamento, convidado, atraso.
+        ${estado.admin?"Toque em escrever e comece de um modelo pronto.":"O organizador ainda não publicou."}</div>`}
+    </div>
+    ${txt && quando ? `<div class="sub" style="text-align:center;margin-bottom:14px">Atualizado em ${quando}</div>` : ""}`;
+}
+
 /* ---------- desenho geral ---------- */
 function desenhar(){
   if (!estado.eu) lerEndereco();
@@ -850,7 +942,7 @@ function desenhar(){
   document.querySelector("#btnAdmin span").textContent = estado.admin ? "Admin ativo" : "Admin";
   document.querySelector("#btnAdmin").firstChild.textContent = estado.admin ? "🔓 " : "🔒 ";
 
-  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa();
+  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaEstatuto();
 }
 
 /* ---------- avisos ---------- */
@@ -1028,6 +1120,27 @@ function formFechamento(jogo){
   pintar();
 }
 
+function formEstatuto(){
+  const atual = estado.config.estatuto || ESTATUTO_MODELO;
+  abrirModal("Estatuto da pelada", `
+    <div class="campo"><label>Texto</label>
+      <textarea id="f_est" spellcheck="true">${escapar(atual)}</textarea>
+      <div class="sub" style="margin-top:6px">Linha começando com <b>##</b> vira título de artigo.
+        Linha começando com <b>-</b> vira item. Entre <b>**asteriscos**</b> fica em negrito.</div></div>
+    <div class="btn-linha">
+      <button class="btn-main" style="flex:1" id="f_salvar">Publicar</button>
+      <button class="btn-sec" id="f_modelo">Carregar modelo</button>
+    </div>`);
+  document.getElementById("f_modelo").onclick = () => {
+    if (!confirm("Trocar o texto atual pelo modelo? O que estiver escrito se perde.")) return;
+    document.getElementById("f_est").value = ESTATUTO_MODELO;
+  };
+  document.getElementById("f_salvar").onclick = async () => {
+    await gravarConfig({ estatuto: document.getElementById("f_est").value.trim(), estatutoEm: Date.now() });
+    fecharModal(); desenhar(); avisar("Estatuto publicado.");
+  };
+}
+
 function formDespesa(){
   abrirModal("Lançar despesa", `
     <div class="campo"><label>Data</label><input type="date" id="f_data" value="${hojeISO()}"></div>
@@ -1147,6 +1260,7 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "novo-atleta")  formAtleta(null);
   else if (d.acao === "nova-despesa") formDespesa();
   else if (d.acao === "ajustes")      formAjustes();
+  else if (d.acao === "editar-estatuto") formEstatuto();
   else if (d.acao === "ver-proxima") { estado.jogoAberto = null; desenhar(); }
 });
 
