@@ -70,7 +70,7 @@ a{color:var(--quadra)}
 }
 .chave.on{background:var(--canarinho);color:var(--tinta)}
 @media (max-width:400px){ .chave span{display:none} .chave{padding:8px 10px} .marca{font-size:20px} .brasao{width:48px}
-  .aba{font-size:10px;letter-spacing:0} .aba i{font-size:17px} }
+  .aba{font-size:9px;letter-spacing:0;padding:8px 1px 0} .aba i{font-size:16px} }
 .eu{margin-top:12px;position:relative;z-index:1}
 .eu label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.75;margin-bottom:5px;font-weight:600}
 .eu select{
@@ -82,7 +82,7 @@ a{color:var(--quadra)}
 .abas{
   position:sticky;top:0;z-index:50;
   background:var(--cal);border-bottom:1px solid var(--borda);
-  display:grid;grid-template-columns:repeat(5,1fr);
+  display:grid;grid-template-columns:repeat(6,1fr);
   box-shadow:0 2px 10px rgba(16,24,38,.05);
 }
 .aba{
@@ -223,6 +223,23 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .modal-topo button{margin-left:auto;font-size:22px;color:var(--cinza);line-height:1}
 
 
+.visao-capa{background:var(--tinta);color:#fff;border-radius:var(--raio);padding:22px 20px 24px;
+  margin-bottom:14px;position:relative;overflow:hidden;text-align:center}
+.visao-capa::after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;
+  background:repeating-linear-gradient(90deg,var(--canarinho) 0 18px,transparent 18px 36px)}
+.visao-rot{font-size:10.5px;letter-spacing:2.2px;text-transform:uppercase;color:var(--canarinho);
+  font-weight:700;margin-bottom:12px}
+.visao-txt{font-size:17px;line-height:1.45;font-weight:600}
+.visao-cruz{font-size:22px;color:var(--canarinho);margin-bottom:8px;line-height:1}
+
+.vlr{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--borda)}
+.vlr:last-child{border-bottom:none}
+.vlr-num{font-family:var(--display);font-size:20px;line-height:1.1;color:var(--canarinho);width:26px;flex:none}
+.vlr-corpo{flex:1;min-width:0}
+.vlr-nome{display:block;font-family:var(--display);font-size:14.5px;font-weight:400;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--quadra);margin-bottom:2px}
+.vlr-desc{font-size:14.5px;line-height:1.4}
+
 .est-tit{font-family:var(--display);font-size:17px;font-weight:400;text-transform:uppercase;letter-spacing:.6px;
   color:var(--quadra);margin:22px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--canarinho)}
 .est-tit:first-child{margin-top:0}
@@ -282,6 +299,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   <button class="aba" data-tela="agenda"><i>📅</i><em>Agenda</em></button>
   <button class="aba" data-tela="atletas"><i>👟</i><em>Atletas</em></button>
   <button class="aba" data-tela="caixa"><i>💰</i><em>Caixa</em></button>
+  <button class="aba" data-tela="valores"><i>✝️</i><em>Valores</em></button>
   <button class="aba" data-tela="estatuto"><i>📜</i><em>Estatuto</em></button>
 </nav>
 
@@ -290,6 +308,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   <section class="tela" id="tela-agenda"></section>
   <section class="tela" id="tela-atletas"></section>
   <section class="tela" id="tela-caixa"></section>
+  <section class="tela" id="tela-valores"></section>
   <section class="tela" id="tela-estatuto"></section>
 </main>
 
@@ -573,6 +592,34 @@ function textoDaLista(j){
   return L.join("\n");
 }
 
+async function compartilharTexto(texto){
+  if (navigator.share) {
+    try { await navigator.share({ text: texto }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  const zap = "https://wa.me/?text=" + encodeURIComponent(texto);
+  if (!window.open(zap, "_blank", "noopener")) {
+    try { await navigator.clipboard.writeText(texto); avisar("Texto copiado — é só colar no grupo."); }
+    catch(_) { avisar("Não consegui abrir o WhatsApp."); }
+  }
+}
+
+function textoIdentidade(){
+  const bruto = estado.config.identidade || IDENTIDADE_MODELO;
+  const L = ["*⚽ FUT DOS FILHOS*", ""];
+  bruto.split("\n").forEach(linha => {
+    const l = linha.trim();
+    if (!l) { L.push(""); return; }
+    if (l.startsWith("## ")) { L.push(`*${l.slice(3).toUpperCase()}*`); return; }
+    // no WhatsApp o negrito é um asterisco só
+    const zap = l.replace(/\*\*(.+?)\*\*/g, "*$1*");
+    L.push(zap.startsWith("- ") ? "• " + zap.slice(2) : zap);
+  });
+  const url = location.href.split("#")[0];
+  if (/^https?:/.test(url)) { L.push(""); L.push(url); }
+  return L.join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
 async function compartilharLista(jogoId){
   const j = estado.jogos.find(x => x.id === jogoId); if (!j) return;
   const texto = textoDaLista(j);
@@ -851,6 +898,64 @@ function telaCaixa(){
     </div>`;
 }
 
+const IDENTIDADE_MODELO = `## Visão
+Ser o maior grupo de futebol evangélico da região, reconhecido por transformar vidas através do esporte e propagar o Evangelho de Cristo dentro e fora dos campos.
+
+## Princípios
+- **Cristocentrismo** — Jesus Cristo é o centro de todas as nossas decisões, partidas e reuniões.
+- **Fraternidade** — Jogamos para fortalecer os laços fraternos entre os membros através do esporte e da fé.
+
+## Valores
+- **Caráter e Integridade** — Jogar de forma limpa, respeitando as regras.
+- **Respeito** — Valorizar os companheiros de equipe, adversários, árbitros e torcedores.
+- **Autocontrole** — Dominar as emoções, rejeitando brigas, palavrões ou agressões no campo.
+- **Unidade** — Agir como um só corpo em Cristo, apoiando quem erra e celebrando em equipe.
+- **Humildade** — Reconhecer que o talento vem de Deus e saber ganhar ou perder com graça.
+- **Disciplina** — Manter o compromisso com os horários, treinos e momentos de oração.`;
+
+function renderIdentidade(txt){
+  const partes = escapar(txt).split(/^## /m).map(t => t.trim()).filter(Boolean);
+  return partes.map(bloco => {
+    const linhas = bloco.split("\n");
+    const titulo = linhas.shift().trim();
+    const corpo = linhas.map(l => l.trim()).filter(Boolean);
+
+    if (/^vis[aã]o$/i.test(titulo)) {
+      return `<div class="visao-capa">
+        <div class="visao-cruz">✝</div>
+        <div class="visao-rot">${titulo}</div>
+        <div class="visao-txt">${forte(corpo.join(" "))}</div></div>`;
+    }
+
+    let n = 0;
+    const itens = corpo.map(l => {
+      if (!l.startsWith("- ")) return `<p class="est-p">${forte(l)}</p>`;
+      n++;
+      const m = l.slice(2).match(/^\*\*(.+?)\*\*\s*[—–-]?\s*(.*)$/);
+      const nome = m ? m[1] : "";
+      const desc = m ? m[2] : l.slice(2);
+      return `<div class="vlr"><span class="vlr-num">${String(n).padStart(2,"0")}</span>
+        <div class="vlr-corpo">${nome?`<span class="vlr-nome">${nome}</span>`:""}
+          <span class="vlr-desc">${forte(desc)}</span></div></div>`;
+    }).join("");
+
+    return `<div class="cartao"><h3 class="est-tit">${titulo}</h3>${itens}</div>`;
+  }).join("");
+}
+
+/* ============================================================
+   TELA 5 — VISÃO, PRINCÍPIOS E VALORES
+   ============================================================ */
+function telaValores(){
+  const txt = estado.config.identidade || IDENTIDADE_MODELO;
+  document.getElementById("tela-valores").innerHTML = `
+    ${estado.admin ? `<div class="btn-linha" style="margin:0 0 14px">
+      <button class="btn-main" style="flex:1" data-acao="editar-identidade">Editar</button>
+      <button class="btn-zap" data-compartilhar-texto="identidade">📤 Mandar no grupo</button>
+    </div>` : ""}
+    ${renderIdentidade(txt)}`;
+}
+
 /* ---------- estatuto ---------- */
 const ESTATUTO_MODELO = `## 1. A pelada
 Jogamos toda **terça-feira às 20h**. São **14 vagas** por rodada, mais lista de espera.
@@ -942,7 +1047,7 @@ function desenhar(){
   document.querySelector("#btnAdmin span").textContent = estado.admin ? "Admin ativo" : "Admin";
   document.querySelector("#btnAdmin").firstChild.textContent = estado.admin ? "🔓 " : "🔒 ";
 
-  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaEstatuto();
+  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaValores(); telaEstatuto();
 }
 
 /* ---------- avisos ---------- */
@@ -1120,9 +1225,9 @@ function formFechamento(jogo){
   pintar();
 }
 
-function formEstatuto(){
-  const atual = estado.config.estatuto || ESTATUTO_MODELO;
-  abrirModal("Estatuto da pelada", `
+function formDocumento(campo, titulo, modelo){
+  const atual = estado.config[campo] || modelo;
+  abrirModal(titulo, `
     <div class="campo"><label>Texto</label>
       <textarea id="f_est" spellcheck="true">${escapar(atual)}</textarea>
       <div class="sub" style="margin-top:6px">Linha começando com <b>##</b> vira título de artigo.
@@ -1133,11 +1238,11 @@ function formEstatuto(){
     </div>`);
   document.getElementById("f_modelo").onclick = () => {
     if (!confirm("Trocar o texto atual pelo modelo? O que estiver escrito se perde.")) return;
-    document.getElementById("f_est").value = ESTATUTO_MODELO;
+    document.getElementById("f_est").value = modelo;
   };
   document.getElementById("f_salvar").onclick = async () => {
-    await gravarConfig({ estatuto: document.getElementById("f_est").value.trim(), estatutoEm: Date.now() });
-    fecharModal(); desenhar(); avisar("Estatuto publicado.");
+    await gravarConfig({ [campo]: document.getElementById("f_est").value.trim(), [campo+"Em"]: Date.now() });
+    fecharModal(); desenhar(); avisar("Publicado.");
   };
 }
 
@@ -1222,7 +1327,7 @@ document.getElementById("btnAdmin").onclick = () => {
 };
 
 document.body.addEventListener("click", async e => {
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -1260,7 +1365,9 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "novo-atleta")  formAtleta(null);
   else if (d.acao === "nova-despesa") formDespesa();
   else if (d.acao === "ajustes")      formAjustes();
-  else if (d.acao === "editar-estatuto") formEstatuto();
+  else if (d.acao === "editar-estatuto")  formDocumento("estatuto","Estatuto da pelada",ESTATUTO_MODELO);
+  else if (d.acao === "editar-identidade") formDocumento("identidade","Visão, princípios e valores",IDENTIDADE_MODELO);
+  else if (d.compartilharTexto === "identidade") await compartilharTexto(textoIdentidade());
   else if (d.acao === "ver-proxima") { estado.jogoAberto = null; desenhar(); }
 });
 
