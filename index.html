@@ -70,7 +70,7 @@ a{color:var(--quadra)}
 }
 .chave.on{background:var(--canarinho);color:var(--tinta)}
 @media (max-width:400px){ .chave span{display:none} .chave{padding:8px 10px} .marca{font-size:20px} .brasao{width:48px}
-  .aba{font-size:9px;letter-spacing:0;padding:8px 1px 0} .aba i{font-size:16px} }
+  .aba{font-size:8.5px;letter-spacing:0;padding:8px 1px 0} .aba i{font-size:15px} .aba em{padding-bottom:7px} }
 .eu{margin-top:12px;position:relative;z-index:1}
 .eu label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.75;margin-bottom:5px;font-weight:600}
 .eu select{
@@ -82,7 +82,7 @@ a{color:var(--quadra)}
 .abas{
   position:sticky;top:0;z-index:50;
   background:var(--cal);border-bottom:1px solid var(--borda);
-  display:grid;grid-template-columns:repeat(6,1fr);
+  display:grid;grid-template-columns:repeat(7,minmax(44px,1fr));overflow-x:auto;
   box-shadow:0 2px 10px rgba(16,24,38,.05);
 }
 .aba{
@@ -223,6 +223,32 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .modal-topo button{margin-left:auto;font-size:22px;color:var(--cinza);line-height:1}
 
 
+.roleta-caixa{position:relative;display:flex;justify-content:center;margin:4px 0 16px}
+.roleta{width:100%;max-width:330px;height:auto;display:block}
+.roleta-seta{position:absolute;top:-4px;left:50%;transform:translateX(-50%);z-index:2;
+  font-size:26px;line-height:1;color:var(--canarinho);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.roleta-centro{fill:var(--cal);stroke:var(--canarinho);stroke-width:3}
+.btn-girar{background:var(--canarinho);color:var(--tinta);width:100%;padding:16px;border-radius:12px;
+  font-family:var(--display);font-size:20px;letter-spacing:1.5px;text-transform:uppercase;
+  transition:transform .08s ease}
+.btn-girar:active{transform:scale(.98)}
+.btn-girar:disabled{opacity:.55;cursor:default}
+
+.times-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.time{background:var(--cal);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden}
+.time-topo{padding:10px 12px;font-family:var(--display);font-size:15px;letter-spacing:.8px;
+  text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:6px}
+.time.vermelho .time-topo{background:#C0392B}
+.time.colete .time-topo{background:#E0A417;color:#3B2A00}
+.time-topo b{margin-left:auto;font-weight:400;opacity:.85;font-size:13px}
+.time ol{list-style:none;padding:6px 12px 12px}
+.time li{padding:6px 0;border-bottom:1px solid var(--borda);font-size:14.5px;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.time li:last-child{border-bottom:none}
+.time li.novo{animation:entra .45s ease}
+@keyframes entra{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.time .vazio-time{padding:14px 12px;color:var(--cinza);font-size:13.5px;font-style:italic}
+
 .visao-capa{background:var(--tinta);color:#fff;border-radius:var(--raio);padding:22px 20px 24px;
   margin-bottom:14px;position:relative;overflow:hidden;text-align:center}
 .visao-capa::after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;
@@ -299,6 +325,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   <button class="aba" data-tela="agenda"><i>📅</i><em>Agenda</em></button>
   <button class="aba" data-tela="atletas"><i>👟</i><em>Atletas</em></button>
   <button class="aba" data-tela="caixa"><i>💰</i><em>Caixa</em></button>
+  <button class="aba" data-tela="times"><i>🎡</i><em>Times</em></button>
   <button class="aba" data-tela="valores"><i>✝️</i><em>Valores</em></button>
   <button class="aba" data-tela="estatuto"><i>📜</i><em>Estatuto</em></button>
 </nav>
@@ -308,6 +335,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   <section class="tela" id="tela-agenda"></section>
   <section class="tela" id="tela-atletas"></section>
   <section class="tela" id="tela-caixa"></section>
+  <section class="tela" id="tela-times"></section>
   <section class="tela" id="tela-valores"></section>
   <section class="tela" id="tela-estatuto"></section>
 </main>
@@ -898,6 +926,176 @@ function telaCaixa(){
     </div>`;
 }
 
+/* ============================================================
+   TELA — SORTEIO DE TIMES
+   ============================================================ */
+const sorteio = { jogoId:null, restantes:[], vermelho:[], colete:[], vez:"vermelho", angulo:0, girando:false, ultimo:null };
+
+const jogoDoSorteio = () => (estado.jogoAberto && estado.jogos.find(j => j.id === estado.jogoAberto))
+  || estado.jogos.filter(j => j.data >= hojeISO()).sort((a,b) => a.data.localeCompare(b.data))[0]
+  || jogosPassados().sort((a,b) => b.data.localeCompare(a.data))[0];
+
+function prepararSorteio(jogo){
+  if (sorteio.jogoId === jogo.id) return;
+  sorteio.jogoId = jogo.id;
+  sorteio.restantes = confirmados(jogo).slice(0, Number(jogo.vagas)||14);
+  sorteio.vermelho = []; sorteio.colete = []; sorteio.vez = "vermelho";
+  sorteio.angulo = 0; sorteio.ultimo = null;
+}
+
+const primeiroNome = id => {
+  const n = nomeDe(id).split(" ")[0];
+  return n.length > 11 ? n.slice(0,10)+"…" : n;
+};
+
+function svgRoleta(){
+  const ids = sorteio.restantes, n = ids.length, R = 148;
+  if (!n) return "";
+  const passo = 360/n;
+  const rad = g => (g-90) * Math.PI/180;
+  const fatias = ids.map((id,i) => {
+    const ini = i*passo, fim = ini+passo, meio = ini+passo/2;
+    const x1 = R*Math.cos(rad(ini)), y1 = R*Math.sin(rad(ini));
+    const x2 = R*Math.cos(rad(fim)), y2 = R*Math.sin(rad(fim));
+    const cor = i % 2 ? "#16305A" : "#0E2142";
+    const tam = n > 14 ? 8.5 : n > 10 ? 10 : 11.5;
+    return `<path d="M0 0 L${x1.toFixed(1)} ${y1.toFixed(1)} A${R} ${R} 0 ${passo>180?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z"
+              fill="${cor}" stroke="#C9A24B" stroke-width="1"/>
+            <text transform="rotate(${meio}) translate(0,-${R*0.62})" fill="#fff" font-size="${tam}"
+              font-family="Barlow,sans-serif" font-weight="600" text-anchor="middle"
+              dominant-baseline="central">${escapar(primeiroNome(id))}</text>`;
+  }).join("");
+  return `<div class="roleta-caixa">
+    <div class="roleta-seta">▼</div>
+    <svg class="roleta" viewBox="-160 -160 320 320" xmlns="http://www.w3.org/2000/svg">
+      <g id="roda" style="transform:rotate(${sorteio.angulo}deg)">${fatias}</g>
+      <circle class="roleta-centro" r="26"/>
+      <text y="1" text-anchor="middle" dominant-baseline="central" font-family="Anton,sans-serif"
+        font-size="15" fill="#12294D">${n}</text>
+    </svg></div>`;
+}
+
+function cartaoTime(classe, rotulo, ids, destaque){
+  return `<div class="time ${classe}">
+    <div class="time-topo">${rotulo}<b>${ids.length}</b></div>
+    ${ids.length ? `<ol>${ids.map(id => `<li class="${id===destaque?"novo":""}">${escapar(nomeDe(id))}</li>`).join("")}</ol>`
+                 : `<div class="vazio-time">ninguém ainda</div>`}
+  </div>`;
+}
+
+function telaTimes(){
+  if (sorteio.girando) return;
+  const el = document.getElementById("tela-times");
+  const jogo = jogoDoSorteio();
+
+  if (!jogo) {
+    el.innerHTML = `<div class="cartao"><div class="vazio"><b>Nenhuma rodada</b>
+      Marque um jogo na agenda para sortear os times.</div></div>`;
+    return;
+  }
+  const feito = jogo.times && jogo.times.vermelho;
+  const { num, mes } = dataLonga(jogo.data);
+  const topo = `<div class="aviso">Sorteio da rodada de <b>${num} ${mes}</b>${jogo.local?" · "+escapar(jogo.local):""}.</div>`;
+
+  if (feito) {
+    el.innerHTML = topo + `
+      <div class="times-grade">
+        ${cartaoTime("vermelho","Vermelho",jogo.times.vermelho)}
+        ${cartaoTime("colete","Colete",jogo.times.colete)}
+      </div>
+      <div class="btn-linha" style="margin:0">
+        <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar os times no grupo</button>
+        <button class="btn-sec" data-acao="refazer-sorteio">Refazer</button>
+      </div>`;
+    return;
+  }
+
+  prepararSorteio(jogo);
+  const dentro = confirmados(jogo).length;
+  if (!sorteio.restantes.length) {
+    el.innerHTML = topo + `<div class="cartao"><div class="vazio"><b>Lista vazia</b>
+      ${dentro?"":"Ninguém confirmou ainda."} O sorteio usa quem está na lista da rodada.</div></div>`;
+    return;
+  }
+
+  const proximoTime = sorteio.vez === "vermelho" ? "VERMELHO" : "COLETE";
+  el.innerHTML = topo + svgRoleta() + `
+    <button class="btn-girar" id="btnGirar" data-acao="girar">Girar → ${proximoTime}</button>
+    <div class="sub" style="text-align:center;margin:8px 0 14px">
+      ${plural(sorteio.restantes.length,"jogador ainda no sorteio","jogadores ainda no sorteio")}</div>
+    <div class="times-grade">
+      ${cartaoTime("vermelho","Vermelho",sorteio.vermelho,sorteio.ultimo)}
+      ${cartaoTime("colete","Colete",sorteio.colete,sorteio.ultimo)}
+    </div>
+    <button class="btn-sec" style="width:100%" data-acao="sortear-resto">Sortear o resto de uma vez</button>`;
+}
+
+function girarRoleta(){
+  if (sorteio.girando || !sorteio.restantes.length) return;
+  const n = sorteio.restantes.length, passo = 360/n;
+  const idx = Math.floor(Math.random()*n);
+  const voltas = 4 + Math.floor(Math.random()*3);
+  const alvo = (((-(idx*passo + passo/2)) % 360) + 360) % 360;
+  sorteio.angulo = Math.ceil((sorteio.angulo + 360*voltas)/360)*360 + alvo;
+  sorteio.girando = true;
+
+  const roda = document.getElementById("roda");
+  const botao = document.getElementById("btnGirar");
+  if (botao) { botao.disabled = true; botao.textContent = "girando…"; }
+  roda.style.transition = "transform 4.2s cubic-bezier(.16,.68,.18,1)";
+  roda.style.transform = `rotate(${sorteio.angulo}deg)`;
+
+  setTimeout(async () => {
+    const id = sorteio.restantes.splice(idx,1)[0];
+    const time = sorteio.vez;
+    sorteio[time].push(id);
+    sorteio.ultimo = id;
+    sorteio.vez = time === "vermelho" ? "colete" : "vermelho";
+    sorteio.girando = false;
+    if (!sorteio.restantes.length) await salvarTimes();
+    telaTimes();
+    avisar(`${nomeDe(id)} → ${time === "vermelho" ? "VERMELHO" : "COLETE"}`);
+  }, 4350);
+}
+
+async function sortearResto(){
+  if (sorteio.girando) return;
+  while (sorteio.restantes.length) {
+    const i = Math.floor(Math.random()*sorteio.restantes.length);
+    sorteio[sorteio.vez].push(sorteio.restantes.splice(i,1)[0]);
+    sorteio.vez = sorteio.vez === "vermelho" ? "colete" : "vermelho";
+  }
+  await salvarTimes();
+  telaTimes();
+  avisar("Times sorteados.");
+}
+
+async function salvarTimes(){
+  if (!sorteio.jogoId) return;
+  await gravar("jogos", { times: { vermelho:sorteio.vermelho, colete:sorteio.colete, em:Date.now() } }, sorteio.jogoId);
+}
+
+async function refazerSorteio(){
+  const jogo = jogoDoSorteio(); if (!jogo) return;
+  if (!confirm("Refazer o sorteio? Os times atuais somem.")) return;
+  await gravar("jogos", { times: null }, jogo.id);
+  sorteio.jogoId = null;
+  telaTimes(); avisar("Sorteio zerado.");
+}
+
+function textoTimes(){
+  const jogo = jogoDoSorteio();
+  if (!jogo || !jogo.times) return "";
+  const { num, mes } = dataLonga(jogo.data);
+  const L = ["*⚽ FUT DOS FILHOS — TIMES*", `${num} ${mes}${jogo.hora?" · "+jogo.hora:""}${jogo.local?" · "+jogo.local:""}`, ""];
+  L.push("*🔴 TIME VERMELHO*");
+  jogo.times.vermelho.forEach((id,i) => L.push(`${i+1}. ${nomeDe(id)}`));
+  L.push("");
+  L.push("*🟡 TIME DE COLETE*");
+  jogo.times.colete.forEach((id,i) => L.push(`${i+1}. ${nomeDe(id)}`));
+  return L.join("\n");
+}
+
 const IDENTIDADE_MODELO = `## Visão
 Ser o maior grupo de futebol evangélico da região, reconhecido por transformar vidas através do esporte e propagar o Evangelho de Cristo dentro e fora dos campos.
 
@@ -1047,7 +1245,7 @@ function desenhar(){
   document.querySelector("#btnAdmin span").textContent = estado.admin ? "Admin ativo" : "Admin";
   document.querySelector("#btnAdmin").firstChild.textContent = estado.admin ? "🔓 " : "🔒 ";
 
-  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaValores(); telaEstatuto();
+  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaTimes(); telaValores(); telaEstatuto();
 }
 
 /* ---------- avisos ---------- */
@@ -1368,6 +1566,10 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "editar-estatuto")  formDocumento("estatuto","Estatuto da pelada",ESTATUTO_MODELO);
   else if (d.acao === "editar-identidade") formDocumento("identidade","Visão, princípios e valores",IDENTIDADE_MODELO);
   else if (d.compartilharTexto === "identidade") await compartilharTexto(textoIdentidade());
+  else if (d.compartilharTexto === "times")      await compartilharTexto(textoTimes());
+  else if (d.acao === "girar")            girarRoleta();
+  else if (d.acao === "sortear-resto")    await sortearResto();
+  else if (d.acao === "refazer-sorteio")  await refazerSorteio();
   else if (d.acao === "ver-proxima") { estado.jogoAberto = null; desenhar(); }
 });
 
