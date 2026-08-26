@@ -164,6 +164,13 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .selo.deve{background:#FCE8E8;color:var(--deve)}
 .selo.neutro{background:var(--linha);color:var(--cinza)}
 .selo.convidado{background:#FFF3D1;color:#8A6100}
+.selo.gol{background:#E2F0EA;color:#186A4B}
+.check{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--borda);
+  border-radius:10px;cursor:pointer;background:var(--cal)}
+.check input{width:20px;height:20px;accent-color:var(--quadra);flex:none;margin:0}
+.check b{font-weight:600}
+.check .sub{margin-top:2px}
+.check:has(input:checked){border-color:var(--quadra);background:#F3F7FC}
 .grupo-rot{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--cinza);
   margin:14px 0 2px;padding:5px 9px;background:var(--linha);border-radius:6px}
 .grupo-rot:first-child{margin-top:4px}
@@ -214,7 +221,6 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .campo input,.campo select{width:100%;padding:11px 12px;border:1px solid var(--borda);border-radius:10px;background:var(--cal)}
 .campo input:focus,.campo select:focus{outline:2px solid var(--quadra);outline-offset:1px;border-color:var(--quadra)}
 .dupla{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-
 .modal{position:fixed;inset:0;background:rgba(16,24,38,.55);z-index:100;display:none;align-items:flex-end;justify-content:center}
 .modal.on{display:flex}
 .modal-caixa{background:var(--cal);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:20px;max-height:88vh;overflow-y:auto}
@@ -463,6 +469,7 @@ function semear(){
   estado.atletas = nomes.map((n,i) => ({
     id:"a-"+n.toLowerCase(), nome:n, apelido:"", telefone:"", ativo:true,
     situacao: i>=14 ? "convidado" : "fixo",
+    goleiro: i===3 || i===9 || i===11,
     convidadoPor: i===14 ? "a-vinícios" : i===15 ? "a-rafael" : ""
   }));
   estado.config = { ...estado.config, pixChave:"47 99999-0000", pixTipo:"Celular",
@@ -549,6 +556,7 @@ const presencasJogadas = id => jogosPassados().filter(j => (j.presencas||{})[id]
 const situacaoDe = a => a?.situacao || (a?.ativo === false ? "inativo" : "fixo");
 const plural = (n, um, varios) => n + " " + (n === 1 ? um : varios);
 const atletaDe = id => estado.atletas.find(a => a.id === id);
+const ehGoleiro = id => !!atletaDe(id)?.goleiro;
 function quemConvidou(id){
   const a = atletaDe(id);
   if (situacaoDe(a) !== "convidado") return "";
@@ -596,19 +604,25 @@ function textoDaLista(j){
 
   L.push("");
   L.push("*NA LISTA*");
-  if (titulares.length) titulares.forEach((id,i) => L.push(`${i+1}. ${nomeDe(id)} ${marca(id)}`));
+  if (titulares.length) titulares.forEach((id,i) =>
+    L.push(`${i+1}. ${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)} ${marca(id)}`));
   else L.push("_ninguém confirmou ainda_");
   if (livres) L.push(`_${plural(livres,"vaga livre","vagas livres")}_`);
 
   if (espera.length) {
     L.push("");
     L.push("*ESPERA*");
-    espera.forEach((id,i) => L.push(`${i+1}. ${nomeDe(id)} ${marca(id)}`));
+    espera.forEach((id,i) => L.push(`${i+1}. ${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)} ${marca(id)}`));
   }
   if (fora.length) {
     L.push("");
     L.push(`*FORA:* ${fora.map(nomeDe).join(", ")}`);
   }
+
+  const gols = titulares.filter(ehGoleiro).length;
+  L.push("");
+  L.push(gols ? `🧤 ${plural(gols,"goleiro","goleiros")} na lista`
+              : "🧤 *Nenhum goleiro confirmado ainda*");
 
   const faltam = dentro.filter(id => !j.presencas[id].pago).length;
   L.push("");
@@ -705,7 +719,7 @@ function telaJogo(){
     linhas.push(`<li class="vaga ${id===estado.eu?"eu-mesmo":""}">
       <span class="num">${String(i+1).padStart(2,"0")}</span>
       <div class="vaga-corpo">
-        <div class="nome">${escapar(nomeDe(id))}${quemConvidou(id)?' <span class="selo convidado">convidado</span>':""}</div>
+        <div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}${quemConvidou(id)?' <span class="selo convidado">convidado</span>':""}</div>
         ${quemConvidou(id) ? `<div class="sub">${escapar(quemConvidou(id))}</div>`
           : (estado.admin ? `<div class="sub">toque no selo para ${p.pago?"desmarcar":"marcar como pago"}</div>` : "")}</div>
       ${estado.admin
@@ -826,7 +840,7 @@ function telaAtletas(){
         const s = saldoAtleta(a.id), sit = situacaoDe(a);
         return `<div class="item">
           <div class="item-corpo">
-            <div class="nome">${escapar(a.nome)}${sit==="inativo"?' <span class="selo neutro">inativo</span>':sit==="convidado"?' <span class="selo convidado">convidado</span>':""}</div>
+            <div class="nome">${escapar(a.nome)}${a.goleiro?' <span class="selo gol">🧤 goleiro</span>':""}${sit==="inativo"?' <span class="selo neutro">inativo</span>':sit==="convidado"?' <span class="selo convidado">convidado</span>':""}</div>
             <div class="sub">${quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${presencasDoAtleta(a.id)} jogos${a.telefone?" · "+escapar(a.telefone):""}</div>
           </div>
           <div class="valor ${s.aberto>0.005?"neg":"pos"}">${s.aberto>0.005?dinheiro(s.aberto):"em dia"}</div>
@@ -948,8 +962,16 @@ const primeiroNome = id => {
   return n.length > 11 ? n.slice(0,10)+"…" : n;
 };
 
+// enquanto o time da vez não tiver goleiro e sobrar goleiro no pote, a roleta só mostra goleiros
+function poolDoGiro(){
+  const semGoleiro = !sorteio[sorteio.vez].some(ehGoleiro);
+  const golsLivres = sorteio.restantes.filter(ehGoleiro);
+  return (semGoleiro && golsLivres.length) ? golsLivres : sorteio.restantes;
+}
+const faseGoleiro = () => poolDoGiro() !== sorteio.restantes;
+
 function svgRoleta(){
-  const ids = sorteio.restantes, n = ids.length, R = 148;
+  const ids = poolDoGiro(), n = ids.length, R = 148;
   if (!n) return "";
   const passo = 360/n;
   const rad = g => (g-90) * Math.PI/180;
@@ -957,7 +979,7 @@ function svgRoleta(){
     const ini = i*passo, fim = ini+passo, meio = ini+passo/2;
     const x1 = R*Math.cos(rad(ini)), y1 = R*Math.sin(rad(ini));
     const x2 = R*Math.cos(rad(fim)), y2 = R*Math.sin(rad(fim));
-    const cor = i % 2 ? "#16305A" : "#0E2142";
+    const cor = ehGoleiro(id) ? (i % 2 ? "#1E7355" : "#155943") : (i % 2 ? "#16305A" : "#0E2142");
     const tam = n > 14 ? 8.5 : n > 10 ? 10 : 11.5;
     return `<path d="M0 0 L${x1.toFixed(1)} ${y1.toFixed(1)} A${R} ${R} 0 ${passo>180?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z"
               fill="${cor}" stroke="#C9A24B" stroke-width="1"/>
@@ -978,7 +1000,7 @@ function svgRoleta(){
 function cartaoTime(classe, rotulo, ids, destaque){
   return `<div class="time ${classe}">
     <div class="time-topo">${rotulo}<b>${ids.length}</b></div>
-    ${ids.length ? `<ol>${ids.map(id => `<li class="${id===destaque?"novo":""}">${escapar(nomeDe(id))}</li>`).join("")}</ol>`
+    ${ids.length ? `<ol>${ids.map(id => `<li class="${id===destaque?"novo":""}">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}</li>`).join("")}</ol>`
                  : `<div class="vazio-time">ninguém ainda</div>`}
   </div>`;
 }
@@ -1019,8 +1041,12 @@ function telaTimes(){
   }
 
   const proximoTime = sorteio.vez === "vermelho" ? "VERMELHO" : "COLETE";
-  el.innerHTML = topo + svgRoleta() + `
-    <button class="btn-girar" id="btnGirar" data-acao="girar">Girar → ${proximoTime}</button>
+  const gol = faseGoleiro();
+  el.innerHTML = topo
+    + (gol ? `<div class="aviso" style="background:#E2F0EA;border-left-color:#186A4B">
+        🧤 <b>Sorteando o goleiro</b> do time ${proximoTime.toLowerCase()}.</div>` : "")
+    + svgRoleta() + `
+    <button class="btn-girar" id="btnGirar" data-acao="girar">Girar${gol?" o goleiro":""} → ${proximoTime}</button>
     <div class="sub" style="text-align:center;margin:8px 0 14px">
       ${plural(sorteio.restantes.length,"jogador ainda no sorteio","jogadores ainda no sorteio")}</div>
     <div class="times-grade">
@@ -1032,8 +1058,10 @@ function telaTimes(){
 
 function girarRoleta(){
   if (sorteio.girando || !sorteio.restantes.length) return;
-  const n = sorteio.restantes.length, passo = 360/n;
+  const pote = poolDoGiro();
+  const n = pote.length, passo = 360/n;
   const idx = Math.floor(Math.random()*n);
+  const sorteado = pote[idx];
   const voltas = 4 + Math.floor(Math.random()*3);
   const alvo = (((-(idx*passo + passo/2)) % 360) + 360) % 360;
   sorteio.angulo = Math.ceil((sorteio.angulo + 360*voltas)/360)*360 + alvo;
@@ -1046,7 +1074,8 @@ function girarRoleta(){
   roda.style.transform = `rotate(${sorteio.angulo}deg)`;
 
   setTimeout(async () => {
-    const id = sorteio.restantes.splice(idx,1)[0];
+    const id = sorteado;
+    sorteio.restantes.splice(sorteio.restantes.indexOf(id), 1);
     const time = sorteio.vez;
     sorteio[time].push(id);
     sorteio.ultimo = id;
@@ -1054,15 +1083,17 @@ function girarRoleta(){
     sorteio.girando = false;
     if (!sorteio.restantes.length) await salvarTimes();
     telaTimes();
-    avisar(`${nomeDe(id)} → ${time === "vermelho" ? "VERMELHO" : "COLETE"}`);
+    avisar(`${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)} → ${time === "vermelho" ? "VERMELHO" : "COLETE"}`);
   }, 4350);
 }
 
 async function sortearResto(){
   if (sorteio.girando) return;
   while (sorteio.restantes.length) {
-    const i = Math.floor(Math.random()*sorteio.restantes.length);
-    sorteio[sorteio.vez].push(sorteio.restantes.splice(i,1)[0]);
+    const pote = poolDoGiro();
+    const id = pote[Math.floor(Math.random()*pote.length)];
+    sorteio[sorteio.vez].push(id);
+    sorteio.restantes.splice(sorteio.restantes.indexOf(id), 1);
     sorteio.vez = sorteio.vez === "vermelho" ? "colete" : "vermelho";
   }
   await salvarTimes();
@@ -1089,10 +1120,10 @@ function textoTimes(){
   const { num, mes } = dataLonga(jogo.data);
   const L = ["*⚽ FUT DOS FILHOS — TIMES*", `${num} ${mes}${jogo.hora?" · "+jogo.hora:""}${jogo.local?" · "+jogo.local:""}`, ""];
   L.push("*🔴 TIME VERMELHO*");
-  jogo.times.vermelho.forEach((id,i) => L.push(`${i+1}. ${nomeDe(id)}`));
+  jogo.times.vermelho.forEach((id,i) => L.push(`${i+1}. ${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)}`));
   L.push("");
   L.push("*🟡 TIME DE COLETE*");
-  jogo.times.colete.forEach((id,i) => L.push(`${i+1}. ${nomeDe(id)}`));
+  jogo.times.colete.forEach((id,i) => L.push(`${i+1}. ${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)}`));
   return L.join("\n");
 }
 
@@ -1302,7 +1333,7 @@ function formJogo(jogo){
 }
 
 function formAtleta(atleta){
-  const a = atleta || { nome:"", apelido:"", telefone:"", situacao:"fixo", convidadoPor:"" };
+  const a = atleta || { nome:"", apelido:"", telefone:"", situacao:"fixo", convidadoPor:"", goleiro:false };
   const sit = situacaoDe(a);
   const anfitrioes = estado.atletas
     .filter(x => x.id !== a.id && situacaoDe(x) === "fixo")
@@ -1322,6 +1353,10 @@ function formAtleta(atleta){
         ${anfitrioes.map(x => `<option value="${x.id}" ${a.convidadoPor===x.id?"selected":""}>${escapar(x.nome)}</option>`).join("")}</select>
       <div class="sub" style="margin-top:5px">Quem trouxe responde pela diária se o convidado sumir sem pagar.</div>
     </div>
+    <div class="campo"><label for="f_gol">Posição</label>
+      <label class="check" for="f_gol"><input type="checkbox" id="f_gol" ${a.goleiro?"checked":""}>
+        <span><b>🧤 É goleiro</b><div class="sub">No sorteio, os goleiros são separados um para cada time.</div></span>
+      </label></div>
     <div class="btn-linha"><button class="btn-main" id="f_salvar">Salvar atleta</button>
       ${atleta?`<button class="btn-sec" id="f_apagar" style="color:var(--deve)">Remover</button>`:""}</div>`);
 
@@ -1336,6 +1371,7 @@ function formAtleta(atleta){
     await gravar("atletas", { nome, apelido:document.getElementById("f_apelido").value.trim(),
       telefone:document.getElementById("f_tel").value.trim(),
       situacao, ativo: situacao !== "inativo",
+      goleiro: document.getElementById("f_gol").checked,
       convidadoPor: situacao === "convidado" ? document.getElementById("f_conv").value : "" }, atleta?.id);
     fecharModal(); desenhar(); avisar("Atleta salvo.");
   };
