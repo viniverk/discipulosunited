@@ -1,4 +1,4 @@
-# Fut dos Filhos — app da pelada
+# Discípulos United — app da pelada
 
 Página única (`index.html`), sem build, sem servidor. Roda no GitHub Pages e guarda os dados no Firestore.
 
@@ -71,14 +71,42 @@ Cada `index.html` novo que você subir republica sozinho.
 ## 5. Primeiro uso
 
 1. Abra o site, clique em 🔒 e entre com a senha `1234`.
-2. **Caixa → Ajustes da pelada**: chave Pix, favorecido, dia e hora da pelada, custo padrão da quadra, vagas por rodada e — importante — **troque a senha**. O dia escolhido vira o padrão ao marcar um jogo novo e aparece embaixo do escudo.
+2. **Caixa → Ajustes da pelada**: nome do grupo, chave Pix, favorecido, dia e hora da pelada, custo padrão da quadra, vagas por rodada e — importante — **troque a senha**. O nome do grupo aparece no cabeçalho, na aba do navegador e em todo texto que vai para o WhatsApp. O **lema** é a linha embaixo do nome: deixe vazio e ele mostra o dia da pelada automaticamente, ou escreva o que quiser e o texto fixo passa a valer. O dia escolhido vira o padrão ao marcar um jogo novo e aparece embaixo do escudo.
 3. **Atletas**: cadastre a galera. Cada um entra como **fixo**, **convidado** (aí você indica quem trouxe) ou **inativo**.
 4. **Agenda → Marcar jogo**: data, local e custo.
 5. Mande o link no grupo do WhatsApp.
 
 Cada um escolhe o próprio nome no topo e toca em **Vou jogar**. Quem passar do número de vagas cai na lista de espera automaticamente.
 
-## 6. Fechar a rodada depois que o jogo acontece
+## 6. Times
+
+A aba 🎡 sorteia **Time Vermelho** e **Time de Colete** entre quem está na lista da rodada (só os titulares, não a espera).
+
+Cada toque em **Girar** roda a roleta e o sorteado cai no time da vez, alternando um para cada lado — assim os times terminam equilibrados em número. Tem também **Sortear o resto de uma vez** para quando a paciência acabar.
+
+Quando o último jogador é sorteado, os times ficam salvos no Firestore: todo mundo que abrir o site vê a mesma escalação. **Refazer** apaga e libera nova roleta. O botão de compartilhar monta a lista dos dois times para o WhatsApp.
+
+A roleta usa a rodada aberta no momento — se você entrou por uma rodada antiga na Agenda, é ela que vai ao sorteio.
+
+## 7. Valores
+
+A aba ✝️ traz visão, princípios e valores do grupo. A visão aparece em destaque num cartão escuro; princípios e valores viram lista numerada com o nome em maiúsculas e a descrição embaixo.
+
+Em modo admin há **Editar** e **Mandar no grupo** — o segundo monta o texto formatado para WhatsApp, com negrito de um asterisco só, do jeito que o app entende.
+
+## 8. Estatuto
+
+A quinta aba guarda as regras da pelada. Em modo admin, **Editar estatuto** abre um editor simples:
+
+- linha começando com `##` vira título de artigo
+- linha começando com `-` vira item
+- texto entre `**asteriscos**` fica em negrito
+
+O botão **Carregar modelo** traz um estatuto pronto com sete artigos (a pelada, quem joga, a lista, dinheiro, em campo, o caixa, alterações), já alinhado com o que o app faz. É rascunho: leia e ajuste ao que a turma combinou de verdade.
+
+O texto fica no Firestore, não no código — atualiza para todo mundo na hora e aparece a data da última alteração no rodapé.
+
+## 9. Fechar a rodada depois que o jogo acontece
 
 Na **Agenda**, toque em qualquer rodada — passada ou futura — para abrir a lista dela. Em modo admin aparece o botão **Fechar a rodada**, que abre o painel com todos os atletas e dois botões por linha:
 
