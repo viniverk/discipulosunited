@@ -155,7 +155,29 @@ O caminho natural, já que o projeto usa Firebase, seria uma **Cloud Function** 
 
 Enquanto isso, o fluxo *avisou → organizador confirma* resolve o essencial: você para de garimpar mensagem no grupo e passa a olhar só quem levantou a mão.
 
+## Modelo mensal (a partir de 08/09/2026)
+
+A pelada mudou de rateio por rodada para modelo mensal. A virada é uma data em **Caixa → Ajustes → Modelo mensal → Vale a partir de**. Rodadas anteriores a ela continuam no rateio antigo, com o histórico intacto — nada do que já aconteceu é recalculado.
+
+Depois da data:
+
+| item | valor | quando |
+|---|---|---|
+| Quadra | R$ 450 | por mês em que houve rodada |
+| Fixo | R$ 50 | por mês, cobrado na 2ª rodada do mês |
+| Convidado | R$ 10 | por rodada em que jogou |
+
+O fixo que pagou a mensalidade está coberto em todas as rodadas do mês — na lista ele aparece como **mensalista**, sem botão de pagamento por jogo.
+
+**Mensalidades** ficam num cartão próprio na aba Caixa, com todos os fixos e um selo de pago por pessoa. O cartão aparece assim que existe uma rodada de cobrança no mês, mesmo antes dela chegar; a dívida só passa a contar quando essa rodada é a próxima ou já passou.
+
+**Convidado** entra devendo os R$ 10 automaticamente. Para perdoar, abra *Fechar a rodada* e toque no selo dele: o ciclo é **a pagar → pago → isento → a pagar**. Isento sai da conta sem virar dívida nem entrada.
+
+Os quatro valores e a rodada de cobrança são configuráveis. Deixando a data da virada em branco, tudo volta ao rateio antigo.
+
 ## Como as contas funcionam
+
+Estas regras valem para as rodadas **anteriores** à data da virada:
 
 - **Rateio (padrão)**: o custo da quadra é dividido pelos confirmados daquela rodada. Vieram 12, a quadra custou 180 → R$ 15 cada. Vieram 8 → R$ 22,50 cada.
 - **Valor fixo**: preenchendo *Valor fixo por cabeça* no jogo, todo mundo paga aquele valor e o rateio é ignorado.
