@@ -570,11 +570,11 @@ function rodadaDeCobranca(m){
   return modeloNovo(alvo) ? alvo : null;
 }
 function mesesComCobranca(){
-  const prox = proximaRodada();
   const meses = [...new Set(estado.jogos.filter(modeloNovo).map(j => mesDe(j.data)))].sort();
+  // só conta a partir do dia da rodada de cobrança — antes disso ninguém deve
   return meses.filter(m => {
     const r = rodadaDeCobranca(m);
-    return r && (r.data <= hojeISO() || (prox && r.id === prox.id));
+    return r && r.data <= hojeISO();
   });
 }
 const mesEmFoco = () => {
@@ -633,7 +633,7 @@ function caixa(){
   mesesComCobranca().forEach(m => {
     const r = rodadaDeCobranca(m);
     const abertos = mensalistas().filter(a => !mensalidadePaga(m, a.id)).length * vm;
-    if (r.data <= hoje) atrasadoMensal += abertos; else pendenteMensal += abertos;
+    if (r.data < hoje) atrasadoMensal += abertos; else pendenteMensal += abertos;
   });
   const atrasado = atrasadoRodadas + atrasadoMensal;
   const pendente = pendenteRodadas + pendenteMensal;
@@ -663,7 +663,7 @@ function saldoAtleta(id){
     mesesComCobranca().forEach(m => {
       devido += v;
       if (mensalidadePaga(m, id)) { pago += v; return; }
-      if (rodadaDeCobranca(m).data <= hoje) atrasado += v; else pendente += v;
+      if (rodadaDeCobranca(m).data < hoje) atrasado += v; else pendente += v;
     });
   }
   return { devido, pago, atrasado, pendente, aberto: atrasado + pendente };
@@ -1030,7 +1030,7 @@ function telaCaixa(){
       return `<div class="cartao">
         <div class="titulo">Mensalidades · ${escapar(rotuloMes(m))}</div>
         <div class="aviso">${plural(pagos,"pagou","pagaram")} de ${gente.length} · ${dinheiro(pagos*v)} de ${dinheiro(gente.length*v)}
-          <div class="sub">Cobrada na rodada de ${dataCurta(r.data)}${r.data>hojeISO()?" (ainda vem)":""}.
+          <div class="sub">Cobrada na rodada de ${dataCurta(r.data)}${r.data>hojeISO()?" — ainda não entra como dívida":""}.
             ${estado.admin?"Toque no selo para marcar quem pagou.":""}</div></div>
         ${gente.map(a => {
           const ok = mensalidadePaga(m,a.id);
