@@ -61,8 +61,8 @@ Para uma pelada de amigos isso costuma bastar. Se um dia incomodar, o caminho é
 ## 4. Publicar no GitHub Pages
 
 1. Crie um repositório público, por exemplo `fut-dos-filhos`.
-2. Suba o `index.html` na raiz (dá para arrastar pelo próprio site do GitHub, em **Add file → Upload files**).
-   O escudo está embutido dentro do próprio HTML, então o site funciona só com esse arquivo. O `logo.png` é opcional: suba junto se quiser o ícone certo quando alguém adicionar o site à tela inicial do celular.
+2. Suba na raiz do repositório: `index.html`, `manifest.json`, `sw.js`, `icon-192.png` e `icon-512.png` (dá para arrastar tudo de uma vez em **Add file → Upload files**).
+   O escudo está embutido dentro do HTML — o site abre só com ele. Os outros quatro arquivos servem para o app poder ser instalado no celular; depois de subir uma vez, você não mexe mais neles.
 3. **Settings** → **Pages** → em *Source* escolha **Deploy from a branch** → branch `main`, pasta `/ (root)` → **Save**.
 4. Em um ou dois minutos o site fica em `https://SEU-USUARIO.github.io/fut-dos-filhos/`.
 
@@ -78,7 +78,17 @@ Cada `index.html` novo que você subir republica sozinho.
 
 Cada um escolhe o próprio nome no topo e toca em **Vou jogar**. Quem passar do número de vagas cai na lista de espera automaticamente.
 
-## 6. Times
+## 6. Instalar no celular
+
+O site é um app instalável. **Android/Chrome:** aparece um convite "Instalar no celular" no topo da lista; um toque e o ícone vai para a tela inicial. **iPhone/Safari:** o convite mostra o caminho manual — botão Compartilhar, depois *Adicionar à Tela de Início*.
+
+Instalado, abre em tela cheia, sem barra de navegador, com o escudo como ícone. O `sw.js` guarda uma cópia da última versão: se o celular estiver sem sinal, o app ainda abre (os dados aparecem quando a conexão voltar).
+
+A estratégia é **rede primeiro**: com internet, sempre carrega a versão mais nova que está no GitHub. Não fica preso numa versão velha.
+
+O nome que aparece embaixo do ícone vem do `manifest.json`, não do campo Nome do grupo. Se trocar o nome do grupo, edite também `"name"` e `"short_name"` nesse arquivo.
+
+## 7. Times
 
 A aba 🎡 sorteia **Time Vermelho** e **Time de Colete** entre quem está na lista da rodada (só os titulares, não a espera).
 
@@ -88,13 +98,13 @@ Quando o último jogador é sorteado, os times ficam salvos no Firestore: todo m
 
 A roleta usa a rodada aberta no momento — se você entrou por uma rodada antiga na Agenda, é ela que vai ao sorteio.
 
-## 7. Valores
+## 8. Valores
 
 A aba ✝️ traz visão, princípios e valores do grupo. A visão aparece em destaque num cartão escuro; princípios e valores viram lista numerada com o nome em maiúsculas e a descrição embaixo.
 
 Em modo admin há **Editar** e **Mandar no grupo** — o segundo monta o texto formatado para WhatsApp, com negrito de um asterisco só, do jeito que o app entende.
 
-## 8. Estatuto
+## 9. Estatuto
 
 A quinta aba guarda as regras da pelada. Em modo admin, **Editar estatuto** abre um editor simples:
 
@@ -106,7 +116,7 @@ O botão **Carregar modelo** traz um estatuto pronto com sete artigos (a pelada,
 
 O texto fica no Firestore, não no código — atualiza para todo mundo na hora e aparece a data da última alteração no rodapé.
 
-## 9. Fechar a rodada depois que o jogo acontece
+## 10. Fechar a rodada depois que o jogo acontece
 
 Na **Agenda**, toque em qualquer rodada — passada ou futura — para abrir a lista dela. Em modo admin aparece o botão **Fechar a rodada**, que abre o painel com todos os atletas e dois botões por linha:
 
