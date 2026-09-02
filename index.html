@@ -716,9 +716,16 @@ function textoDaLista(j){
   const titulares = dentro.slice(0, vagas), espera = dentro.slice(vagas);
   const v = valorPorJogador(j);
   const livres = Math.max(0, vagas - titulares.length);
-  const marca = id => j.presencas[id].isento ? "➖"
-    : j.presencas[id].pago ? "✅"
-    : valorNaRodada(j,id) === 0 ? "🎫" : "⏳";
+  const mesJ = mesDe(j.data);
+  const temMensal = modeloNovo(j) && !!rodadaDeCobranca(mesJ);
+  const marca = id => {
+    const p = j.presencas[id];
+    if (p.isento) return "➖";
+    if (valorNaRodada(j, id) > 0) return p.pago ? "✅" : "⏳";      // convidado, ou rodada no rateio antigo
+    // fixo no modelo mensal: mantém o selo de mensalista junto do status da mensalidade
+    if (temMensal && ehFixo(id)) return mensalidadePaga(mesJ, id) ? "🎫✅" : "🎫⏳";
+    return "🎫";
+  };
 
   const L = [];
   L.push(`*⚽ ${nomeGrupo()}*`);
@@ -750,12 +757,20 @@ function textoDaLista(j){
   L.push(gols ? `🧤 ${plural(gols,"goleiro","goleiros")} na lista`
               : "🧤 *Nenhum goleiro confirmado ainda*");
 
-  const faltam = dentro.filter(id => !j.presencas[id].pago && !j.presencas[id].isento && valorNaRodada(j,id) > 0).length;
   L.push("");
-  L.push(modeloNovo(j) ? "🎫 mensalista  ✅ pago  ⏳ falta o Pix  ➖ isento" : "✅ pago  ⏳ falta o Pix");
-  if (faltam) L.push(modeloNovo(j)
-    ? `${faltam===1?"Falta":"Faltam"} *${plural(faltam,"convidado","convidados")}* acertar os ${dinheiro(cfgN("valorConvidado",10))}.`
-    : `${faltam===1?"Falta":"Faltam"} *${plural(faltam,"pessoa","pessoas")}* acertar.`);
+  L.push(temMensal ? "🎫 mensalista  ✅ pago  ⏳ falta o Pix  ➖ isento" : "✅ pago  ⏳ falta o Pix");
+
+  if (temMensal) {
+    const fixosNaLista = dentro.filter(ehFixo);
+    const devendoMensal = fixosNaLista.filter(id => !mensalidadePaga(mesJ, id)).length;
+    const conv = dentro.filter(id => !ehFixo(id) && !j.presencas[id].isento && !j.presencas[id].pago).length;
+    if (fixosNaLista.length)
+      L.push(`*Mensalidade de ${rotuloMes(mesJ)}:* ${fixosNaLista.length - devendoMensal} de ${fixosNaLista.length} da lista já pagaram${devendoMensal?` — faltam *${devendoMensal}*`:""}`);
+    if (conv) L.push(`*Convidados:* ${plural(conv,"falta","faltam")} acertar ${dinheiro(cfgN("valorConvidado",10))}.`);
+  } else {
+    const faltam = dentro.filter(id => !j.presencas[id].pago && !j.presencas[id].isento && valorNaRodada(j,id) > 0).length;
+    if (faltam) L.push(`${faltam===1?"Falta":"Faltam"} *${plural(faltam,"pessoa","pessoas")}* acertar.`);
+  }
   if (estado.config.pixChave) L.push(`*Pix:* ${estado.config.pixChave}${estado.config.pixNome?" ("+estado.config.pixNome+")":""}`);
 
   const url = location.href.split("#")[0];
