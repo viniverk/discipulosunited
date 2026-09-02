@@ -169,7 +169,12 @@ Depois da data:
 
 O fixo que pagou a mensalidade está coberto em todas as rodadas do mês — na lista ele aparece como **mensalista**, sem botão de pagamento por jogo.
 
-**Mensalidades** ficam num cartão próprio na aba Caixa, com todos os fixos e um selo de pago por pessoa. O cartão aparece assim que existe uma rodada de cobrança no mês, para você já ir marcando quem adiantou — mas **a dívida só nasce no dia da rodada de cobrança**. Na 1ª rodada do mês ninguém aparece devendo mensalidade; a partir da 2ª, sim.
+**Mensalidades** ficam num cartão próprio na aba Caixa, com todos os fixos e um selo de pago por pessoa. O cartão aparece o mês inteiro, para você já ir marcando quem adiantou. A dívida segue dois marcos:
+
+- **depois do 1º jogo do mês** → a mensalidade entra como *a vencer*, e todo fixo em aberto aparece em Quem está devendo
+- **depois da rodada de cobrança** (a 2ª do mês) → passa para *em atraso*
+
+No dia do 1º jogo, antes de ele acontecer, ninguém aparece devendo mensalidade.
 
 **Convidado** entra devendo os R$ 10 automaticamente. Para perdoar, abra *Fechar a rodada* e toque no selo dele: o ciclo é **a pagar → pago → isento → a pagar**. Isento sai da conta sem virar dívida nem entrada.
 
