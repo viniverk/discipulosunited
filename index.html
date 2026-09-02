@@ -569,12 +569,14 @@ function rodadaDeCobranca(m){
   // no mês da virada, só vale se essa rodada já estiver no modelo novo
   return modeloNovo(alvo) ? alvo : null;
 }
+const primeiraRodadaDoMes = m => rodadasDoMes(m)[0] || null;
+// a mensalidade entra em cena depois que o 1º jogo do mês acontece
+// e vira atraso depois que a rodada de cobrança passa
 function mesesComCobranca(){
   const meses = [...new Set(estado.jogos.filter(modeloNovo).map(j => mesDe(j.data)))].sort();
-  // só conta a partir do dia da rodada de cobrança — antes disso ninguém deve
   return meses.filter(m => {
-    const r = rodadaDeCobranca(m);
-    return r && r.data <= hojeISO();
+    const r = rodadaDeCobranca(m), p = primeiraRodadaDoMes(m);
+    return r && p && p.data < hojeISO();
   });
 }
 const mesEmFoco = () => {
@@ -1030,7 +1032,7 @@ function telaCaixa(){
       return `<div class="cartao">
         <div class="titulo">Mensalidades · ${escapar(rotuloMes(m))}</div>
         <div class="aviso">${plural(pagos,"pagou","pagaram")} de ${gente.length} · ${dinheiro(pagos*v)} de ${dinheiro(gente.length*v)}
-          <div class="sub">Cobrada na rodada de ${dataCurta(r.data)}${r.data>hojeISO()?" — ainda não entra como dívida":""}.
+          <div class="sub">Cobrada na rodada de ${dataCurta(r.data)}${meses.includes(m)?"":" — entra como pendência depois do 1º jogo do mês"}.
             ${estado.admin?"Toque no selo para marcar quem pagou.":""}</div></div>
         ${gente.map(a => {
           const ok = mensalidadePaga(m,a.id);
