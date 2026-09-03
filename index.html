@@ -176,6 +176,15 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .check b{font-weight:600}
 .check .sub{margin-top:2px}
 .check:has(input:checked){border-color:var(--quadra);background:#F3F7FC}
+.mes-nav{display:flex;align-items:center;gap:10px;background:var(--linha);border-radius:10px;padding:8px 6px}
+.mes-nav > div{flex:1;text-align:center;min-width:0}
+.mes-nav b{display:block;font-family:var(--display);font-size:17px;font-weight:400;letter-spacing:.4px;
+  text-transform:uppercase;color:var(--quadra)}
+.mes-nav .sub{display:block;font-size:11.5px}
+.mes-nav button{width:38px;height:38px;flex:none;border-radius:9px;background:var(--cal);
+  border:1px solid var(--borda);font-size:19px;line-height:1;color:var(--quadra)}
+.mes-nav button:active{background:var(--linha)}
+
 .grupo-rot{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--cinza);
   margin:14px 0 2px;padding:5px 9px;background:var(--linha);border-radius:6px}
 .grupo-rot:first-child{margin-top:4px}
@@ -396,7 +405,7 @@ const estado = {
   config: { pixChave:"", pixTipo:"Celular", pixNome:"", custoPadrao:0, valorFixo:0, vagas:14, pin:"1234", diaSemana:2, hora:"20:00", linkGrupo:"", nomeGrupo:"Discípulos United", lema:"",
     modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2 },
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
-  instalar: null, semConvite: false
+  instalar: null, semConvite: false, mesMensal: null
 };
 
 /* ---------- camada de dados ---------- */
@@ -587,6 +596,13 @@ const mesEmFoco = () => {
   return cand && rodadaDeCobranca(cand) ? cand : null;
 };
 
+const mesAtual = () => hojeISO().slice(0,7);
+const mesMais = (m, n) => {
+  const [a,b] = m.split("-").map(Number);
+  const d = new Date(a, b - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+};
+const mesesPagosDe = id => estado.mensalidades.filter(x => (x.pagos||{})[id]).map(x => x.id).sort();
 const mensalidadeDoMes = m => estado.mensalidades.find(x => x.id === m);
 const mensalidadePaga = (m,id) => !!(mensalidadeDoMes(m)?.pagos || {})[id];
 const ehFixo = id => situacaoDe(atletaDe(id)) === "fixo";
@@ -615,8 +631,12 @@ function caixa(){
   // entradas: o que já pingou de rodada e de mensalidade
   const deRodadas = estado.jogos.reduce((s,j) => s + recebidoNoJogo(j), 0);
   const vm = cfgN("valorMensalista",50);
-  const deMensalidades = mesesComCobranca().reduce((s,m) =>
-    s + mensalistas().filter(a => mensalidadePaga(m, a.id)).length * vm, 0);
+  // dinheiro de mensalidade que já entrou, inclusive de meses adiantados
+  const deMensalidades = estado.mensalidades.reduce((s,x) =>
+    s + Object.keys(x.pagos || {}).length * vm, 0);
+  const cobraveis = mesesComCobranca();
+  const mensalAdiantado = estado.mensalidades.reduce((s,x) =>
+    s + (cobraveis.includes(x.id) ? 0 : Object.keys(x.pagos || {}).length * vm), 0);
   const entrou = deRodadas + deMensalidades;
   const adiantado = estado.jogos.filter(j => j.data > hoje).reduce((s,j) => s + recebidoNoJogo(j), 0);
 
@@ -640,7 +660,7 @@ function caixa(){
   const atrasado = atrasadoRodadas + atrasadoMensal;
   const pendente = pendenteRodadas + pendenteMensal;
 
-  return { entrou, deRodadas, deMensalidades, adiantado, saiu: quadra+extras,
+  return { entrou, deRodadas, deMensalidades, mensalAdiantado, adiantado, saiu: quadra+extras,
            quadra, quadraAntiga, quadraMensal, mesesQuadra: mesesPagos.length, extras,
            saldo: entrou-quadra-extras, aReceber: atrasado+pendente, atrasado, pendente };
 }
@@ -660,15 +680,18 @@ function saldoAtleta(id){
     if (j.data <= hoje) atrasado += v; else pendente += v;
   });
 
+  let mesesAdiantados = 0;
   if (ehFixo(id)) {
     const v = cfgN("valorMensalista",50);
-    mesesComCobranca().forEach(m => {
+    const cobraveis = mesesComCobranca();
+    mesesAdiantados = mesesPagosDe(id).filter(m => !cobraveis.includes(m)).length;
+    cobraveis.forEach(m => {
       devido += v;
       if (mensalidadePaga(m, id)) { pago += v; return; }
       if (rodadaDeCobranca(m).data < hoje) atrasado += v; else pendente += v;
     });
   }
-  return { devido, pago, atrasado, pendente, aberto: atrasado + pendente };
+  return { devido, pago, atrasado, pendente, mesesAdiantados, aberto: atrasado + pendente };
 }
 const presencasDoAtleta = id => estado.jogos.filter(j => (j.presencas||{})[id]?.status === "in").length;
 const presencasJogadas = id => jogosPassados().filter(j => (j.presencas||{})[id]?.status === "in").length;
@@ -1038,27 +1061,45 @@ function telaCaixa(){
       Convidado paga ${dinheiro(cfgN("valorConvidado",10))} por rodada em que joga. A quadra sai ${dinheiro(cfgN("custoMensal",450))} por mês.</div>
 
     ${(()=>{
-      const m = mesEmFoco();
-      if (!m) return "";
+      const m = estado.mesMensal || mesEmFoco() || mesAtual();
       const meses = mesesComCobranca();
       const r = rodadaDeCobranca(m), v = cfgN("valorMensalista",50);
       const gente = mensalistas().sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
       const pagos = gente.filter(a => mensalidadePaga(m,a.id)).length;
+      const situacao = r ? (meses.includes(m)
+            ? `cobrada na rodada de ${dataCurta(r.data)}`
+            : `cobrança na rodada de ${dataCurta(r.data)} — ainda não é dívida`)
+        : rodadasDoMes(m).length ? "mês no rateio antigo — sem mensalidade"
+        : "sem rodada na agenda — dá para adiantar mesmo assim";
       return `<div class="cartao">
-        <div class="titulo">Mensalidades · ${escapar(rotuloMes(m))}</div>
-        <div class="aviso">${plural(pagos,"pagou","pagaram")} de ${gente.length} · ${dinheiro(pagos*v)} de ${dinheiro(gente.length*v)}
-          <div class="sub">Cobrada na rodada de ${dataCurta(r.data)}${meses.includes(m)?"":" — entra como pendência depois do 1º jogo do mês"}.
-            ${estado.admin?"Toque no selo para marcar quem pagou.":""}</div></div>
+        <div class="titulo">Mensalidades</div>
+        <div class="mes-nav">
+          <button data-mes-passo="-1" aria-label="Mês anterior">‹</button>
+          <div><b>${escapar(rotuloMes(m))}</b><span class="sub">${escapar(situacao)}</span></div>
+          <button data-mes-passo="1" aria-label="Próximo mês">›</button>
+        </div>
+        <div class="aviso" style="margin-top:12px">${plural(pagos,"pagou","pagaram")} de ${gente.length} ·
+          <b>${dinheiro(pagos*v)}</b> de ${dinheiro(gente.length*v)}
+          ${estado.admin?`<div class="sub">Toque no selo para marcar o mês. Toque no nome para acertar vários meses de uma vez.</div>`:""}</div>
         ${gente.map(a => {
           const ok = mensalidadePaga(m,a.id);
+          const frente = mesesPagosDe(a.id).filter(x => x > m);
           return `<div class="item">
-            <div class="item-corpo"><div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}</div></div>
+            <div class="item-corpo" ${estado.admin?`data-mensal-atleta="${a.id}" style="cursor:pointer"`:""}>
+              <div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}</div>
+              ${frente.length?`<div class="sub">adiantado até ${escapar(rotuloMes(frente[frente.length-1]))}</div>`:""}
+            </div>
             ${estado.admin
               ? `<button class="selo ${ok?"pago":"deve"}" data-mensal="${a.id}" data-mes="${m}">${ok?"pago":"marcar pago"}</button>`
               : `<span class="selo ${ok?"pago":"deve"}">${ok?"pago":dinheiro(v)}</span>`}
           </div>`;
         }).join("")}
-        ${meses.length>1?`<div class="sub" style="margin-top:10px">Meses anteriores: ${meses.slice(0,-1).map(x=>`${escapar(rotuloMes(x))} — ${mensalistas().filter(a=>!mensalidadePaga(x,a.id)).length} em aberto`).join(" · ")}</div>`:""}
+        ${(()=>{
+          const abertos = meses.filter(x => x !== m && mensalistas().some(a => !mensalidadePaga(x,a.id)));
+          return abertos.length ? `<div class="sub" style="margin-top:10px">Também em aberto: ${abertos.map(x =>
+            `${escapar(rotuloMes(x))} (${mensalistas().filter(a=>!mensalidadePaga(x,a.id)).length})`).join(" · ")}</div>` : "";
+        })()}
+        ${c.mensalAdiantado>0.005?`<div class="sub" style="margin-top:6px">${dinheiro(c.mensalAdiantado)} já no caixa de meses que ainda não venceram.</div>`:""}
       </div>`;
     })()}
 
@@ -1733,6 +1774,48 @@ function formDocumento(campo, titulo, modelo){
   };
 }
 
+function formMensalidadesAtleta(id){
+  const v = cfgN("valorMensalista",50);
+  const base = estado.mesMensal || mesEmFoco() || mesAtual();
+  const meses = [];
+  for (let k = -4; k <= 7; k++) meses.push(mesMais(base, k));
+  const cobraveis = mesesComCobranca();
+
+  abrirModal(nomeDe(id), `
+    <div class="aviso" id="mens_resumo"></div>
+    <div id="mens_lista"></div>
+    <div class="btn-linha" style="position:sticky;bottom:0;background:var(--cal);padding:12px 0 0">
+      <button class="btn-main" style="flex:1" id="mens_fechar">Pronto</button>
+    </div>`);
+
+  function pintar(){
+    const pagos = meses.filter(m => mensalidadePaga(m,id));
+    const abertos = meses.filter(m => cobraveis.includes(m) && !mensalidadePaga(m,id));
+    document.getElementById("mens_resumo").innerHTML =
+      `<b>${plural(pagos.length,"mês pago","meses pagos")}</b> na tela · ${dinheiro(pagos.length*v)}` +
+      (abertos.length ? `<div class="sub">${plural(abertos.length,"mês","meses")} em aberto: ${abertos.map(rotuloMes).join(", ")}</div>`
+                      : `<div class="sub">Nada em aberto nesta faixa.</div>`);
+    document.getElementById("mens_lista").innerHTML = meses.map(m => {
+      const ok = mensalidadePaga(m,id);
+      const devido = cobraveis.includes(m);
+      return `<div class="item">
+        <div class="item-corpo"><div class="nome">${escapar(rotuloMes(m))}</div>
+          <div class="sub">${devido ? "já é devido" : "ainda não venceu"}${m===mesAtual()?" · mês atual":""}</div></div>
+        <button class="selo ${ok?"pago":devido?"deve":"neutro"}" data-mens-mes="${m}">${ok?"pago":"marcar"}</button>
+      </div>`;
+    }).join("");
+  }
+
+  document.getElementById("mens_lista").addEventListener("click", async e => {
+    const b = e.target.closest("[data-mens-mes]"); if (!b) return;
+    const m = b.dataset.mensMes;
+    await marcarMensalidade(m, id, !mensalidadePaga(m,id));
+    pintar(); desenhar();
+  });
+  document.getElementById("mens_fechar").onclick = () => { fecharModal(); desenhar(); };
+  pintar();
+}
+
 function formDespesa(){
   abrirModal("Lançar despesa", `
     <div class="campo"><label>Data</label><input type="date" id="f_data" value="${hojeISO()}"></div>
@@ -1834,7 +1917,7 @@ document.getElementById("btnAdmin").onclick = () => {
 };
 
 document.body.addEventListener("click", async e => {
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -1880,6 +1963,12 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "sortear-resto")    await sortearResto();
   else if (d.acao === "refazer-sorteio")  await refazerSorteio();
   else if (d.acao === "ver-proxima") { estado.jogoAberto = null; desenhar(); }
+  else if (d.mesPasso) {
+    const base = estado.mesMensal || mesEmFoco() || mesAtual();
+    estado.mesMensal = mesMais(base, Number(d.mesPasso));
+    desenhar();
+  }
+  else if (d.mensalAtleta) formMensalidadesAtleta(d.mensalAtleta);
   else if (d.mensal) {
     await marcarMensalidade(d.mes, d.mensal, !mensalidadePaga(d.mes, d.mensal));
     desenhar();
