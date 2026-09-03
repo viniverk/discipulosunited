@@ -755,7 +755,7 @@ function textoDaLista(j){
   L.push(`${diaSem.charAt(0).toUpperCase()+diaSem.slice(1)}, ${dataCurta(j.data)} · ${j.hora||""}`);
   if (j.local) L.push(j.local);
   L.push(modeloNovo(j)
-    ? `*Fixo:* mensalidade · *Convidado:* ${dinheiro(cfgN("valorConvidado",10))} · ${titulares.length}/${vagas} confirmados`
+    ? `*Fixo:* ${dinheiro(cfgN("valorMensalista",50))}/mês · *Convidado:* ${dinheiro(cfgN("valorConvidado",10))} · ${titulares.length}/${vagas} confirmados`
     : `*${dinheiro(v)} por cabeça* · ${titulares.length}/${vagas} confirmados`);
 
   L.push("");
@@ -788,7 +788,7 @@ function textoDaLista(j){
     const devendoMensal = fixosNaLista.filter(id => !mensalidadePaga(mesJ, id)).length;
     const conv = dentro.filter(id => !ehFixo(id) && !j.presencas[id].isento && !j.presencas[id].pago).length;
     if (fixosNaLista.length)
-      L.push(`*Mensalidade de ${rotuloMes(mesJ)}:* ${fixosNaLista.length - devendoMensal} de ${fixosNaLista.length} da lista já pagaram${devendoMensal?` — faltam *${devendoMensal}*`:""}`);
+      L.push(`*Mensalidade de ${rotuloMes(mesJ)}* (${dinheiro(cfgN("valorMensalista",50))}): ${fixosNaLista.length - devendoMensal} de ${fixosNaLista.length} da lista já pagaram${devendoMensal?` — faltam *${devendoMensal}*, total *${dinheiro(devendoMensal*cfgN("valorMensalista",50))}*`:""}`);
     if (conv) L.push(`*Convidados:* ${plural(conv,"falta","faltam")} acertar ${dinheiro(cfgN("valorConvidado",10))}.`);
   } else {
     const faltam = dentro.filter(id => !j.presencas[id].pago && !j.presencas[id].isento && valorNaRodada(j,id) > 0).length;
