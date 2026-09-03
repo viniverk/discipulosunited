@@ -169,7 +169,11 @@ Depois da data:
 
 O fixo que pagou a mensalidade está coberto em todas as rodadas do mês — na lista ele aparece como **mensalista**, sem botão de pagamento por jogo.
 
-**Mensalidades** ficam num cartão próprio na aba Caixa, com todos os fixos e um selo de pago por pessoa. O cartão aparece o mês inteiro, para você já ir marcando quem adiantou. A dívida segue dois marcos:
+**Mensalidades** ficam num cartão próprio na aba Caixa. As setas ‹ › no topo navegam por qualquer mês, inclusive meses sem rodada na agenda — dá para receber adiantado sem ter marcado os jogos ainda. Tocar no **nome** de um jogador abre a ficha dele com doze meses (quatro para trás, sete para frente), para quitar vários de uma vez; quem tem meses pagos à frente mostra *adiantado até dezembro de 2026* na lista.
+
+Mensalidade adiantada entra no caixa na hora, porque o dinheiro está na mão, mas **não abate dívida de mês que ainda não venceu**. O cartão separa quanto do recebido veio de meses futuros.
+
+A dívida segue dois marcos:
 
 - **depois do 1º jogo do mês** → a mensalidade entra como *a vencer*, e todo fixo em aberto aparece em Quem está devendo
 - **depois da rodada de cobrança** (a 2ª do mês) → passa para *em atraso*
