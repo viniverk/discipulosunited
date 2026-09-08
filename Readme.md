@@ -173,6 +173,8 @@ O fixo que pagou a mensalidade está coberto em todas as rodadas do mês — na 
 
 Mensalidade adiantada entra no caixa na hora, porque o dinheiro está na mão, mas **não abate dívida de mês que ainda não venceu**. O cartão separa quanto do recebido veio de meses futuros.
 
+O botão **Mandar a mensalidade no grupo** monta o texto do mês que estiver na tela: valor, quem já pagou, quem está em aberto com o total, quem está adiantado e a chave Pix.
+
 A dívida segue dois marcos:
 
 - **depois do 1º jogo do mês** → a mensalidade entra como *a vencer*, e todo fixo em aberto aparece em Quem está devendo
