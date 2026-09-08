@@ -813,6 +813,43 @@ async function compartilharTexto(texto){
   }
 }
 
+function textoMensalidades(m){
+  const v = cfgN("valorMensalista",50);
+  const r = rodadaDeCobranca(m);
+  const gente = mensalistas().sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
+  const pagos = gente.filter(a => mensalidadePaga(m, a.id));
+  const abertos = gente.filter(a => !mensalidadePaga(m, a.id));
+
+  const L = [`*⚽ ${nomeGrupo()}*`, `*MENSALIDADE — ${rotuloMes(m).toUpperCase()}*`, `Valor: *${dinheiro(v)}* por fixo`];
+  if (r) L.push(`Cobrada na rodada de ${dataCurta(r.data)}`);
+  L.push("");
+
+  L.push(`*JÁ PAGARAM (${pagos.length})*`);
+  if (pagos.length) pagos.forEach((a,i) => L.push(`${i+1}. ${a.nome} ✅`));
+  else L.push("_ninguém ainda_");
+
+  L.push("");
+  L.push(`*EM ABERTO (${abertos.length})* — total *${dinheiro(abertos.length*v)}*`);
+  if (abertos.length) abertos.forEach((a,i) => L.push(`${i+1}. ${a.nome} ⏳`));
+  else L.push("_todo mundo em dia, valeu!_ 🙌");
+
+  const adiantados = gente.map(a => ({ a, frente: mesesPagosDe(a.id).filter(x => x > m) }))
+                          .filter(x => x.frente.length);
+  if (adiantados.length) {
+    L.push("");
+    L.push("*ADIANTADOS*");
+    adiantados.forEach(x => L.push(`• ${x.a.nome} até ${rotuloMes(x.frente[x.frente.length-1])}`));
+  }
+
+  if (estado.config.pixChave) {
+    L.push("");
+    L.push(`*Pix:* ${estado.config.pixChave}${estado.config.pixNome?" ("+estado.config.pixNome+")":""}`);
+  }
+  const url = location.href.split("#")[0];
+  if (/^https?:/.test(url)) { L.push(""); L.push(url); }
+  return L.join("\n");
+}
+
 function textoIdentidade(){
   const bruto = estado.config.identidade || IDENTIDADE_MODELO;
   const L = [`*⚽ ${nomeGrupo()}*`, ""];
@@ -1100,6 +1137,7 @@ function telaCaixa(){
             `${escapar(rotuloMes(x))} (${mensalistas().filter(a=>!mensalidadePaga(x,a.id)).length})`).join(" · ")}</div>` : "";
         })()}
         ${c.mensalAdiantado>0.005?`<div class="sub" style="margin-top:6px">${dinheiro(c.mensalAdiantado)} já no caixa de meses que ainda não venceram.</div>`:""}
+        <button class="btn-zap" style="width:100%;margin-top:12px" data-compartilhar-texto="mensal" data-mes="${m}">📤 Mandar a mensalidade no grupo</button>
       </div>`;
     })()}
 
@@ -1959,6 +1997,7 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "editar-identidade") formDocumento("identidade","Visão, princípios e valores",IDENTIDADE_MODELO);
   else if (d.compartilharTexto === "identidade") await compartilharTexto(textoIdentidade());
   else if (d.compartilharTexto === "times")      await compartilharTexto(textoTimes());
+  else if (d.compartilharTexto === "mensal")     await compartilharTexto(textoMensalidades(d.mes));
   else if (d.acao === "girar")            girarRoleta();
   else if (d.acao === "sortear-resto")    await sortearResto();
   else if (d.acao === "refazer-sorteio")  await refazerSorteio();
