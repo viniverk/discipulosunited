@@ -280,6 +280,8 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   border-top:4px solid var(--quadra);cursor:grab}
 .ficha.vermelho{border-top-color:#C0392B}
 .ficha.colete{border-top-color:#5A554B}
+.ficha.livre{border-top-color:var(--borda)}
+.banco.livre{border-left:3px solid var(--cinza)}
 .vaga-pos.vermelho{border-color:rgba(255,160,150,.75);color:rgba(255,220,215,.9)}
 .vaga-pos.colete{border-color:rgba(255,255,255,.55)}
 .etiqueta-time{position:absolute;left:50%;transform:translateX(-50%);font-family:var(--display);
@@ -1317,6 +1319,136 @@ function cartaoTime(classe, rotulo, ids, destaque){
 }
 
 
+
+/* ---------- escalação como imagem para mandar no grupo ---------- */
+function arred(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.quadraticCurveTo(x+w,y,x+w,y+r);
+  c.lineTo(x+w,y+h-r); c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  c.lineTo(x+r,y+h); c.quadraticCurveTo(x,y+h,x,y+h-r);
+  c.lineTo(x,y+r); c.quadraticCurveTo(x,y,x+r,y); c.closePath();
+}
+
+function desenhaEscalacao(jogo){
+  const L = 900, A = 1380;
+  const cv = document.createElement("canvas");
+  cv.width = L; cv.height = A;
+  const c = cv.getContext("2d");
+  const form = FORMACOES[formacaoDe(jogo)];
+  const corpo = "'Barlow', system-ui, sans-serif";
+  const titulo = "'Anton', 'Arial Narrow', sans-serif";
+
+  c.fillStyle = "#F1EFEA"; c.fillRect(0,0,L,A);
+
+  // cabeçalho
+  c.fillStyle = "#23211C"; c.fillRect(0,0,L,148);
+  c.fillStyle = "#C9A227"; c.fillRect(0,144,L,4);
+  c.textAlign = "center";
+  c.fillStyle = "#fff"; c.font = `44px ${titulo}`;
+  c.fillText(nomeGrupo(), L/2, 62);
+  const { num, mes } = dataLonga(jogo.data);
+  c.fillStyle = "#C9A227"; c.font = `24px ${corpo}`;
+  c.fillText(`${num} ${mes}${jogo.hora?" · "+jogo.hora:""}${jogo.local?" · "+jogo.local:""}`, L/2, 100);
+  c.fillStyle = "rgba(255,255,255,.65)"; c.font = `20px ${corpo}`;
+  c.fillText(`formação ${formacaoDe(jogo)}`, L/2, 130);
+
+  // campo
+  const px = 24, py = 172, pw = L - 48, ph = 940;
+  for (let i = 0; i < 10; i++) {
+    c.fillStyle = i % 2 ? "#2A6F35" : "#2F7A3B";
+    c.fillRect(px, py + i*ph/10, pw, ph/10);
+  }
+  c.strokeStyle = "rgba(255,255,255,.5)"; c.lineWidth = 3;
+  c.strokeRect(px+14, py+14, pw-28, ph-28);
+  c.beginPath(); c.moveTo(px+14, py+ph/2); c.lineTo(px+pw-14, py+ph/2); c.stroke();
+  c.beginPath(); c.arc(px+pw/2, py+ph/2, pw*0.14, 0, Math.PI*2); c.stroke();
+  c.strokeRect(px+pw*0.26, py+14, pw*0.48, ph*0.12);
+  c.strokeRect(px+pw*0.26, py+ph-14-ph*0.12, pw*0.48, ph*0.12);
+
+  c.font = `20px ${titulo}`; c.fillStyle = "rgba(255,255,255,.65)";
+  c.textAlign = "left";
+  c.fillText("COLETE ▲", px+30, py+44);
+  c.fillText("VERMELHO ▼", px+30, py+ph-24);
+  c.textAlign = "center";
+
+  // fichas
+  const fw = 168, fh = 62;
+  const poe = (time, espelho) => form.forEach(p => {
+    const id = escalacaoDe(jogo, time)[p.k];
+    const x = px + (espelho ? 100-p.x : p.x)/100 * pw;
+    const y = py + (espelho ? 100-p.y : p.y)/100 * ph;
+    const cx = Math.max(px+8, Math.min(x - fw/2, px+pw-fw-8));
+    const cy = y - fh/2;
+    if (!id) {
+      c.setLineDash([7,6]); c.strokeStyle = "rgba(255,255,255,.65)"; c.lineWidth = 2;
+      arred(c, cx, cy, fw, fh, 10); c.stroke(); c.setLineDash([]);
+      c.fillStyle = "rgba(255,255,255,.85)"; c.font = `17px ${corpo}`;
+      c.fillText(p.r.toUpperCase(), cx+fw/2, cy+fh/2+6);
+      return;
+    }
+    c.fillStyle = "rgba(0,0,0,.28)"; arred(c, cx+2, cy+4, fw, fh, 10); c.fill();
+    c.fillStyle = "#fff"; arred(c, cx, cy, fw, fh, 10); c.fill();
+    c.fillStyle = time === "vermelho" ? "#C0392B" : "#5A554B";
+    c.save(); arred(c, cx, cy, fw, fh, 10); c.clip(); c.fillRect(cx, cy, fw, 7); c.restore();
+    c.fillStyle = "#0B0B0A"; c.font = `bold 22px ${corpo}`;
+    const nome = (ehGoleiro(id) ? "🧤 " : "") + primeiroNome(id);
+    c.fillText(nome, cx+fw/2, cy+34);
+    c.fillStyle = "#77726A"; c.font = `15px ${corpo}`;
+    c.fillText(p.r, cx+fw/2, cy+52);
+  });
+  poe("colete", true);
+  poe("vermelho", false);
+
+  // reservas
+  const ry = py + ph + 28;
+  c.textAlign = "left";
+  c.fillStyle = "#0B0B0A"; c.font = `26px ${titulo}`;
+  c.fillText("RESERVAS", px, ry + 8);
+  const reservasDe = t => (jogo.times[t]||[]).filter(id => !Object.values(escalacaoDe(jogo,t)).includes(id));
+  const maior = Math.max(reservasDe("vermelho").length, reservasDe("colete").length, 1);
+  const bh = Math.min(74 + maior*28, 230);
+  [["vermelho","#C0392B",px],["colete","#5A554B",px+pw/2+10]].forEach(([t,cor,bx]) => {
+    const bw = pw/2 - 10;
+    c.fillStyle = "#fff"; arred(c, bx, ry+26, bw, bh, 12); c.fill();
+    c.fillStyle = cor; c.save(); arred(c, bx, ry+26, bw, bh, 12); c.clip(); c.fillRect(bx,ry+26,6,bh); c.restore();
+    c.fillStyle = cor; c.font = `bold 18px ${corpo}`;
+    c.fillText(t === "vermelho" ? "TIME VERMELHO" : "TIME DE COLETE", bx+20, ry+56);
+    const fora = reservasDe(t);
+    c.fillStyle = "#0B0B0A"; c.font = `20px ${corpo}`;
+    if (!fora.length) { c.fillStyle = "#77726A"; c.fillText("time completo", bx+20, ry+90); }
+    else fora.slice(0,6).forEach((id,i) =>
+      c.fillText(`• ${(ehGoleiro(id)?"🧤 ":"")+nomeDe(id)}`, bx+20, ry+90+i*28));
+  });
+
+  c.textAlign = "center"; c.fillStyle = "#77726A"; c.font = `18px ${corpo}`;
+  const url = location.href.split("#")[0];
+  if (/^https?:/.test(url)) c.fillText(url, L/2, A-24);
+  return cv;
+}
+
+async function compartilharEscalacaoImagem(){
+  const jogo = jogoDoSorteio(); if (!jogo) return;
+  avisar("Montando a imagem…");
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch(_) {}
+  let blob;
+  try {
+    const cv = desenhaEscalacao(jogo);
+    blob = await new Promise(r => cv.toBlob(r, "image/png"));
+  } catch (e) { console.error(e); avisar("Não consegui gerar a imagem."); return; }
+  if (!blob) { avisar("Não consegui gerar a imagem."); return; }
+
+  const arquivo = new File([blob], "escalacao.png", { type: "image/png" });
+  if (navigator.canShare && navigator.canShare({ files:[arquivo] })) {
+    try { await navigator.share({ files:[arquivo] }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "escalacao.png"; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  avisar("Imagem baixada — agora é só mandar no grupo.");
+}
+
 /* ---------- escalação no campo de society (5 na linha + 1 no gol) ---------- */
 // coordenadas do time de baixo; o de cima é o espelho (100-x, 100-y)
 const FORMACOES = {
@@ -1328,7 +1460,11 @@ const FORMACOES = {
   "2-1-2": [ {k:"GOL",r:"Goleiro",x:50,y:95}, {k:"D1",r:"Zaga",x:26,y:84}, {k:"D2",r:"Zaga",x:74,y:84},
              {k:"M1",r:"Meio",x:50,y:72}, {k:"A1",r:"Frente",x:30,y:60}, {k:"A2",r:"Frente",x:70,y:60} ]
 };
-const timeDoAtleta = (jogo, id) => (jogo.times?.colete || []).includes(id) ? "colete" : "vermelho";
+const timeDoAtleta = (jogo, id) =>
+  (jogo.times?.vermelho || []).includes(id) ? "vermelho"
+  : (jogo.times?.colete || []).includes(id) ? "colete" : null;
+const semTime = jogo => confirmados(jogo).slice(0, Number(jogo.vagas)||14)
+  .filter(id => !timeDoAtleta(jogo, id));
 
 const escalacaoDe = (jogo, time) => ((jogo.escalacao || {})[time] || {});
 const formacaoDe  = jogo => FORMACOES[(jogo.escalacao || {}).formacao] ? (jogo.escalacao).formacao : "2-2-1";
@@ -1382,15 +1518,13 @@ function svgCampo(jogo){
 }
 
 function blocoEscalacao(jogo){
-  if (!(jogo.times && jogo.times.vermelho)) return "";
-  const banco = time => (jogo.times[time] || []).filter(id => !Object.values(escalacaoDe(jogo,time)).includes(id));
-  const caixaBanco = (time, rotulo) => {
-    const g = banco(time);
-    return `<div class="banco ${time}" data-banco="${time}">
-      <div class="banco-rot">${rotulo} · ${g.length}</div>
-      <div class="banco-fichas">${g.length ? g.map(id => fichaDe(id, time)).join("")
-        : `<span class="sub">time completo</span>`}</div></div>`;
-  };
+  const dentro = t => (jogo.times?.[t] || []).filter(id => !Object.values(escalacaoDe(jogo,t)).includes(id));
+  const livres = semTime(jogo);
+  const caixa = (chave, rotulo, gente, vazio) => `<div class="banco ${chave}" data-banco="${chave}">
+      <div class="banco-rot">${rotulo} · ${gente.length}</div>
+      <div class="banco-fichas">${gente.length ? gente.map(id => fichaDe(id, chave==="livre"?"livre":chave)).join("")
+        : `<span class="sub">${vazio}</span>`}</div></div>`;
+
   return `<div class="cartao">
     <div class="titulo">Escalação no campo</div>
     <div class="campo-barra">
@@ -1398,11 +1532,19 @@ function blocoEscalacao(jogo){
     </div>
     ${svgCampo(jogo)}
     <div class="sub" style="margin:10px 0 8px">Arraste o nome até a posição, ou toque no nome e depois na posição.
-      Soltar em cima de outro jogador troca os dois de lugar.</div>
-    <div class="banco-dupla">${caixaBanco("vermelho","🔴 Reservas")}${caixaBanco("colete","🟡 Reservas")}</div>
+      Arrastar para o outro time muda o jogador de lado.</div>
+    ${livres.length ? caixa("livre","⚪ Sem time", livres, "todo mundo dividido") : ""}
+    <div class="banco-dupla">
+      ${caixa("vermelho","🔴 Reservas", dentro("vermelho"), "sem reserva")}
+      ${caixa("colete","🟡 Reservas", dentro("colete"), "sem reserva")}
+    </div>
     <div class="btn-linha">
-      <button class="btn-zap" style="flex:1" data-compartilhar-texto="escalacao">📤 Mandar a escalação</button>
-      <button class="btn-sec" data-acao="limpar-escala">Limpar</button>
+      <button class="btn-zap" style="flex:1" data-acao="escala-imagem">🖼️ Mandar imagem</button>
+      <button class="btn-zap" style="flex:1" data-compartilhar-texto="escalacao">📤 Mandar texto</button>
+    </div>
+    <div class="btn-linha" style="margin-top:8px">
+      <button class="btn-sec" style="flex:1" data-acao="limpar-escala">Tirar todos do campo</button>
+      <button class="btn-sec" style="flex:1" data-acao="zerar-times">Desfazer os times</button>
     </div>
   </div>`;
 }
@@ -1425,17 +1567,40 @@ function textoEscalacao(){
 }
 
 async function soltar(jogo, id, alvo){
-  const meu = timeDoAtleta(jogo, id);
-  const destino = alvo.dataset.time || alvo.dataset.banco;
-  if (destino !== meu) {                      // não deixa misturar os times
-    estado.escolhido = null; desenhar();
-    avisar(`${nomeDe(id)} é do time ${meu === "vermelho" ? "Vermelho" : "Colete"}.`);
-    return;
+  const destino = alvo.dataset.time || alvo.dataset.banco;   // vermelho | colete | livre
+  const pos = alvo.dataset.pos || null;
+  const origem = timeDoAtleta(jogo, id);
+
+  const times = { vermelho:[...(jogo.times?.vermelho || [])], colete:[...(jogo.times?.colete || [])] };
+  const esc = { vermelho:{ ...escalacaoDe(jogo,"vermelho") }, colete:{ ...escalacaoDe(jogo,"colete") },
+                formacao: formacaoDe(jogo) };
+
+  const posAnterior = origem ? Object.keys(esc[origem]).find(k => esc[origem][k] === id) : null;
+
+  // sai de onde estava
+  times.vermelho = times.vermelho.filter(x => x !== id);
+  times.colete   = times.colete.filter(x => x !== id);
+  ["vermelho","colete"].forEach(t => Object.keys(esc[t]).forEach(k => { if (esc[t][k] === id) delete esc[t][k]; }));
+
+  if (destino !== "livre") {
+    times[destino].push(id);
+    if (pos) {
+      const ocupante = escalacaoDe(jogo, destino)[pos];
+      esc[destino][pos] = id;
+      // trocaram de lugar dentro do mesmo time
+      if (ocupante && ocupante !== id && origem === destino && posAnterior) esc[destino][posAnterior] = ocupante;
+    }
   }
-  if (alvo.dataset.banco) await tirarDoCampo(jogo, meu, id);
-  else await porNaPosicao(jogo, meu, alvo.dataset.pos, id);
+
+  jogo.times = { ...times, em: Date.now() };
+  jogo.escalacao = esc;
+  await gravar("jogos", { times: jogo.times, escalacao: esc }, jogo.id);
+
   estado.escolhido = null;
   desenhar();
+  if (destino === "livre") avisar(`${nomeDe(id)} saiu dos times.`);
+  else if (origem && origem !== destino) avisar(`${nomeDe(id)} foi para o ${destino === "vermelho" ? "Vermelho" : "Colete"}.`);
+  else if (!origem) avisar(`${nomeDe(id)} entrou no ${destino === "vermelho" ? "Vermelho" : "Colete"}.`);
 }
 
 /* arrastar com o dedo: ponteiro serve para toque e mouse */
@@ -1496,7 +1661,7 @@ function telaTimes(){
       Marque um jogo na agenda para sortear os times.</div></div>`;
     return;
   }
-  const feito = jogo.times && jogo.times.vermelho;
+  const feito = jogo.times && ((jogo.times.vermelho||[]).length + (jogo.times.colete||[]).length) > 0;
   const { num, mes } = dataLonga(jogo.data);
   const topo = `<div class="aviso">Sorteio da rodada de <b>${num} ${mes}</b>${jogo.local?" · "+escapar(jogo.local):""}.</div>`;
 
@@ -2224,6 +2389,15 @@ document.body.addEventListener("click", async e => {
   else if (d.compartilharTexto === "mensal")     await compartilharTexto(textoMensalidades(d.mes));
   else if (d.compartilharTexto === "escalacao")  await compartilharTexto(textoEscalacao());
   else if (d.formacao)   { const j = jogoDoSorteio(); if (j) { await salvarEscalacao(j, { formacao:d.formacao }); desenhar(); } }
+  else if (d.acao === "escala-imagem") await compartilharEscalacaoImagem();
+  else if (d.acao === "zerar-times") {
+    const j = jogoDoSorteio(); if (!j) return;
+    if (!confirm("Desfazer os times e voltar todo mundo para a roleta?")) return;
+    await gravar("jogos", { times: null, escalacao: null }, j.id);
+    j.times = null; j.escalacao = null;
+    sorteio.jogoId = null;
+    desenhar(); avisar("Times desfeitos.");
+  }
   else if (d.acao === "limpar-escala") {
     const j = jogoDoSorteio(); if (!j) return;
     if (!confirm("Tirar todo mundo do campo?")) return;
