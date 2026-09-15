@@ -98,6 +98,18 @@ Quando o último jogador é sorteado, os times ficam salvos no Firestore: todo m
 
 A roleta usa a rodada aberta no momento — se você entrou por uma rodada antiga na Agenda, é ela que vai ao sorteio.
 
+### Escalação no campo
+
+Abaixo do sorteio há um campo de society com seis posições: goleiro e cinco na linha. Três formações disponíveis — **2-2-1**, **1-2-2** e **2-1-2**.
+
+O campo mostra **os dois times ao mesmo tempo**: Colete ataca de cima para baixo, Vermelho de baixo para cima, cada um com suas seis posições. Abaixo do campo ficam os dois banquinhos de reservas, um por time.
+
+Para posicionar, arraste o nome do banco até a posição, ou toque no nome e depois na posição (mais fácil com o celular na mão). Arrastar um jogador para cima de outro **troca os dois de lugar**; arrastar de volta para o banquinho tira do campo. Jogador só entra em posição ou banco do próprio time — tentando o contrário, o app avisa e não deixa.
+
+O campo só aparece depois do sorteio, porque precisa saber quem é de qual time.
+
+A escalação fica salva no Firestore junto da rodada, e o botão de compartilhar manda as duas escalações para o grupo, posição por posição, com o banco no fim.
+
 ## 8. Valores
 
 A aba ✝️ traz visão, princípios e valores do grupo. A visão aparece em destaque num cartão escuro; princípios e valores viram lista numerada com o nome em maiúsculas e a descrição embaixo.
