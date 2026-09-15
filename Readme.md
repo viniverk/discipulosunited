@@ -102,13 +102,16 @@ A roleta usa a rodada aberta no momento — se você entrou por uma rodada antig
 
 Abaixo do sorteio há um campo de society com seis posições: goleiro e cinco na linha. Três formações disponíveis — **2-2-1**, **1-2-2** e **2-1-2**.
 
-O campo mostra **os dois times ao mesmo tempo**: Colete ataca de cima para baixo, Vermelho de baixo para cima, cada um com suas seis posições. Abaixo do campo ficam os dois banquinhos de reservas, um por time.
+O campo mostra **os dois times ao mesmo tempo**: Colete ataca de cima para baixo, Vermelho de baixo para cima, cada um com suas seis posições. Abaixo do campo ficam os banquinhos: **⚪ Sem time** com quem ainda não foi dividido, e **🔴/🟡 Reservas** de cada lado.
 
-Para posicionar, arraste o nome do banco até a posição, ou toque no nome e depois na posição (mais fácil com o celular na mão). Arrastar um jogador para cima de outro **troca os dois de lugar**; arrastar de volta para o banquinho tira do campo. Jogador só entra em posição ou banco do próprio time — tentando o contrário, o app avisa e não deixa.
+Para posicionar, arraste o nome até a posição, ou toque no nome e depois na posição (mais fácil com o celular na mão). Arrastar um jogador para cima de outro **troca os dois de lugar**; arrastar para o banquinho do outro time **muda o jogador de lado**; arrastar para Sem time tira ele dos dois.
 
-O campo só aparece depois do sorteio, porque precisa saber quem é de qual time.
+**A roleta é opcional.** O campo aparece desde o começo, com todo mundo em Sem time, e você pode montar os times na mão. Quem preferir sortear usa a roleta acima e depois ajusta o que quiser. **Desfazer os times** devolve todo mundo e traz a roleta de volta.
 
-A escalação fica salva no Firestore junto da rodada, e o botão de compartilhar manda as duas escalações para o grupo, posição por posição, com o banco no fim.
+A escalação fica salva no Firestore junto da rodada, e há dois botões para mandar no grupo:
+
+- **🖼️ Mandar imagem** — desenha o campo num PNG (900×1380) com cabeçalho, as doze fichas nas posições, dashes nas vagas ainda abertas e os dois banquinhos de reservas embaixo. Vai pelo compartilhamento do celular, direto como foto; no computador, baixa o arquivo.
+- **📤 Mandar texto** — a mesma escalação em lista, posição por posição, com o banco no fim. Serve quando alguém está sem dados ou quer copiar os nomes.
 
 ## 8. Valores
 
