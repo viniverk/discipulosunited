@@ -261,16 +261,16 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .campo-barra button.on{color:#fff;border-color:transparent}
 .campo-barra button.on.vermelho{background:#C0392B}
 .campo-barra button.on.colete{background:#5A554B}
-.campo{position:relative;width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;
+.gramado{position:relative;width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;
   background:repeating-linear-gradient(180deg,#2F7A3B 0 9%,#2A6F35 9% 18%);
   box-shadow:var(--sombra);touch-action:none;user-select:none}
-.campo .linha{position:absolute;border:2px solid rgba(255,255,255,.45)}
-.campo .borda{inset:3%}
-.campo .meio{left:3%;right:3%;top:50%;border-width:0 0 2px 0}
-.campo .circulo{left:50%;top:50%;width:24%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%}
-.campo .area{left:26%;width:48%;height:13%}
-.campo .area-b{bottom:3%}
-.campo .area-c{top:3%}
+.gramado .linha{position:absolute;border:2px solid rgba(255,255,255,.45)}
+.gramado .borda{inset:3%}
+.gramado .meio{left:3%;right:3%;top:50%;border-width:0 0 2px 0}
+.gramado .circulo{left:50%;top:50%;width:24%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%}
+.gramado .area{left:26%;width:48%;height:13%}
+.gramado .area-b{bottom:3%}
+.gramado .area-c{top:3%}
 .campo-pos{position:absolute;transform:translate(-50%,-50%);width:23%;min-width:64px;text-align:center}
 .campo-pos .vaga-pos{border:2px dashed rgba(255,255,255,.6);border-radius:10px;padding:10px 4px;
   color:rgba(255,255,255,.85);font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
@@ -1509,7 +1509,7 @@ function svgCampo(jogo){
     const dentro = id ? fichaDe(id, time, p.r) : `<div class="vaga-pos ${time}">${p.r}</div>`;
     return `<div class="campo-pos" data-pos="${p.k}" data-time="${time}" style="left:${x}%;top:${y}%">${dentro}</div>`;
   }).join("");
-  return `<div class="campo" id="campo">
+  return `<div class="gramado" id="gramado">
     <div class="linha borda"></div><div class="linha meio"></div><div class="linha circulo"></div>
     <div class="linha area area-b"></div><div class="linha area area-c"></div>
     <div class="etiqueta-time cima">Colete</div>
