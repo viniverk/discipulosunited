@@ -254,6 +254,52 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .btn-girar:active{transform:scale(.98)}
 .btn-girar:disabled{opacity:.55;cursor:default}
 
+/* ---------- campo de society ---------- */
+.campo-barra{display:flex;gap:8px;margin-bottom:10px}
+.campo-barra button{flex:1;padding:9px 6px;border-radius:9px;font-weight:700;font-size:13px;
+  border:1px solid var(--borda);background:var(--cal);color:var(--cinza)}
+.campo-barra button.on{color:#fff;border-color:transparent}
+.campo-barra button.on.vermelho{background:#C0392B}
+.campo-barra button.on.colete{background:#5A554B}
+.campo{position:relative;width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;
+  background:repeating-linear-gradient(180deg,#2F7A3B 0 9%,#2A6F35 9% 18%);
+  box-shadow:var(--sombra);touch-action:none;user-select:none}
+.campo .linha{position:absolute;border:2px solid rgba(255,255,255,.45)}
+.campo .borda{inset:3%}
+.campo .meio{left:3%;right:3%;top:50%;border-width:0 0 2px 0}
+.campo .circulo{left:50%;top:50%;width:24%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%}
+.campo .area{left:26%;width:48%;height:13%}
+.campo .area-b{bottom:3%}
+.campo .area-c{top:3%}
+.campo-pos{position:absolute;transform:translate(-50%,-50%);width:23%;min-width:64px;text-align:center}
+.campo-pos .vaga-pos{border:2px dashed rgba(255,255,255,.6);border-radius:10px;padding:10px 4px;
+  color:rgba(255,255,255,.85);font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.campo-pos.alvo .vaga-pos{border-color:var(--canarinho);background:rgba(201,162,75,.3)}
+.ficha{background:var(--cal);border-radius:9px;padding:6px 4px;box-shadow:0 2px 6px rgba(0,0,0,.35);
+  font-size:11.5px;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  border-top:4px solid var(--quadra);cursor:grab}
+.ficha.vermelho{border-top-color:#C0392B}
+.ficha.colete{border-top-color:#5A554B}
+.vaga-pos.vermelho{border-color:rgba(255,160,150,.75);color:rgba(255,220,215,.9)}
+.vaga-pos.colete{border-color:rgba(255,255,255,.55)}
+.etiqueta-time{position:absolute;left:50%;transform:translateX(-50%);font-family:var(--display);
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.etiqueta-time.cima{top:1.5%}
+.etiqueta-time.baixo{bottom:1.5%}
+.ficha small{display:block;font-size:9px;font-weight:600;color:var(--cinza);letter-spacing:.5px}
+.ficha.escolhida{outline:3px solid var(--canarinho);outline-offset:1px}
+.fantasma{position:fixed;z-index:300;pointer-events:none;transform:translate(-50%,-50%);
+  opacity:.92;box-shadow:0 8px 20px rgba(0,0,0,.45)}
+.banco-dupla{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.banco{padding:9px;border:1px dashed var(--borda);border-radius:10px;background:var(--linha);min-height:76px}
+.banco-rot{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;
+  color:var(--cinza);margin-bottom:7px}
+.banco-fichas{display:flex;flex-wrap:wrap;gap:6px}
+.banco .ficha{flex:1 1 calc(50% - 6px);min-width:0;cursor:grab;padding:5px 4px;font-size:11px}
+.banco.alvo{border-color:var(--canarinho);background:#FBF6E8}
+.banco.vermelho{border-left:3px solid #C0392B}
+.banco.colete{border-left:3px solid #5A554B}
+
 .times-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .time{background:var(--cal);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden}
 .time-topo{padding:10px 12px;font-family:var(--display);font-size:15px;letter-spacing:.8px;
@@ -405,7 +451,7 @@ const estado = {
   config: { pixChave:"", pixTipo:"Celular", pixNome:"", custoPadrao:0, valorFixo:0, vagas:14, pin:"1234", diaSemana:2, hora:"20:00", linkGrupo:"", nomeGrupo:"Discípulos United", lema:"",
     modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2 },
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
-  instalar: null, semConvite: false, mesMensal: null
+  instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null
 };
 
 /* ---------- camada de dados ---------- */
@@ -1270,6 +1316,176 @@ function cartaoTime(classe, rotulo, ids, destaque){
   </div>`;
 }
 
+
+/* ---------- escalação no campo de society (5 na linha + 1 no gol) ---------- */
+// coordenadas do time de baixo; o de cima é o espelho (100-x, 100-y)
+const FORMACOES = {
+  "2-2-1": [ {k:"GOL",r:"Goleiro",x:50,y:95}, {k:"D1",r:"Zaga",x:26,y:84}, {k:"D2",r:"Zaga",x:74,y:84},
+             {k:"M1",r:"Meio",x:26,y:71}, {k:"M2",r:"Meio",x:74,y:71}, {k:"A1",r:"Frente",x:50,y:60} ],
+  "1-2-2": [ {k:"GOL",r:"Goleiro",x:50,y:95}, {k:"D1",r:"Zaga",x:50,y:84},
+             {k:"M1",r:"Meio",x:26,y:72}, {k:"M2",r:"Meio",x:74,y:72},
+             {k:"A1",r:"Frente",x:30,y:60}, {k:"A2",r:"Frente",x:70,y:60} ],
+  "2-1-2": [ {k:"GOL",r:"Goleiro",x:50,y:95}, {k:"D1",r:"Zaga",x:26,y:84}, {k:"D2",r:"Zaga",x:74,y:84},
+             {k:"M1",r:"Meio",x:50,y:72}, {k:"A1",r:"Frente",x:30,y:60}, {k:"A2",r:"Frente",x:70,y:60} ]
+};
+const timeDoAtleta = (jogo, id) => (jogo.times?.colete || []).includes(id) ? "colete" : "vermelho";
+
+const escalacaoDe = (jogo, time) => ((jogo.escalacao || {})[time] || {});
+const formacaoDe  = jogo => FORMACOES[(jogo.escalacao || {}).formacao] ? (jogo.escalacao).formacao : "2-2-1";
+
+async function salvarEscalacao(jogo, dados){
+  const nova = { ...(jogo.escalacao || {}), ...dados };
+  jogo.escalacao = nova;
+  await gravar("jogos", { escalacao: nova }, jogo.id);
+}
+async function porNaPosicao(jogo, time, pos, id){
+  const atual = { ...escalacaoDe(jogo, time) };
+  const ocupante = atual[pos];
+  const origem = Object.keys(atual).find(k => atual[k] === id);
+  if (origem) delete atual[origem];
+  atual[pos] = id;
+  // veio de outra posição e a vaga estava ocupada? os dois trocam de lugar
+  if (ocupante && ocupante !== id && origem) atual[origem] = ocupante;
+  await salvarEscalacao(jogo, { [time]: atual });
+}
+async function tirarDoCampo(jogo, time, id){
+  const atual = { ...escalacaoDe(jogo, time) };
+  Object.keys(atual).forEach(k => { if (atual[k] === id) delete atual[k]; });
+  await salvarEscalacao(jogo, { [time]: atual });
+}
+
+function elencoDoTime(jogo, time){
+  if (jogo.times && jogo.times[time]) return jogo.times[time];
+  return confirmados(jogo).slice(0, Number(jogo.vagas) || 14);   // sem sorteio: todo mundo disponível
+}
+
+function fichaDe(id, time, papel){
+  return `<div class="ficha ${time} ${estado.escolhido===id?"escolhida":""}" data-arrastavel="${id}">
+    ${ehGoleiro(id)?"🧤 ":""}${escapar(primeiroNome(id))}${papel?`<small>${papel}</small>`:""}</div>`;
+}
+
+function svgCampo(jogo){
+  const form = FORMACOES[formacaoDe(jogo)];
+  const desenhar = (time, espelho) => form.map(p => {
+    const id = escalacaoDe(jogo, time)[p.k];
+    const x = espelho ? 100 - p.x : p.x;
+    const y = espelho ? 100 - p.y : p.y;
+    const dentro = id ? fichaDe(id, time, p.r) : `<div class="vaga-pos ${time}">${p.r}</div>`;
+    return `<div class="campo-pos" data-pos="${p.k}" data-time="${time}" style="left:${x}%;top:${y}%">${dentro}</div>`;
+  }).join("");
+  return `<div class="campo" id="campo">
+    <div class="linha borda"></div><div class="linha meio"></div><div class="linha circulo"></div>
+    <div class="linha area area-b"></div><div class="linha area area-c"></div>
+    <div class="etiqueta-time cima">Colete</div>
+    <div class="etiqueta-time baixo">Vermelho</div>
+    ${desenhar("colete", true)}${desenhar("vermelho", false)}</div>`;
+}
+
+function blocoEscalacao(jogo){
+  if (!(jogo.times && jogo.times.vermelho)) return "";
+  const banco = time => (jogo.times[time] || []).filter(id => !Object.values(escalacaoDe(jogo,time)).includes(id));
+  const caixaBanco = (time, rotulo) => {
+    const g = banco(time);
+    return `<div class="banco ${time}" data-banco="${time}">
+      <div class="banco-rot">${rotulo} · ${g.length}</div>
+      <div class="banco-fichas">${g.length ? g.map(id => fichaDe(id, time)).join("")
+        : `<span class="sub">time completo</span>`}</div></div>`;
+  };
+  return `<div class="cartao">
+    <div class="titulo">Escalação no campo</div>
+    <div class="campo-barra">
+      ${Object.keys(FORMACOES).map(f => `<button class="${formacaoDe(jogo)===f?"on vermelho":""}" data-formacao="${f}">${f}</button>`).join("")}
+    </div>
+    ${svgCampo(jogo)}
+    <div class="sub" style="margin:10px 0 8px">Arraste o nome até a posição, ou toque no nome e depois na posição.
+      Soltar em cima de outro jogador troca os dois de lugar.</div>
+    <div class="banco-dupla">${caixaBanco("vermelho","🔴 Reservas")}${caixaBanco("colete","🟡 Reservas")}</div>
+    <div class="btn-linha">
+      <button class="btn-zap" style="flex:1" data-compartilhar-texto="escalacao">📤 Mandar a escalação</button>
+      <button class="btn-sec" data-acao="limpar-escala">Limpar</button>
+    </div>
+  </div>`;
+}
+
+function textoEscalacao(){
+  const jogo = jogoDoSorteio(); if (!jogo) return "";
+  const { num, mes } = dataLonga(jogo.data);
+  const form = FORMACOES[formacaoDe(jogo)];
+  const times = jogo.times && jogo.times.vermelho ? ["vermelho","colete"] : ["vermelho"];
+  const L = [`*⚽ ${nomeGrupo()} — ESCALAÇÃO*`, `${num} ${mes}${jogo.local?" · "+jogo.local:""} · formação ${formacaoDe(jogo)}`];
+  times.forEach(t => {
+    const esc = escalacaoDe(jogo, t);
+    L.push("");
+    L.push(t === "vermelho" ? "*🔴 TIME VERMELHO*" : "*🟡 TIME DE COLETE*");
+    form.forEach(p => L.push(`${p.r}: ${esc[p.k] ? nomeDe(esc[p.k]) : "—"}`));
+    const fora = elencoDoTime(jogo,t).filter(id => !Object.values(esc).includes(id));
+    if (fora.length) L.push(`Banco: ${fora.map(nomeDe).join(", ")}`);
+  });
+  return L.join("\n");
+}
+
+async function soltar(jogo, id, alvo){
+  const meu = timeDoAtleta(jogo, id);
+  const destino = alvo.dataset.time || alvo.dataset.banco;
+  if (destino !== meu) {                      // não deixa misturar os times
+    estado.escolhido = null; desenhar();
+    avisar(`${nomeDe(id)} é do time ${meu === "vermelho" ? "Vermelho" : "Colete"}.`);
+    return;
+  }
+  if (alvo.dataset.banco) await tirarDoCampo(jogo, meu, id);
+  else await porNaPosicao(jogo, meu, alvo.dataset.pos, id);
+  estado.escolhido = null;
+  desenhar();
+}
+
+/* arrastar com o dedo: ponteiro serve para toque e mouse */
+let arrasto = null;
+function alvoSob(x,y){
+  const el = document.elementFromPoint(x,y);
+  if (!el) return null;
+  return el.closest("[data-pos]") || el.closest("[data-banco]");
+}
+document.addEventListener("pointerdown", e => {
+  const ficha = e.target.closest("[data-arrastavel]");
+  if (!ficha) return;
+  arrasto = { id: ficha.dataset.arrastavel, el: ficha, x0: e.clientX, y0: e.clientY, ghost: null };
+});
+document.addEventListener("pointermove", e => {
+  if (!arrasto) return;
+  if (!arrasto.ghost) {
+    if (Math.hypot(e.clientX-arrasto.x0, e.clientY-arrasto.y0) < 7) return;
+    const r = arrasto.el.getBoundingClientRect();
+    const g = arrasto.el.cloneNode(true);
+    g.classList.add("fantasma");
+    g.style.width = r.width + "px";
+    document.body.appendChild(g);
+    arrasto.ghost = g;
+    arrasto.el.style.opacity = ".35";
+  }
+  e.preventDefault();
+  arrasto.ghost.style.left = e.clientX + "px";
+  arrasto.ghost.style.top = e.clientY + "px";
+  document.querySelectorAll(".campo-pos.alvo,.banco.alvo").forEach(x => x.classList.remove("alvo"));
+  const sob = alvoSob(e.clientX, e.clientY);
+  if (sob) sob.classList.add("alvo");
+}, { passive:false });
+document.addEventListener("pointerup", async e => {
+  if (!arrasto) return;
+  const { id, el, ghost } = arrasto;
+  arrasto = null;
+  document.querySelectorAll(".campo-pos.alvo,.banco.alvo").forEach(x => x.classList.remove("alvo"));
+  if (!ghost) {                                   // foi um toque, não um arrasto
+    estado.escolhido = estado.escolhido === id ? null : id;
+    desenhar();
+    return;
+  }
+  ghost.remove(); el.style.opacity = "";
+  const jogo = jogoDoSorteio(); if (!jogo) return;
+  const sob = alvoSob(e.clientX, e.clientY);
+  if (!sob) { desenhar(); return; }
+  await soltar(jogo, id, sob);
+});
+
 function telaTimes(){
   if (sorteio.girando) return;
   const el = document.getElementById("tela-times");
@@ -1290,10 +1506,11 @@ function telaTimes(){
         ${cartaoTime("vermelho","Vermelho",jogo.times.vermelho)}
         ${cartaoTime("colete","Colete",jogo.times.colete)}
       </div>
-      <div class="btn-linha" style="margin:0">
+      <div class="btn-linha" style="margin:0 0 14px">
         <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar os times no grupo</button>
         <button class="btn-sec" data-acao="refazer-sorteio">Refazer</button>
-      </div>`;
+      </div>
+      ${blocoEscalacao(jogo)}`;
     return;
   }
 
@@ -1318,7 +1535,8 @@ function telaTimes(){
       ${cartaoTime("vermelho","Vermelho",sorteio.vermelho,sorteio.ultimo)}
       ${cartaoTime("colete","Colete",sorteio.colete,sorteio.ultimo)}
     </div>
-    <button class="btn-sec" style="width:100%" data-acao="sortear-resto">Sortear o resto de uma vez</button>`;
+    <button class="btn-sec" style="width:100%;margin-bottom:14px" data-acao="sortear-resto">Sortear o resto de uma vez</button>
+    ${blocoEscalacao(jogo)}`;
 }
 
 function girarRoleta(){
@@ -1955,7 +2173,13 @@ document.getElementById("btnAdmin").onclick = () => {
 };
 
 document.body.addEventListener("click", async e => {
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo]");
+  const casa = e.target.closest("[data-pos],[data-banco]");
+  if (casa && estado.escolhido && !e.target.closest("[data-arrastavel]")) {
+    const j = jogoDoSorteio();
+    if (j) await soltar(j, estado.escolhido, casa);
+    return;
+  }
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -1998,6 +2222,13 @@ document.body.addEventListener("click", async e => {
   else if (d.compartilharTexto === "identidade") await compartilharTexto(textoIdentidade());
   else if (d.compartilharTexto === "times")      await compartilharTexto(textoTimes());
   else if (d.compartilharTexto === "mensal")     await compartilharTexto(textoMensalidades(d.mes));
+  else if (d.compartilharTexto === "escalacao")  await compartilharTexto(textoEscalacao());
+  else if (d.formacao)   { const j = jogoDoSorteio(); if (j) { await salvarEscalacao(j, { formacao:d.formacao }); desenhar(); } }
+  else if (d.acao === "limpar-escala") {
+    const j = jogoDoSorteio(); if (!j) return;
+    if (!confirm("Tirar todo mundo do campo?")) return;
+    await salvarEscalacao(j, { vermelho:{}, colete:{} }); desenhar(); avisar("Escalação limpa.");
+  }
   else if (d.acao === "girar")            girarRoleta();
   else if (d.acao === "sortear-resto")    await sortearResto();
   else if (d.acao === "refazer-sorteio")  await refazerSorteio();
