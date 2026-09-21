@@ -359,6 +359,28 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .instalar button{flex:none}
 .instalar .fechar{background:none;color:var(--cinza);font-size:18px;padding:0 4px;line-height:1}
 
+/* ---------- portão: tela de entrada quando o login é exigido ---------- */
+body.trancado > header, body.trancado > nav, body.trancado > main{display:none}
+.portao{position:fixed;inset:0;z-index:150;display:none;flex-direction:column;align-items:center;
+  justify-content:center;padding:28px 22px calc(28px + env(safe-area-inset-bottom));overflow-y:auto;
+  background:radial-gradient(120% 80% at 50% 0%, #2E2B25 0%, var(--tinta) 60%);color:#fff;text-align:center}
+body.trancado .portao{display:flex}
+.portao-escudo{width:132px;height:auto;filter:drop-shadow(0 8px 22px rgba(0,0,0,.55));margin-bottom:14px}
+.portao h1{font-family:var(--display);font-weight:400;font-size:30px;letter-spacing:.8px;text-transform:uppercase;line-height:1}
+.portao h1 span{color:var(--canarinho)}
+.portao .lema-p{color:var(--canarinho);font-size:11px;letter-spacing:1.8px;text-transform:uppercase;font-weight:600;margin-top:6px}
+.portao-caixa{width:100%;max-width:360px;margin-top:26px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(201,162,75,.35);border-radius:16px;padding:18px;text-align:left}
+.portao-caixa label{display:block;font-size:11px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;
+  color:rgba(255,255,255,.7);margin:0 0 6px}
+.portao-caixa select,.portao-caixa input{width:100%;padding:12px;border-radius:10px;border:none;
+  background:#fff;color:var(--tinta);font-weight:600;margin-bottom:14px}
+.portao-caixa .btn-girar{font-size:18px;padding:14px}
+.portao-rodape{margin-top:18px;font-size:12.5px;color:rgba(255,255,255,.55);max-width:340px}
+.portao-admin{margin-top:22px;background:none;color:rgba(255,255,255,.55);font-size:12.5px;
+  text-decoration:underline;text-underline-offset:3px}
+.portao-carregando{margin-top:22px;color:rgba(255,255,255,.6);font-size:14px}
+
 .vazio{text-align:center;padding:26px 14px;color:var(--cinza)}
 .vazio b{display:block;font-family:var(--display);font-size:19px;color:var(--tinta);font-weight:400;margin-bottom:6px;text-transform:uppercase}
 .aviso{background:#FFF8E3;border-left:3px solid var(--canarinho);padding:11px 13px;border-radius:0 8px 8px 0;font-size:13.5px;margin-bottom:14px}
@@ -429,6 +451,8 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   </div>
 </div>
 
+<div class="portao" id="portao"></div>
+
 <div class="toast" id="toast"></div>
 
 
@@ -461,7 +485,7 @@ const estado = {
     modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2, exigirLogin:false },
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
   instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null,
-  vinculo: null
+  vinculo: null, cfgOk: false, vincOk: false
 };
 
 /* ---------- camada de dados ---------- */
@@ -482,8 +506,10 @@ async function iniciar(){
       fb = { fs, db, uid: autent.currentUser ? autent.currentUser.uid : null };
       // o Firebase guarda esse uid no aparelho: entrou uma vez, continua entrado
       if (fb.uid) fs.onSnapshot(fs.doc(db,"vinculos",fb.uid), d => {
-        estado.vinculo = d.exists() ? d.data().atletaId : null; desenhar();
-      }, erroFirebase);
+        estado.vinculo = d.exists() ? d.data().atletaId : null;
+        estado.vincOk = true; desenhar();
+      }, e => { estado.vincOk = true; erroFirebase(e); });
+      else estado.vincOk = true;
 
       fs.onSnapshot(fs.collection(db,"atletas"), s => {
         estado.atletas = s.docs.map(d => ({ id:d.id, ...d.data() })); desenhar();
@@ -498,15 +524,16 @@ async function iniciar(){
         estado.mensalidades = s.docs.map(d => ({ id:d.id, ...d.data() })); desenhar();
       }, erroFirebase);
       fs.onSnapshot(fs.doc(db,"config","geral"), d => {
-        if (d.exists()) estado.config = { ...estado.config, ...d.data() }; desenhar();
-      }, erroFirebase);
+        if (d.exists()) estado.config = { ...estado.config, ...d.data() };
+        estado.cfgOk = true; desenhar();
+      }, e => { estado.cfgOk = true; erroFirebase(e); });
     } catch (e) {
       console.error(e);
       avisar("Não consegui conectar no Firebase. Confira a configuração.");
-      semear();
+      semear(); estado.cfgOk = estado.vincOk = true;
     }
   } else {
-    semear();
+    semear(); estado.cfgOk = estado.vincOk = true;
   }
   lerEndereco();
   desenhar();
@@ -1992,6 +2019,9 @@ function telaEstatuto(){
 
 /* ---------- desenho geral ---------- */
 function desenhar(){
+  const carregando = !(estado.cfgOk && estado.vincOk);
+  if (carregando || trancado()) { desenharPortao(carregando); return; }
+  abrirPortao();
   if (modoLogin()) estado.eu = estado.vinculo || null;
   else if (!estado.eu) lerEndereco();
   const sel = document.getElementById("selEu");
@@ -2074,6 +2104,74 @@ async function instalarApp(){
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+
+/* ---------- portão ---------- */
+const trancado = () => !!estado.config.exigirLogin && !estado.vinculo && !estado.admin;
+
+function desenharPortao(carregando){
+  document.body.classList.add("trancado");
+  // nada de dado fica desenhado atrás do portão
+  ["tela-jogo","tela-agenda","tela-atletas","tela-caixa","tela-times","tela-valores","tela-estatuto"]
+    .forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ""; });
+
+  const escudo = document.querySelector(".brasao")?.src || "";
+  const nome = (estado.config.nomeGrupo || "Discípulos United").trim();
+  const corte = nome.lastIndexOf(" ");
+  const titulo = corte > 0 ? `${escapar(nome.slice(0,corte))} <span>${escapar(nome.slice(corte+1))}</span>` : escapar(nome);
+  const p = document.getElementById("portao");
+
+  if (carregando) {
+    p.innerHTML = `${escudo?`<img class="portao-escudo" src="${escudo}" alt="">`:""}
+      <h1>${titulo}</h1><div class="portao-carregando">carregando…</div>`;
+    return;
+  }
+
+  const gente = estado.atletas.filter(a => situacaoDe(a) !== "inativo")
+                              .sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
+  const assinatura = gente.map(a => a.id + ":" + a.nome).join("|") + "#" + (estado.config.nomeGrupo||"");
+  if (p.dataset.assinatura === assinatura) return;       // nada mudou: não mexe no que está sendo digitado
+  const quemAntes  = document.getElementById("p_quem")?.value || "";
+  const senhaAntes = document.getElementById("p_senha")?.value || "";
+  p.dataset.assinatura = assinatura;
+  p.innerHTML = `
+    ${escudo?`<img class="portao-escudo" src="${escudo}" alt="Escudo">`:""}
+    <h1>${titulo}</h1>
+    <div class="lema-p">${escapar(lemaAtual())}</div>
+    <div class="portao-caixa">
+      <label for="p_quem">Seu nome</label>
+      <select id="p_quem"><option value="">— escolha —</option>
+        ${gente.map(a => `<option value="${a.id}">${escapar(a.nome)}</option>`).join("")}</select>
+      <label for="p_senha">Sua senha</label>
+      <input id="p_senha" type="password" autocomplete="current-password" placeholder="a que o organizador te passou">
+      <button class="btn-girar" id="p_entrar">Entrar</button>
+    </div>
+    <div class="portao-rodape">Você entra uma vez e o celular lembra. Não tem senha? Peça ao organizador.</div>
+    <button class="portao-admin" id="p_admin">Sou o organizador</button>`;
+
+  const ir = async () => {
+    const id = document.getElementById("p_quem").value;
+    if (!id) return avisar("Escolha seu nome.");
+    const erro = await entrarComo(id, document.getElementById("p_senha").value);
+    if (erro) { avisar(erro); document.getElementById("p_senha").select(); return; }
+    avisar(`Bem-vindo, ${nomeDe(id)}!`);
+    desenhar();
+  };
+  if (quemAntes)  document.getElementById("p_quem").value = quemAntes;
+  if (senhaAntes) document.getElementById("p_senha").value = senhaAntes;
+  document.getElementById("p_entrar").onclick = ir;
+  document.getElementById("p_senha").onkeydown = e => { if (e.key === "Enter") ir(); };
+  document.getElementById("p_admin").onclick = () => {
+    const pin = prompt("Senha de admin:");
+    if (pin === null) return;
+    if (pin === String(estado.config.pin)) { estado.admin = true; desenhar(); avisar("Modo admin ligado."); }
+    else avisar("Senha errada.");
+  };
+}
+function abrirPortao(){
+  document.body.classList.remove("trancado");
+  const p = document.getElementById("portao");
+  p.innerHTML = ""; p.dataset.assinatura = "";
 }
 
 /* ---------- avisos ---------- */
