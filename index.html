@@ -78,6 +78,12 @@ a{color:var(--quadra)}
   .aba{font-size:8.5px;letter-spacing:0;padding:8px 1px 0} .aba i{font-size:15px} .aba em{padding-bottom:7px} }
 .eu{margin-top:12px;position:relative;z-index:1}
 .eu label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.75;margin-bottom:5px;font-weight:600}
+.meu-link{margin-top:9px;display:flex;align-items:center;gap:8px;position:relative;z-index:1}
+.meu-link button{flex:1;background:rgba(255,255,255,.14);color:#fff;border-radius:9px;padding:9px 12px;
+  font-size:12.5px;font-weight:600;text-align:left}
+.meu-link button:active{background:rgba(255,255,255,.22)}
+.meu-link b{color:var(--canarinho)}
+
 .eu select{
   width:100%;padding:11px 12px;border-radius:10px;border:none;
   background:rgba(255,255,255,.95);color:var(--tinta);font-weight:600;appearance:none;
@@ -392,6 +398,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   <div class="eu">
     <label for="selEu">Quem é você</label>
     <select id="selEu"></select>
+    <div class="meu-link" id="meuLink"></div>
   </div>
 </header>
 
@@ -451,9 +458,10 @@ const VERSAO = "2026-08-21";
 const estado = {
   atletas: [], jogos: [], despesas: [], mensalidades: [],
   config: { pixChave:"", pixTipo:"Celular", pixNome:"", custoPadrao:0, valorFixo:0, vagas:14, pin:"1234", diaSemana:2, hora:"20:00", linkGrupo:"", nomeGrupo:"Discípulos United", lema:"",
-    modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2 },
+    modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2, exigirLogin:false },
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
-  instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null
+  instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null,
+  vinculo: null
 };
 
 /* ---------- camada de dados ---------- */
@@ -469,8 +477,13 @@ async function iniciar(){
       ]);
       const application = app.initializeApp(firebaseConfig);
       const db = fs.getFirestore(application);
-      try { await auth.signInAnonymously(auth.getAuth(application)); } catch(e){ console.warn("Login anônimo indisponível:", e.message); }
-      fb = { fs, db };
+      const autent = auth.getAuth(application);
+      try { await auth.signInAnonymously(autent); } catch(e){ console.warn("Login anônimo indisponível:", e.message); }
+      fb = { fs, db, uid: autent.currentUser ? autent.currentUser.uid : null };
+      // o Firebase guarda esse uid no aparelho: entrou uma vez, continua entrado
+      if (fb.uid) fs.onSnapshot(fs.doc(db,"vinculos",fb.uid), d => {
+        estado.vinculo = d.exists() ? d.data().atletaId : null; desenhar();
+      }, erroFirebase);
 
       fs.onSnapshot(fs.collection(db,"atletas"), s => {
         estado.atletas = s.docs.map(d => ({ id:d.id, ...d.data() })); desenhar();
@@ -545,7 +558,7 @@ function semear(){
   const nomes = ["Vinícios","Rafael","Marcos","Thiago","Diego","Bruno","Leandro","Everton",
                  "Juliano","Fábio","Caio","Renan","Anderson","Gustavo","Pedro","Lucas"];
   estado.atletas = nomes.map((n,i) => ({
-    id:"a-"+n.toLowerCase(), nome:n, apelido:"", telefone:"", ativo:true,
+    id:"a-"+n.toLowerCase(), nome:n, apelido:"", telefone:"", ativo:true, senha: String(1000 + i*37),
     situacao: i>=14 ? "convidado" : "fixo",
     goleiro: i===3 || i===9 || i===11,
     convidadoPor: i===14 ? "a-vinícios" : i===15 ? "a-rafael" : ""
@@ -775,6 +788,68 @@ function proximoDiaDaSemana(alvo){
 const escapar = t => String(t??"").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const nomeDe = id => estado.atletas.find(a => a.id === id)?.nome || "—";
 const nomeGrupo = () => (estado.config.nomeGrupo || "Discípulos United").toUpperCase();
+const linkPessoal = id => location.href.split("#")[0] + "#eu=" + encodeURIComponent(id);
+
+/* ---------- login dos atletas ---------- */
+const modoLogin = () => !!estado.config.exigirLogin && !estado.admin;
+const semAcento = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+const novaSenha = () => String(Math.floor(1000 + Math.random()*9000));
+
+async function entrarComo(atletaId, senha){
+  const a = atletaDe(atletaId);
+  if (!a || !a.senha) return "Esse atleta ainda não tem senha. Fale com o organizador.";
+  if (semAcento(a.senha) !== semAcento(senha)) return "Senha errada.";
+  estado.vinculo = atletaId;
+  if (fb && fb.uid) await fb.fs.setDoc(fb.fs.doc(fb.db,"vinculos",fb.uid), { atletaId, em: Date.now() });
+  return "";
+}
+async function sairDoLogin(){
+  estado.vinculo = null; estado.eu = null;
+  if (fb && fb.uid) await fb.fs.deleteDoc(fb.fs.doc(fb.db,"vinculos",fb.uid)).catch(() => {});
+  desenhar(); avisar("Você saiu.");
+}
+
+function formEntrar(){
+  const gente = estado.atletas.filter(a => situacaoDe(a) !== "inativo")
+                              .sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
+  abrirModal("Entrar", `
+    <div class="campo"><label>Seu nome</label><select id="f_quem">
+      <option value="">— escolha —</option>
+      ${gente.map(a => `<option value="${a.id}">${escapar(a.nome)}</option>`).join("")}</select></div>
+    <div class="campo"><label>Sua senha</label>
+      <input id="f_senha" type="password" inputmode="text" autocomplete="current-password" placeholder="a que o organizador te passou"></div>
+    <div class="sub" style="margin:-4px 0 12px">Você entra uma vez e o celular lembra. Não sabe a senha? Peça ao organizador.</div>
+    <button class="btn-main" style="width:100%" id="f_entrar">Entrar</button>`);
+  const ir = async () => {
+    const id = document.getElementById("f_quem").value;
+    if (!id) return avisar("Escolha seu nome.");
+    const erro = await entrarComo(id, document.getElementById("f_senha").value);
+    if (erro) return avisar(erro);
+    fecharModal(); desenhar(); avisar(`Bem-vindo, ${nomeDe(id)}!`);
+  };
+  document.getElementById("f_entrar").onclick = ir;
+  document.getElementById("f_senha").onkeydown = e => { if (e.key === "Enter") ir(); };
+}
+
+async function mandarSenha(id){
+  const a = atletaDe(id);
+  if (!a?.senha) return avisar("Esse atleta ainda não tem senha. Edite o cadastro.");
+  const url = location.href.split("#")[0];
+  await compartilharTexto(
+    `${a.nome}, sua senha do app ${estado.config.nomeGrupo || "Discípulos United"} é *${a.senha}*.\n`
+    + `Abra ${/^https?:/.test(url) ? url : "o link do grupo"}, toque em *Entrar*, escolha seu nome e digite a senha. `
+    + `O celular lembra depois da primeira vez.`);
+}
+async function mandarLinkPessoal(id, proprio){
+  const url = linkPessoal(id);
+  if (!/^https?:/.test(url)) return avisar("O link pessoal só funciona com o site publicado.");
+  const texto = proprio
+    ? url
+    : `${nomeDe(id)}, esse é o seu link do ${estado.config.nomeGrupo || "Discípulos United"}. `
+      + `Abrindo por ele, seu nome já vem escolhido e é só confirmar presença. `
+      + `Salve nos favoritos ou adicione à tela de início.\n${url}`;
+  await compartilharTexto(texto);
+}
 const lemaPadrao = () => DIAS[Number(estado.config.diaSemana ?? 2)] + " à noite";
 const lemaAtual  = () => (estado.config.lema || "").trim() || lemaPadrao();
 
@@ -1024,7 +1099,9 @@ function telaJogo(){
     ${passado ? "" : (estado.eu ? `<div class="acoes">
       <button class="btn btn-vou ${meu==="in"?"on":""}" data-confirmar="in" data-jogo="${proximo.id}">Vou jogar</button>
       <button class="btn btn-fora ${meu==="out"?"on":""}" data-confirmar="out" data-jogo="${proximo.id}">Não vou</button>
-    </div>` : `<div class="aviso">Escolha seu nome lá em cima para confirmar presença.</div>`)}
+    </div>` : `<div class="aviso">${modoLogin()
+        ? `Toque em <b>Entrar</b> lá em cima para confirmar sua presença.`
+        : `Escolha seu nome lá em cima para confirmar presença.`}</div>`)}
 
     <div class="btn-linha" style="margin:0 0 14px">
       <button class="btn-zap" style="flex:1" data-compartilhar="${proximo.id}">📤 Mandar a lista no grupo</button>
@@ -1093,10 +1170,13 @@ function telaAtletas(){
     return `<div class="item">
       <div class="item-corpo">
         <div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}${a.goleiro?' <span class="selo gol">goleiro</span>':""}</div>
-        <div class="sub">${sit==="convidado"&&quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${plural(presencasDoAtleta(a.id),"jogo","jogos")}${a.telefone?" · "+escapar(a.telefone):""}</div>
+        <div class="sub">${sit==="convidado"&&quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${plural(presencasDoAtleta(a.id),"jogo","jogos")}${a.telefone?" · "+escapar(a.telefone):""}${estado.admin?` · ${a.senha?`senha <b>${escapar(a.senha)}</b>`:`<span style="color:var(--deve)">sem senha</span>`}`:""}</div>
       </div>
       <div class="valor ${s.aberto>0.005?"neg":"pos"}">${s.aberto>0.005?dinheiro(s.aberto):"em dia"}</div>
-      ${estado.admin?`<button class="btn-sec" data-editar-atleta="${a.id}">Editar</button>`:""}
+      ${estado.admin?`${estado.config.exigirLogin
+          ? `<button class="btn-sec" data-senha-atleta="${a.id}" title="Mandar a senha">🔑</button>`
+          : `<button class="btn-sec" data-link-atleta="${a.id}" title="Mandar o link pessoal">🔗</button>`}
+                      <button class="btn-sec" data-editar-atleta="${a.id}">Editar</button>`:""}
     </div>`;
   };
 
@@ -1912,7 +1992,8 @@ function telaEstatuto(){
 
 /* ---------- desenho geral ---------- */
 function desenhar(){
-  if (!estado.eu) lerEndereco();
+  if (modoLogin()) estado.eu = estado.vinculo || null;
+  else if (!estado.eu) lerEndereco();
   const sel = document.getElementById("selEu");
   const ativos = estado.atletas.filter(a => situacaoDe(a) !== "inativo").sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
   sel.innerHTML = `<option value="">— escolha seu nome —</option>` +
@@ -1925,6 +2006,21 @@ function desenhar(){
     : escapar(nome);
   document.title = nome;
   document.getElementById("lema").textContent = lemaAtual();
+  const cxLink = document.getElementById("meuLink");
+  const rotEu = document.querySelector(".eu label");
+  if (modoLogin()) {
+    sel.style.display = "none";
+    rotEu.textContent = estado.eu ? "Você entrou como" : "Acesso dos atletas";
+    cxLink.innerHTML = estado.eu
+      ? `<button data-acao="sair">👤 <b>${escapar(nomeDe(estado.eu))}</b> — toque para sair</button>`
+      : `<button data-acao="entrar">🔐 <b>Entrar</b> com minha senha</button>`;
+  } else {
+    sel.style.display = "";
+    rotEu.textContent = "Quem é você";
+    cxLink.innerHTML = estado.eu && /^https?:/.test(location.href) && !estado.config.exigirLogin
+      ? `<button data-meu-link="${estado.eu}">🔗 Guardar <b>meu link</b> — abre já com meu nome</button>`
+      : "";
+  }
   document.getElementById("btnAdmin").className = "chave" + (estado.admin ? " on" : "");
   document.querySelector("#btnAdmin span").textContent = estado.admin ? "Admin ativo" : "Admin";
   document.querySelector("#btnAdmin").firstChild.textContent = estado.admin ? "🔓 " : "🔒 ";
@@ -2034,7 +2130,7 @@ function formJogo(jogo){
 }
 
 function formAtleta(atleta){
-  const a = atleta || { nome:"", apelido:"", telefone:"", situacao:"fixo", convidadoPor:"", goleiro:false };
+  const a = atleta || { nome:"", apelido:"", telefone:"", situacao:"fixo", convidadoPor:"", goleiro:false, senha:novaSenha() };
   const sit = situacaoDe(a);
   const anfitrioes = estado.atletas
     .filter(x => x.id !== a.id && situacaoDe(x) === "fixo")
@@ -2044,6 +2140,10 @@ function formAtleta(atleta){
     <div class="campo"><label>Nome</label><input id="f_nome" value="${escapar(a.nome)}" placeholder="Como aparece no grupo"></div>
     <div class="dupla"><div class="campo"><label>Apelido</label><input id="f_apelido" value="${escapar(a.apelido)}"></div>
       <div class="campo"><label>Telefone</label><input id="f_tel" value="${escapar(a.telefone)}" placeholder="47 99999-0000"></div></div>
+    <div class="campo"><label>Senha do atleta</label>
+      <div style="display:flex;gap:8px"><input id="f_senhaAt" value="${escapar(a.senha||"")}" placeholder="sem senha" style="flex:1">
+        <button type="button" class="btn-sec" id="f_gerar">Gerar</button></div>
+      <div class="sub" style="margin-top:5px">É com ela que o atleta entra. Evite usar o próprio nome — aí qualquer um adivinha.</div></div>
     <div class="campo"><label>Situação</label><select id="f_sit">
       <option value="fixo" ${sit==="fixo"?"selected":""}>Fixo — é da turma</option>
       <option value="convidado" ${sit==="convidado"?"selected":""}>Convidado — veio com alguém</option>
@@ -2061,6 +2161,7 @@ function formAtleta(atleta){
     <div class="btn-linha"><button class="btn-main" id="f_salvar">Salvar atleta</button>
       ${atleta?`<button class="btn-sec" id="f_apagar" style="color:var(--deve)">Remover</button>`:""}</div>`);
 
+  document.getElementById("f_gerar").onclick = () => { document.getElementById("f_senhaAt").value = novaSenha(); };
   document.getElementById("f_sit").onchange = e => {
     document.getElementById("f_bloco_conv").style.display = e.target.value === "convidado" ? "block" : "none";
   };
@@ -2073,6 +2174,7 @@ function formAtleta(atleta){
       telefone:document.getElementById("f_tel").value.trim(),
       situacao, ativo: situacao !== "inativo",
       goleiro: document.getElementById("f_gol").checked,
+      senha: document.getElementById("f_senhaAt").value.trim(),
       convidadoPor: situacao === "convidado" ? document.getElementById("f_conv").value : "" }, atleta?.id);
     fecharModal(); desenhar(); avisar("Atleta salvo.");
   };
@@ -2279,10 +2381,24 @@ function formAjustes(){
         ${[1,2,3,4].map(n => `<option value="${n}" ${cfgN("rodadaCobranca",2)===n?"selected":""}>${n}ª rodada do mês</option>`).join("")}</select></div></div>
     <div class="campo"><label>Link do grupo no WhatsApp</label><input id="f_grupo" value="${escapar(c.linkGrupo||"")}" placeholder="https://chat.whatsapp.com/...">
       <div class="sub" style="margin-top:5px">Opcional. Só liga o botão "Abrir grupo" na tela da lista. Fica salvo no Firestore, não no código do site.</div></div>
+    <div class="titulo" style="margin-top:18px">Acesso dos atletas</div>
+    <label class="check"><input type="checkbox" id="f_login" ${c.exigirLogin?"checked":""}>
+      <span><b>Exigir senha dos atletas</b>
+        <span class="sub">Cada um entra com a própria senha e só confirma a própria presença.
+          ${estado.atletas.filter(a => situacaoDe(a)!=="inativo" && !a.senha).length
+            ? `<br><b>${plural(estado.atletas.filter(a => situacaoDe(a)!=="inativo" && !a.senha).length,"atleta ainda está","atletas ainda estão")} sem senha.</b>` : ""}</span></span></label>
+    <button class="btn-sec" style="width:100%;margin-bottom:14px" id="f_gerarTodas">Gerar senha para quem não tem</button>
     <div class="campo"><label>Senha de admin</label><input id="f_pin" value="${escapar(c.pin)}">
       <div class="sub" style="margin-top:5px">Trava simples, só para evitar toque errado. Não protege contra quem entende do assunto.</div></div>
     <button class="btn-main" id="f_salvar">Salvar ajustes</button>
     <div class="versao">versão ${VERSAO}</div>`);
+  document.getElementById("f_gerarTodas").onclick = async () => {
+    const sem = estado.atletas.filter(a => situacaoDe(a)!=="inativo" && !a.senha);
+    if (!sem.length) return avisar("Todo mundo já tem senha.");
+    for (const a of sem) await gravar("atletas", { senha: novaSenha() }, a.id);
+    avisar(`${plural(sem.length,"senha gerada","senhas geradas")}.`);
+    fecharModal(); desenhar();
+  };
   document.getElementById("f_salvar").onclick = async () => {
     await gravarConfig({
       nomeGrupo:document.getElementById("f_nomegrupo").value.trim() || "Discípulos United",
@@ -2300,6 +2416,7 @@ function formAjustes(){
       valorMensalista:Number(document.getElementById("f_fixo50").value)||0,
       valorConvidado:Number(document.getElementById("f_conv10").value)||0,
       rodadaCobranca:Number(document.getElementById("f_rodcob").value)||2,
+      exigirLogin:document.getElementById("f_login").checked,
       pin:document.getElementById("f_pin").value.trim() || "1234"
     });
     fecharModal(); desenhar(); avisar("Ajustes salvos.");
@@ -2325,12 +2442,13 @@ document.getElementById("selEu").onchange = e => {
   desenhar();
 };
 function lerEndereco(){
+  if (estado.config.exigirLogin) return;
   const m = (location.hash||"").match(/eu=([^&]+)/);
   if (m && estado.atletas.some(a => a.id === decodeURIComponent(m[1]))) estado.eu = decodeURIComponent(m[1]);
 }
 
 document.getElementById("btnAdmin").onclick = () => {
-  if (estado.admin) { estado.admin = false; desenhar(); return avisar("Modo admin desligado."); }
+  if (estado.admin) { estado.admin = false; estado.eu = null; desenhar(); return avisar("Modo admin desligado."); }
   const pin = prompt("Senha de admin:");
   if (pin === null) return;
   if (pin === String(estado.config.pin)) { estado.admin = true; desenhar(); avisar("Modo admin ligado."); }
@@ -2344,12 +2462,12 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta]");
   if (!alvo) return;
   const d = alvo.dataset;
 
   if (d.confirmar) {
-    if (!estado.eu) return avisar("Escolha seu nome lá em cima primeiro.");
+    if (!estado.eu) return modoLogin() ? formEntrar() : avisar("Escolha seu nome lá em cima primeiro.");
     const jogo = estado.jogos.find(j => j.id === d.jogo);
     const atual = (jogo.presencas||{})[estado.eu]?.status;
     const novo = atual === d.confirmar ? null : d.confirmar;
@@ -2389,6 +2507,11 @@ document.body.addEventListener("click", async e => {
   else if (d.compartilharTexto === "mensal")     await compartilharTexto(textoMensalidades(d.mes));
   else if (d.compartilharTexto === "escalacao")  await compartilharTexto(textoEscalacao());
   else if (d.formacao)   { const j = jogoDoSorteio(); if (j) { await salvarEscalacao(j, { formacao:d.formacao }); desenhar(); } }
+  else if (d.meuLink)     await mandarLinkPessoal(d.meuLink, true);
+  else if (d.linkAtleta)  await mandarLinkPessoal(d.linkAtleta, false);
+  else if (d.senhaAtleta) await mandarSenha(d.senhaAtleta);
+  else if (d.acao === "entrar") formEntrar();
+  else if (d.acao === "sair")   { if (confirm("Sair deste celular?")) await sairDoLogin(); }
   else if (d.acao === "escala-imagem") await compartilharEscalacaoImagem();
   else if (d.acao === "zerar-times") {
     const j = jogoDoSorteio(); if (!j) return;
