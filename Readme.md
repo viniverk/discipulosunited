@@ -149,7 +149,9 @@ Para voltar à próxima partida, use o botão na faixa preta do topo ou toque na
 Em **Caixa → Ajustes → Acesso dos atletas**, a chave *Exigir senha dos atletas* muda o jeito de entrar:
 
 - **desligada** (padrão) — o seletor "Quem é você" funciona como sempre, qualquer um escolhe qualquer nome
-- **ligada** — o seletor some. Cada atleta toca em **Entrar**, escolhe o nome e digita a própria senha. Dali em diante só consegue confirmar a própria presença
+- **ligada** — o app inteiro fica atrás de uma **tela de entrada**: escudo, nome do grupo, a lista de nomes e o campo de senha. Nada de lista, caixa, mensalidades ou agenda aparece antes do login. Depois de entrar, o atleta só consegue confirmar a própria presença
+
+Enquanto os dados carregam, a tela de entrada mostra "carregando…" — assim o app nunca pisca o conteúdo antes de decidir se tranca. O organizador entra pelo link **Sou o organizador**, no pé da tela, com a senha de admin.
 
 **O celular lembra.** Depois do primeiro login, o aparelho fica vinculado ao atleta — inclusive no app instalado do Android. O vínculo usa a identificação anônima que o Firebase já guarda no aparelho e fica registrado na coleção `vinculos` do Firestore. *Sair* desfaz.
 
@@ -159,7 +161,7 @@ A senha de admin continua separada e só muda nos Ajustes, que exigem modo admin
 
 **Evite senha igual ao nome** — se a do Atílio for "atilio", qualquer um entra como ele. A comparação ignora maiúsculas e acentos.
 
-**É uma trava de convivência, não de segurança.** As senhas ficam no Firestore e quem abrir as ferramentas de desenvolvedor do navegador consegue lê-las. Impede confirmar no lugar do outro por engano ou brincadeira; não impede fraude deliberada. Proteção real exigiria contas no Firebase Auth e regras por usuário.
+**É uma trava de convivência, não de segurança.** A tela de entrada esconde os dados, mas eles continuam sendo baixados do Firestore para o navegador, e as senhas ficam num lugar legível. Quem souber abrir as ferramentas de desenvolvedor consegue ver tudo. Impede curiosidade e confirmação no lugar do outro; não impede quem quiser burlar de propósito. Proteção de verdade exige mover as senhas para uma coleção fechada e trocar as regras do Firestore, para que o próprio banco só entregue os dados a aparelhos que fizeram login.
 
 ### Link pessoal por atleta (com o login desligado)
 
