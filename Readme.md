@@ -144,9 +144,30 @@ Nada disso mexe no caixa até você tocar em **Salvar rodada**.
 
 Para voltar à próxima partida, use o botão na faixa preta do topo ou toque na aba *A lista*.
 
-### Link direto por atleta
+### Login dos atletas
 
-Quando alguém escolhe o nome, a URL vira `.../#eu=a-xxxx`. Se a pessoa salvar esse link, ela já entra com o nome selecionado. Serve para mandar no privado de quem esquece toda semana.
+Em **Caixa → Ajustes → Acesso dos atletas**, a chave *Exigir senha dos atletas* muda o jeito de entrar:
+
+- **desligada** (padrão) — o seletor "Quem é você" funciona como sempre, qualquer um escolhe qualquer nome
+- **ligada** — o seletor some. Cada atleta toca em **Entrar**, escolhe o nome e digita a própria senha. Dali em diante só consegue confirmar a própria presença
+
+**O celular lembra.** Depois do primeiro login, o aparelho fica vinculado ao atleta — inclusive no app instalado do Android. O vínculo usa a identificação anônima que o Firebase já guarda no aparelho e fica registrado na coleção `vinculos` do Firestore. *Sair* desfaz.
+
+**Para colocar em uso:** abra os Ajustes, toque em *Gerar senha para quem não tem* (sorteia 4 números para cada um), e só então ligue a chave. Na aba Atletas, em modo admin, cada linha mostra a senha e ganha um **🔑** que monta a mensagem pronta para mandar no privado.
+
+A senha de admin continua separada e só muda nos Ajustes, que exigem modo admin. O organizador também é atleta: entra com a senha de atleta para confirmar a própria presença, e com a de admin para gerenciar.
+
+**Evite senha igual ao nome** — se a do Atílio for "atilio", qualquer um entra como ele. A comparação ignora maiúsculas e acentos.
+
+**É uma trava de convivência, não de segurança.** As senhas ficam no Firestore e quem abrir as ferramentas de desenvolvedor do navegador consegue lê-las. Impede confirmar no lugar do outro por engano ou brincadeira; não impede fraude deliberada. Proteção real exigiria contas no Firebase Auth e regras por usuário.
+
+### Link pessoal por atleta (com o login desligado)
+
+Quando alguém escolhe o nome, a URL vira `.../#eu=a-xxxx` e aparece no cabeçalho o botão **🔗 Guardar meu link**, que copia ou compartilha esse endereço. Abrindo o site por ele, o nome já vem escolhido e é só tocar em *Vou jogar*.
+
+Em modo admin, cada linha da aba Atletas ganha um **🔗** que monta a mensagem pronta com o link daquela pessoa, para mandar no privado.
+
+**Cuidado com o app instalado:** no Android, o atalho instalado abre pelo `start_url` do `manifest.json`, que não carrega o `#eu=`. Quem instalar pelo Android vai precisar escolher o nome a cada abertura. No iPhone, o atalho guarda a URL inteira, então o link pessoal sobrevive — adicione à tela de início **já com o nome escolhido**.
 
 ---
 
