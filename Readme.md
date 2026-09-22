@@ -144,6 +144,14 @@ Nada disso mexe no caixa até você tocar em **Salvar rodada**.
 
 Para voltar à próxima partida, use o botão na faixa preta do topo ou toque na aba *A lista*.
 
+### Foto do atleta
+
+Na aba **Atletas** cada linha mostra o retrato do jogador ao lado do nome; quem ainda não tem foto aparece com as iniciais.
+
+Em **Editar atleta**, o botão *Escolher foto* abre a galeria ou a câmera. A imagem cai num recorte circular onde você **arrasta para posicionar** e usa a barra para aproximar — é assim que se enquadra rosto e tronco, como nas fotos de time. O corte sai em 256×256, comprimido em WebP (JPEG onde o WebP não for suportado), com uns 10 KB por atleta.
+
+A foto fica guardada no próprio cadastro do atleta, dentro do Firestore, não em armazenamento separado. Para 25 jogadores isso dá algo perto de 250 KB no total.
+
 ### Login dos atletas
 
 Em **Caixa → Ajustes → Acesso dos atletas**, a chave *Exigir senha dos atletas* muda o jeito de entrar:
