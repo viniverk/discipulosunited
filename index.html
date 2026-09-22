@@ -176,6 +176,20 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .selo.neutro{background:var(--linha);color:var(--cinza)}
 .selo.convidado{background:#FFF3D1;color:#8A6100}
 .selo.gol{background:#F6ECD0;color:#7A5D12}
+.retrato{width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:top center;flex:none;
+  background:var(--linha);border:2px solid var(--borda)}
+.retrato-vazio{display:flex;align-items:center;justify-content:center;font-family:var(--display);
+  font-size:16px;color:var(--cinza);letter-spacing:.5px}
+.foto-bloco{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.foto-bloco .retrato{width:78px;height:78px;border-width:3px}
+.foto-bloco .btn-linha{margin:0}
+.recorte{position:relative;width:100%;max-width:260px;aspect-ratio:1;margin:0 auto 10px;
+  border-radius:50%;overflow:hidden;background:var(--linha);border:3px solid var(--canarinho);
+  touch-action:none;cursor:grab}
+.recorte img{position:absolute;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.recorte-guia{position:absolute;inset:0;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55);border-radius:50%;pointer-events:none}
+.zoom{width:100%;accent-color:var(--quadra);margin-bottom:10px}
+
 .check{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--borda);
   border-radius:10px;cursor:pointer;background:var(--cal)}
 .check input{width:20px;height:20px;accent-color:var(--quadra);flex:none;margin:0}
@@ -819,6 +833,10 @@ const linkPessoal = id => location.href.split("#")[0] + "#eu=" + encodeURICompon
 
 /* ---------- login dos atletas ---------- */
 const modoLogin = () => !!estado.config.exigirLogin && !estado.admin;
+const iniciais = n => String(n||"?").trim().split(/\s+/).slice(0,2).map(p => p[0]||"").join("").toUpperCase();
+const retratoDe = (a, classe="") => a?.foto
+  ? `<img class="retrato ${classe}" src="${a.foto}" alt="">`
+  : `<div class="retrato retrato-vazio ${classe}">${escapar(iniciais(a?.nome))}</div>`;
 const semAcento = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
 const novaSenha = () => String(Math.floor(1000 + Math.random()*9000));
 
@@ -1195,6 +1213,7 @@ function telaAtletas(){
   const linha = a => {
     const s = saldoAtleta(a.id), sit = situacaoDe(a);
     return `<div class="item">
+      ${retratoDe(a)}
       <div class="item-corpo">
         <div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}${a.goleiro?' <span class="selo gol">goleiro</span>':""}</div>
         <div class="sub">${sit==="convidado"&&quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${plural(presencasDoAtleta(a.id),"jogo","jogos")}${a.telefone?" · "+escapar(a.telefone):""}${estado.admin?` · ${a.senha?`senha <b>${escapar(a.senha)}</b>`:`<span style="color:var(--deve)">sem senha</span>`}`:""}</div>
@@ -2234,7 +2253,12 @@ function formAtleta(atleta){
     .filter(x => x.id !== a.id && situacaoDe(x) === "fixo")
     .sort((x,y) => x.nome.localeCompare(y.nome,"pt-BR"));
 
+  let fotoNova = a.foto || "";
+
   abrirModal(atleta?"Editar atleta":"Cadastrar atleta", `
+    <div class="foto-bloco" id="f_fotoBloco"></div>
+    <input type="file" id="f_arquivo" accept="image/*" style="display:none">
+    <div id="f_editorFoto"></div>
     <div class="campo"><label>Nome</label><input id="f_nome" value="${escapar(a.nome)}" placeholder="Como aparece no grupo"></div>
     <div class="dupla"><div class="campo"><label>Apelido</label><input id="f_apelido" value="${escapar(a.apelido)}"></div>
       <div class="campo"><label>Telefone</label><input id="f_tel" value="${escapar(a.telefone)}" placeholder="47 99999-0000"></div></div>
@@ -2259,6 +2283,88 @@ function formAtleta(atleta){
     <div class="btn-linha"><button class="btn-main" id="f_salvar">Salvar atleta</button>
       ${atleta?`<button class="btn-sec" id="f_apagar" style="color:var(--deve)">Remover</button>`:""}</div>`);
 
+  /* ---- foto: escolher, recortar o tronco e guardar ---- */
+  const bloco = document.getElementById("f_fotoBloco");
+  const editor = document.getElementById("f_editorFoto");
+  function pintarFoto(){
+    bloco.innerHTML = `${retratoDe({ nome:document.getElementById("f_nome")?.value || a.nome, foto:fotoNova })}
+      <div><div class="sub" style="margin-bottom:6px">Foto do atleta — enquadre o rosto e o tronco.</div>
+        <div class="btn-linha">
+          <button type="button" class="btn-sec" id="f_escolher">${fotoNova?"Trocar foto":"Escolher foto"}</button>
+          ${fotoNova?`<button type="button" class="btn-sec" id="f_tirarFoto" style="color:var(--deve)">Remover</button>`:""}
+        </div></div>`;
+    document.getElementById("f_escolher").onclick = () => document.getElementById("f_arquivo").click();
+    const bt = document.getElementById("f_tirarFoto");
+    if (bt) bt.onclick = () => { fotoNova = ""; pintarFoto(); };
+  }
+  pintarFoto();
+
+  document.getElementById("f_arquivo").onchange = e => {
+    const arq = e.target.files && e.target.files[0];
+    if (!arq) return;
+    const leitor = new FileReader();
+    leitor.onload = () => abrirRecorte(leitor.result);
+    leitor.onerror = () => avisar("Não consegui ler essa imagem.");
+    leitor.readAsDataURL(arq);
+    e.target.value = "";
+  };
+
+  function abrirRecorte(src){
+    const V = 260;                       // lado da janela de recorte, em pixels de tela
+    editor.innerHTML = `
+      <div class="recorte" id="r_caixa"><img id="r_img" src="${src}" alt=""><div class="recorte-guia"></div></div>
+      <input type="range" class="zoom" id="r_zoom" min="1" max="3" step="0.01" value="1">
+      <div class="sub" style="text-align:center;margin-bottom:8px">Arraste para mover · use a barra para aproximar</div>
+      <div class="btn-linha" style="margin:0 0 14px">
+        <button type="button" class="btn-main" style="flex:1" id="r_usar">Usar esta foto</button>
+        <button type="button" class="btn-sec" id="r_cancelar">Cancelar</button>
+      </div>`;
+    const caixa = document.getElementById("r_caixa");
+    const img = document.getElementById("r_img");
+    const zoom = document.getElementById("r_zoom");
+    let base = 1, s = 1, dx = 0, dy = 0, nw = 0, nh = 0;
+
+    const aplicar = () => {
+      const f = base * s, L = nw*f, A = nh*f, lado = caixa.clientWidth || V;
+      const limX = Math.max(0, (L - lado)/2), limY = Math.max(0, (A - lado)/2);
+      dx = Math.max(-limX, Math.min(limX, dx));
+      dy = Math.max(-limY, Math.min(limY, dy));
+      img.style.width = L + "px"; img.style.height = A + "px";
+      img.style.left = (lado/2 - L/2 + dx) + "px";
+      img.style.top  = (lado/2 - A/2 + dy) + "px";
+    };
+    img.onload = () => {
+      nw = img.naturalWidth; nh = img.naturalHeight;
+      const lado = caixa.clientWidth || V;
+      base = Math.max(lado/nw, lado/nh);
+      dy = 0; dx = 0; s = 1; zoom.value = "1"; aplicar();
+    };
+    zoom.oninput = () => { s = Number(zoom.value); aplicar(); };
+
+    let arr = null;
+    caixa.addEventListener("pointerdown", ev => { arr = { x:ev.clientX - dx, y:ev.clientY - dy }; caixa.setPointerCapture(ev.pointerId); });
+    caixa.addEventListener("pointermove", ev => { if (!arr) return; dx = ev.clientX - arr.x; dy = ev.clientY - arr.y; aplicar(); });
+    caixa.addEventListener("pointerup", () => { arr = null; });
+    caixa.addEventListener("pointercancel", () => { arr = null; });
+
+    document.getElementById("r_cancelar").onclick = () => { editor.innerHTML = ""; };
+    document.getElementById("r_usar").onclick = () => {
+      const lado = caixa.clientWidth || V, f = base * s;
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 256;
+      const c = cv.getContext("2d");
+      const sx = (nw*f/2 - lado/2 - dx)/f, sy = (nh*f/2 - lado/2 - dy)/f, tam = lado/f;
+      c.drawImage(img, sx, sy, tam, tam, 0, 0, 256, 256);
+      let saida = cv.toDataURL("image/webp", 0.72);
+      if (!saida.startsWith("data:image/webp")) saida = cv.toDataURL("image/jpeg", 0.78);
+      if (saida.length > 260000) saida = cv.toDataURL("image/jpeg", 0.6);
+      fotoNova = saida;
+      editor.innerHTML = "";
+      pintarFoto();
+      avisar("Foto pronta. Salve o atleta para valer.");
+    };
+  }
+
   document.getElementById("f_gerar").onclick = () => { document.getElementById("f_senhaAt").value = novaSenha(); };
   document.getElementById("f_sit").onchange = e => {
     document.getElementById("f_bloco_conv").style.display = e.target.value === "convidado" ? "block" : "none";
@@ -2273,6 +2379,7 @@ function formAtleta(atleta){
       situacao, ativo: situacao !== "inativo",
       goleiro: document.getElementById("f_gol").checked,
       senha: document.getElementById("f_senhaAt").value.trim(),
+      foto: fotoNova,
       convidadoPor: situacao === "convidado" ? document.getElementById("f_conv").value : "" }, atleta?.id);
     fecharModal(); desenhar(); avisar("Atleta salvo.");
   };
