@@ -144,6 +144,16 @@ Nada disso mexe no caixa até você tocar em **Salvar rodada**.
 
 Para voltar à próxima partida, use o botão na faixa preta do topo ou toque na aba *A lista*.
 
+### Frequência e furos
+
+No painel **Fechar a rodada**, o primeiro selo de cada atleta gira entre três estados: **fora → jogou → furou**. *Furou* é quem confirmou presença e não apareceu — ele continua na lista da rodada, com um selo vermelho, e **continua devendo**, já que ocupou a vaga. Para perdoar, use o selo de pagamento (isento).
+
+Na aba **Atletas**, cada linha mostra `3 de 5 rodadas · 60%` com uma barrinha colorida (verde acima de 70%, amarela entre 40 e 70, vermelha abaixo), mais a contagem de furos quando houver. A barra no topo reordena a lista por **A-Z**, **Mais presentes** ou **Mais furos**.
+
+O botão **Mandar a frequência no grupo** monta o ranking de presenças e, embaixo, a lista de quem confirmou e não veio. No texto da rodada, quem furou aparece com 🚫.
+
+A conta de presença usa apenas rodadas já jogadas, então a rodada que ainda vem não derruba o percentual de ninguém.
+
 ### Foto do atleta
 
 Na aba **Atletas** cada linha mostra o retrato do jogador ao lado do nome; quem ainda não tem foto aparece com as iniciais.
