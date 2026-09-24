@@ -176,6 +176,15 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .selo.neutro{background:var(--linha);color:var(--cinza)}
 .selo.convidado{background:#FFF3D1;color:#8A6100}
 .selo.gol{background:#F6ECD0;color:#7A5D12}
+.selo.furo{background:#FCE8E8;color:var(--deve)}
+.ordem-barra{display:flex;gap:6px;margin-bottom:12px}
+.ordem-barra button{flex:1;padding:8px 4px;border-radius:9px;font-size:12px;font-weight:600;
+  border:1px solid var(--borda);background:var(--cal);color:var(--cinza)}
+.ordem-barra button.on{background:var(--quadra);color:#fff;border-color:transparent}
+.barrinha{height:6px;background:var(--linha);border-radius:99px;overflow:hidden;margin-top:5px;max-width:160px}
+.barrinha i{display:block;height:100%;background:var(--pago)}
+.barrinha.fraca i{background:var(--canarinho)}
+.barrinha.ruim i{background:var(--deve)}
 .retrato{width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:top center;flex:none;
   background:var(--linha);border:2px solid var(--borda)}
 .retrato-vazio{display:flex;align-items:center;justify-content:center;font-family:var(--display);
@@ -499,7 +508,7 @@ const estado = {
     modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2, exigirLogin:false },
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
   instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null,
-  vinculo: null, cfgOk: false, vincOk: false
+  vinculo: null, cfgOk: false, vincOk: false, ordemAtletas: "nome"
 };
 
 /* ---------- camada de dados ---------- */
@@ -797,6 +806,17 @@ function saldoAtleta(id){
 }
 const presencasDoAtleta = id => estado.jogos.filter(j => (j.presencas||{})[id]?.status === "in").length;
 const presencasJogadas = id => jogosPassados().filter(j => (j.presencas||{})[id]?.status === "in").length;
+// confirmou e apareceu × confirmou e furou
+const furou      = (j,id) => { const p = (j.presencas||{})[id]; return !!(p && p.status === "in" && p.faltou); };
+const compareceu = (j,id) => { const p = (j.presencas||{})[id]; return !!(p && p.status === "in" && !p.faltou); };
+function frequencia(id){
+  const passadas = jogosPassados();
+  const presencas = passadas.filter(j => compareceu(j,id)).length;
+  const furos = passadas.filter(j => furou(j,id)).length;
+  const recusas = passadas.filter(j => (j.presencas||{})[id]?.status === "out").length;
+  return { rodadas: passadas.length, presencas, furos, recusas,
+           pct: passadas.length ? Math.round(presencas / passadas.length * 100) : 0 };
+}
 const situacaoDe = a => a?.situacao || (a?.ativo === false ? "inativo" : "fixo");
 const plural = (n, um, varios) => n + " " + (n === 1 ? um : varios);
 const atletaDe = id => estado.atletas.find(a => a.id === id);
@@ -911,6 +931,7 @@ function textoDaLista(j){
   const temMensal = modeloNovo(j) && !!rodadaDeCobranca(mesJ);
   const marca = id => {
     const p = j.presencas[id];
+    if (p.faltou) return "🚫";
     if (p.isento) return "➖";
     if (valorNaRodada(j, id) > 0) return p.pago ? "✅" : "⏳";      // convidado, ou rodada no rateio antigo
     // fixo no modelo mensal: mantém o selo de mensalista junto do status da mensalidade
@@ -949,7 +970,8 @@ function textoDaLista(j){
               : "🧤 *Nenhum goleiro confirmado ainda*");
 
   L.push("");
-  L.push(temMensal ? "🎫 mensalista  ✅ pago  ⏳ falta o Pix  ➖ isento" : "✅ pago  ⏳ falta o Pix");
+  L.push((temMensal ? "🎫 mensalista  ✅ pago  ⏳ falta o Pix  ➖ isento" : "✅ pago  ⏳ falta o Pix")
+    + (dentro.some(id => j.presencas[id].faltou) ? "  🚫 furou" : ""));
 
   if (temMensal) {
     const fixosNaLista = dentro.filter(ehFixo);
@@ -1012,6 +1034,31 @@ function textoMensalidades(m){
   if (estado.config.pixChave) {
     L.push("");
     L.push(`*Pix:* ${estado.config.pixChave}${estado.config.pixNome?" ("+estado.config.pixNome+")":""}`);
+  }
+  const url = location.href.split("#")[0];
+  if (/^https?:/.test(url)) { L.push(""); L.push(url); }
+  return L.join("\n");
+}
+
+function textoFrequencia(){
+  const passadas = jogosPassados();
+  const gente = estado.atletas.filter(a => situacaoDe(a) !== "inativo")
+    .map(a => ({ a, f: frequencia(a.id) }))
+    .filter(x => x.f.presencas || x.f.furos)
+    .sort((x,y) => y.f.presencas - x.f.presencas || x.f.furos - y.f.furos
+                || x.a.nome.localeCompare(y.a.nome,"pt-BR"));
+
+  const L = [`*⚽ ${nomeGrupo()} — FREQUÊNCIA*`, `${plural(passadas.length,"rodada jogada","rodadas jogadas")}`, ""];
+  if (!gente.length) { L.push("_ainda não há rodada fechada_"); return L.join("\n"); }
+
+  L.push("*PRESENÇAS*");
+  gente.forEach((x,i) => L.push(`${i+1}. ${x.a.nome} — ${x.f.presencas}/${x.f.rodadas} (${x.f.pct}%)`));
+
+  const furoes = gente.filter(x => x.f.furos).sort((x,y) => y.f.furos - x.f.furos);
+  if (furoes.length) {
+    L.push("");
+    L.push("*CONFIRMOU E NÃO VEIO*");
+    furoes.forEach(x => L.push(`• ${x.a.nome} — ${plural(x.f.furos,"furo","furos")}`));
   }
   const url = location.href.split("#")[0];
   if (/^https?:/.test(url)) { L.push(""); L.push(url); }
@@ -1092,7 +1139,7 @@ function telaJogo(){
     linhas.push(`<li class="vaga ${id===estado.eu?"eu-mesmo":""}">
       <span class="num">${String(i+1).padStart(2,"0")}</span>
       <div class="vaga-corpo">
-        <div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}${quemConvidou(id)?' <span class="selo convidado">convidado</span>':""}</div>
+        <div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}${furou(proximo,id)?' <span class="selo furo">furou</span>':""}${quemConvidou(id)?' <span class="selo convidado">convidado</span>':""}</div>
         ${quemConvidou(id) ? `<div class="sub">${escapar(quemConvidou(id))}</div>`
           : (estado.admin ? `<div class="sub">toque no selo para ${p.pago?"desmarcar":"marcar como pago"}</div>` : "")}</div>
       ${estado.admin && custa
@@ -1208,15 +1255,24 @@ function telaAgenda(){
    TELA 3 — ATLETAS
    ============================================================ */
 function telaAtletas(){
-  const lista = [...estado.atletas].sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
+  const ordem = estado.ordemAtletas || "nome";
+  const lista = [...estado.atletas].sort((a,b) => {
+    if (ordem === "presenca") return frequencia(b.id).presencas - frequencia(a.id).presencas
+                                  || a.nome.localeCompare(b.nome,"pt-BR");
+    if (ordem === "furo")     return frequencia(b.id).furos - frequencia(a.id).furos
+                                  || a.nome.localeCompare(b.nome,"pt-BR");
+    return a.nome.localeCompare(b.nome,"pt-BR");
+  });
 
   const linha = a => {
-    const s = saldoAtleta(a.id), sit = situacaoDe(a);
+    const s = saldoAtleta(a.id), sit = situacaoDe(a), f = frequencia(a.id);
+    const forca = f.pct >= 70 ? "" : f.pct >= 40 ? "fraca" : "ruim";
     return `<div class="item">
       ${retratoDe(a)}
       <div class="item-corpo">
         <div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}${a.goleiro?' <span class="selo gol">goleiro</span>':""}</div>
-        <div class="sub">${sit==="convidado"&&quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${plural(presencasDoAtleta(a.id),"jogo","jogos")}${a.telefone?" · "+escapar(a.telefone):""}${estado.admin?` · ${a.senha?`senha <b>${escapar(a.senha)}</b>`:`<span style="color:var(--deve)">sem senha</span>`}`:""}</div>
+        <div class="sub">${sit==="convidado"&&quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${f.presencas} de ${plural(f.rodadas,"rodada","rodadas")} · <b>${f.pct}%</b>${f.furos?` · <b style="color:var(--deve)">${plural(f.furos,"furo","furos")}</b>`:""}${estado.admin?(a.senha?` · senha <b>${escapar(a.senha)}</b>`:` · <span style="color:var(--deve)">sem senha</span>`):""}
+          <div class="barrinha ${forca}"><i style="width:${f.pct}%"></i></div></div>
       </div>
       <div class="valor ${s.aberto>0.005?"neg":"pos"}">${s.aberto>0.005?dinheiro(s.aberto):"em dia"}</div>
       ${estado.admin?`${estado.config.exigirLogin
@@ -1238,6 +1294,11 @@ function telaAtletas(){
   document.getElementById("tela-atletas").innerHTML = `
     ${estado.admin?`<button class="btn-main" style="width:100%;margin-bottom:14px" data-acao="novo-atleta">+ Cadastrar atleta</button>`
       :`<div class="aviso">Só o organizador cadastra e remove atletas. Não achou seu nome? Peça pra ele incluir.</div>`}
+    <div class="ordem-barra">
+      ${[["nome","A-Z"],["presenca","Mais presentes"],["furo","Mais furos"]]
+        .map(([k,r]) => `<button class="${ordem===k?"on":""}" data-ordem="${k}">${r}</button>`).join("")}
+    </div>
+    <button class="btn-zap" style="width:100%;margin-bottom:14px" data-compartilhar-texto="frequencia">📤 Mandar a frequência no grupo</button>
     ${grupo("Fixos", fixos, "<b>Ninguém cadastrado</b>Comece pelos que jogam toda semana.")}
     ${grupo("Convidados", convidados, "Nenhum convidado no momento.")}
     ${inativos.length ? grupo("Inativos", inativos, "") : ""}`;
@@ -2429,7 +2490,8 @@ function formFechamento(jogo){
       : pagos * v;
     document.getElementById("fch_resumo").innerHTML =
       `<b>${plural(dentro,"jogador","jogadores")}</b> · ${modeloNovo(jogo)?"convidados":dinheiro(v)+" por cabeça"} · recebido ${dinheiro(recebido)} de ${dinheiro(aReceber)}` +
-      (modeloNovo(jogo)
+      "<br><span class='sub'>O primeiro selo gira entre <b>fora → jogou → furou</b>. Quem furou continua na lista e continua devendo — use o segundo selo para isentar.</span>"
+      + (modeloNovo(jogo)
         ? "<br><span class='sub'>Fixo está coberto pela mensalidade. No convidado, toque no selo para alternar entre a pagar, pago e isento.</span>"
         : Number(jogo.valorFixo) > 0 ? "" : "<br><span class='sub'>No rateio, o valor por cabeça muda conforme você marca quem jogou.</span>");
 
@@ -2439,7 +2501,7 @@ function formFechamento(jogo){
       return `<div class="item">
         <div class="item-corpo"><div class="nome">${escapar(a.nome)}</div>
           ${quemConvidou(a.id) ? `<div class="sub">${escapar(quemConvidou(a.id))}</div>` : ""}</div>
-        <button class="selo ${dentro?"pago":"neutro"}" data-fch-jogou="${a.id}">${dentro?"jogou":"fora"}</button>
+        <button class="selo ${!dentro?"neutro":p.faltou?"deve":"pago"}" data-fch-jogou="${a.id}">${!dentro?"fora":p.faltou?"furou":"jogou"}</button>
         ${valorNaRodada(jogo, a.id) > 0
           ? `<button class="selo ${p.isento?"neutro":p.pago?"pago":"deve"}" data-fch-pagou="${a.id}" ${dentro?"":"disabled"}>${p.isento?"isento":p.pago?"pago":"a pagar"}</button>`
           : `<span class="selo neutro">mensalista</span>`}
@@ -2453,9 +2515,9 @@ function formFechamento(jogo){
     const id = b.dataset.fchJogou || b.dataset.fchPagou;
     const p = rascunho[id] = rascunho[id] || {};
     if (b.dataset.fchJogou) {
-      p.status = p.status === "in" ? null : "in";
-      if (p.status === "in") p.em = p.em || Date.now();
-      else p.pago = false;
+      if (p.status !== "in") { p.status = "in"; p.faltou = false; p.em = p.em || Date.now(); }
+      else if (!p.faltou)    { p.faltou = true; }                       // confirmou e não veio
+      else { p.status = null; p.faltou = false; p.pago = false; }
     } else {
       // convidado cicla entre: a pagar → pago → isento → a pagar
       if (p.isento) { p.isento = false; p.pago = false; }
@@ -2667,7 +2729,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -2710,6 +2772,8 @@ document.body.addEventListener("click", async e => {
   else if (d.compartilharTexto === "identidade") await compartilharTexto(textoIdentidade());
   else if (d.compartilharTexto === "times")      await compartilharTexto(textoTimes());
   else if (d.compartilharTexto === "mensal")     await compartilharTexto(textoMensalidades(d.mes));
+  else if (d.compartilharTexto === "frequencia") await compartilharTexto(textoFrequencia());
+  else if (d.ordem) { estado.ordemAtletas = d.ordem; desenhar(); }
   else if (d.compartilharTexto === "escalacao")  await compartilharTexto(textoEscalacao());
   else if (d.formacao)   { const j = jogoDoSorteio(); if (j) { await salvarEscalacao(j, { formacao:d.formacao }); desenhar(); } }
   else if (d.meuLink)     await mandarLinkPessoal(d.meuLink, true);
