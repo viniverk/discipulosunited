@@ -1184,7 +1184,7 @@ function telaJogo(){
       </div>
     </div>
 
-    ${valor < 0.005 && dentro.length ? `<div class="aviso grave">
+    ${!modeloNovo(proximo) && valor < 0.005 && dentro.length ? `<div class="aviso grave">
       <b>Diária em R$ 0,00.</b> Esta rodada não tem custo da quadra nem valor fixo por cabeça, então ninguém
       aparece como devendo. Toque em <b>Editar jogo</b> e preencha um dos dois.</div>` : ""}
 
@@ -1317,7 +1317,7 @@ function telaCaixa(){
     .sort((a,b) => (b.atrasado - a.atrasado) || (b.aberto - a.aberto));
   const comAtraso = devedores.filter(a => a.atrasado > 0.005).length;
   // rodada com gente confirmada mas diária em R$ 0 não gera dívida nenhuma — avisa em vez de sumir calado
-  const semValor = estado.jogos.filter(j => contaNaDivida(j) && confirmados(j).length && valorPorJogador(j) < 0.005);
+  const semValor = estado.jogos.filter(j => !modeloNovo(j) && contaNaDivida(j) && confirmados(j).length && valorPorJogador(j) < 0.005);
 
   document.getElementById("tela-caixa").innerHTML = `
     <div class="kpis">
@@ -1414,7 +1414,7 @@ function telaCaixa(){
              + (soProxima.length ? `<div class="grupo-rot">A vencer na rodada de ${prox?dataCurta(prox.data):"—"}</div>${soProxima.map(linha).join("")}` : "");
       })()
         : (()=>{
-            const semValor = estado.jogos.filter(j => contaNaDivida(j) && confirmados(j).length && valorPorJogador(j) < 0.005);
+            const semValor = estado.jogos.filter(j => !modeloNovo(j) && contaNaDivida(j) && confirmados(j).length && valorPorJogador(j) < 0.005);
             const proxima = estado.jogos.filter(j => j.data > hojeISO()).sort((a,b)=>a.data.localeCompare(b.data))[0];
             if (semValor.length) return `<div class="vazio"><b>Falta o valor da rodada</b>
               ${plural(semValor.length,"rodada tem","rodadas têm")} gente confirmada mas a diária está em R$ 0,00.
