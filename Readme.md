@@ -152,7 +152,7 @@ Na aba **Atletas**, cada linha mostra `3 de 5 rodadas · 60%` com uma barrinha c
 
 O botão **Mandar a frequência no grupo** monta o ranking de presenças e, embaixo, a lista de quem confirmou e não veio. No texto da rodada, quem furou aparece com 🚫.
 
-A conta de presença usa apenas rodadas já jogadas, então a rodada que ainda vem não derruba o percentual de ninguém.
+A conta usa apenas rodadas já jogadas, então a rodada que ainda vem não derruba o percentual de ninguém. E **cada atleta conta a partir de quando entrou no time** — quem chegou na segunda rodada não é punido pela primeira. O app descobre isso sozinho pela primeira rodada em que a pessoa aparece, confirmando ou recusando; para corrigir, o cadastro tem o campo **No time desde**. Quando a data é diferente da primeira rodada do grupo, a linha mostra *desde 17/09* para deixar claro de onde vem o percentual.
 
 ### Foto do atleta
 
