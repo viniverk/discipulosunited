@@ -809,12 +809,23 @@ const presencasJogadas = id => jogosPassados().filter(j => (j.presencas||{})[id]
 // confirmou e apareceu × confirmou e furou
 const furou      = (j,id) => { const p = (j.presencas||{})[id]; return !!(p && p.status === "in" && p.faltou); };
 const compareceu = (j,id) => { const p = (j.presencas||{})[id]; return !!(p && p.status === "in" && !p.faltou); };
+// desde quando esse atleta conta: a data informada no cadastro ou,
+// na falta dela, a primeira rodada em que ele aparece (confirmando ou recusando)
+function inicioDoAtleta(id){
+  const a = atletaDe(id);
+  if (a && a.desde) return a.desde;
+  const datas = estado.jogos.filter(j => (j.presencas||{})[id]).map(j => j.data).sort();
+  return datas[0] || null;
+}
 function frequencia(id){
-  const passadas = jogosPassados();
+  const todas = jogosPassados();
+  const inicio = inicioDoAtleta(id);
+  const passadas = inicio ? todas.filter(j => j.data >= inicio) : [];
   const presencas = passadas.filter(j => compareceu(j,id)).length;
   const furos = passadas.filter(j => furou(j,id)).length;
   const recusas = passadas.filter(j => (j.presencas||{})[id]?.status === "out").length;
-  return { rodadas: passadas.length, presencas, furos, recusas,
+  return { rodadas: passadas.length, presencas, furos, recusas, inicio,
+           entrouDepois: !!inicio && passadas.length < todas.length,
            pct: passadas.length ? Math.round(presencas / passadas.length * 100) : 0 };
 }
 const situacaoDe = a => a?.situacao || (a?.ativo === false ? "inativo" : "fixo");
@@ -1048,11 +1059,13 @@ function textoFrequencia(){
     .sort((x,y) => y.f.presencas - x.f.presencas || x.f.furos - y.f.furos
                 || x.a.nome.localeCompare(y.a.nome,"pt-BR"));
 
-  const L = [`*⚽ ${nomeGrupo()} — FREQUÊNCIA*`, `${plural(passadas.length,"rodada jogada","rodadas jogadas")}`, ""];
+  const L = [`*⚽ ${nomeGrupo()} — FREQUÊNCIA*`, `${plural(passadas.length,"rodada jogada","rodadas jogadas")}`,
+             `_cada um conta a partir da rodada em que entrou_`, ""];
   if (!gente.length) { L.push("_ainda não há rodada fechada_"); return L.join("\n"); }
 
   L.push("*PRESENÇAS*");
-  gente.forEach((x,i) => L.push(`${i+1}. ${x.a.nome} — ${x.f.presencas}/${x.f.rodadas} (${x.f.pct}%)`));
+  gente.forEach((x,i) => L.push(`${i+1}. ${x.a.nome} — ${x.f.presencas}/${x.f.rodadas} (${x.f.pct}%)`
+    + (x.f.entrouDepois ? ` _desde ${dataCurta(x.f.inicio)}_` : "")));
 
   const furoes = gente.filter(x => x.f.furos).sort((x,y) => y.f.furos - x.f.furos);
   if (furoes.length) {
@@ -1271,7 +1284,7 @@ function telaAtletas(){
       ${retratoDe(a)}
       <div class="item-corpo">
         <div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}${a.goleiro?' <span class="selo gol">goleiro</span>':""}</div>
-        <div class="sub">${sit==="convidado"&&quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${f.presencas} de ${plural(f.rodadas,"rodada","rodadas")} · <b>${f.pct}%</b>${f.furos?` · <b style="color:var(--deve)">${plural(f.furos,"furo","furos")}</b>`:""}${estado.admin?(a.senha?` · senha <b>${escapar(a.senha)}</b>`:` · <span style="color:var(--deve)">sem senha</span>`):""}
+        <div class="sub">${sit==="convidado"&&quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${f.rodadas?`${f.presencas} de ${plural(f.rodadas,"rodada","rodadas")} · <b>${f.pct}%</b>`:"ainda sem rodada"}${f.entrouDepois?` · desde ${dataCurta(f.inicio)}`:""}${f.furos?` · <b style="color:var(--deve)">${plural(f.furos,"furo","furos")}</b>`:""}${estado.admin?(a.senha?` · senha <b>${escapar(a.senha)}</b>`:` · <span style="color:var(--deve)">sem senha</span>`):""}
           <div class="barrinha ${forca}"><i style="width:${f.pct}%"></i></div></div>
       </div>
       <div class="valor ${s.aberto>0.005?"neg":"pos"}">${s.aberto>0.005?dinheiro(s.aberto):"em dia"}</div>
@@ -2323,6 +2336,8 @@ function formAtleta(atleta){
     <div class="campo"><label>Nome</label><input id="f_nome" value="${escapar(a.nome)}" placeholder="Como aparece no grupo"></div>
     <div class="dupla"><div class="campo"><label>Apelido</label><input id="f_apelido" value="${escapar(a.apelido)}"></div>
       <div class="campo"><label>Telefone</label><input id="f_tel" value="${escapar(a.telefone)}" placeholder="47 99999-0000"></div></div>
+    <div class="campo"><label>No time desde</label><input type="date" id="f_noTime" value="${escapar(a.desde||"")}">
+      <div class="sub" style="margin-top:5px">Só conta a frequência a partir daqui. Vazio: o app usa a primeira rodada em que ele aparece.</div></div>
     <div class="campo"><label>Senha do atleta</label>
       <div style="display:flex;gap:8px"><input id="f_senhaAt" value="${escapar(a.senha||"")}" placeholder="sem senha" style="flex:1">
         <button type="button" class="btn-sec" id="f_gerar">Gerar</button></div>
@@ -2441,6 +2456,7 @@ function formAtleta(atleta){
       goleiro: document.getElementById("f_gol").checked,
       senha: document.getElementById("f_senhaAt").value.trim(),
       foto: fotoNova,
+      desde: document.getElementById("f_noTime").value,
       convidadoPor: situacao === "convidado" ? document.getElementById("f_conv").value : "" }, atleta?.id);
     fecharModal(); desenhar(); avisar("Atleta salvo.");
   };
