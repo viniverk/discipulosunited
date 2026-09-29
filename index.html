@@ -331,6 +331,14 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .banco.vermelho{border-left:3px solid #C0392B}
 .banco.colete{border-left:3px solid #5A554B}
 
+.escolha-time{display:flex;gap:5px;flex:none}
+.escolha-time button{width:38px;height:38px;border-radius:9px;border:1px solid var(--borda);
+  background:var(--cal);font-size:15px;line-height:1;opacity:.45}
+.escolha-time button.on{opacity:1;border-color:transparent;box-shadow:0 0 0 2px var(--quadra) inset}
+.escolha-time button.on.vermelho{background:#FCE8E8;box-shadow:0 0 0 2px #C0392B inset}
+.escolha-time button.on.colete{background:#F1EFEA;box-shadow:0 0 0 2px #5A554B inset}
+.escolha-time button.on.neutro{box-shadow:0 0 0 2px var(--cinza) inset}
+
 .times-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .time{background:var(--cal);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden}
 .time-topo{padding:10px 12px;font-family:var(--display);font-size:15px;letter-spacing:.8px;
@@ -508,7 +516,7 @@ const estado = {
     modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2, exigirLogin:false },
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
   instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null,
-  vinculo: null, cfgOk: false, vincOk: false, ordemAtletas: "nome"
+  vinculo: null, cfgOk: false, vincOk: false, ordemAtletas: "nome", modoTimes: "roleta"
 };
 
 /* ---------- camada de dados ---------- */
@@ -1456,17 +1464,24 @@ function telaCaixa(){
 /* ============================================================
    TELA — SORTEIO DE TIMES
    ============================================================ */
-const sorteio = { jogoId:null, restantes:[], vermelho:[], colete:[], vez:"vermelho", angulo:0, girando:false, ultimo:null };
+const sorteio = { jogoId:null, assin:"", restantes:[], vermelho:[], colete:[], vez:"vermelho", angulo:0, girando:false, ultimo:null };
 
 const jogoDoSorteio = () => (estado.jogoAberto && estado.jogos.find(j => j.id === estado.jogoAberto))
   || estado.jogos.filter(j => j.data >= hojeISO()).sort((a,b) => a.data.localeCompare(b.data))[0]
   || jogosPassados().sort((a,b) => b.data.localeCompare(a.data))[0];
 
 function prepararSorteio(jogo){
-  if (sorteio.jogoId === jogo.id) return;
+  const livres = semTime(jogo);
+  const v = jogo.times?.vermelho || [], c = jogo.times?.colete || [];
+  // se os times mudarem por fora (escolha manual), a roleta se refaz com quem sobrou
+  const assin = `${jogo.id}|${livres.join(",")}|${v.join(",")}|${c.join(",")}`;
+  if (sorteio.assin === assin) return;
+  sorteio.assin = assin;
   sorteio.jogoId = jogo.id;
-  sorteio.restantes = confirmados(jogo).slice(0, Number(jogo.vagas)||14);
-  sorteio.vermelho = []; sorteio.colete = []; sorteio.vez = "vermelho";
+  sorteio.restantes = livres;
+  sorteio.vermelho = [...v];
+  sorteio.colete = [...c];
+  sorteio.vez = sorteio.vermelho.length > sorteio.colete.length ? "colete" : "vermelho";
   sorteio.angulo = 0; sorteio.ultimo = null;
 }
 
@@ -1851,6 +1866,39 @@ document.addEventListener("pointerup", async e => {
   await soltar(jogo, id, sob);
 });
 
+function barraModo(){
+  return `<div class="campo-barra" style="margin-bottom:12px">
+    ${[["roleta","🎡 Sortear"],["mao","✋ Escolher na mão"]]
+      .map(([k,r]) => `<button class="${(estado.modoTimes||"roleta")===k?"on vermelho":""}" data-modo-times="${k}">${r}</button>`).join("")}
+  </div>`;
+}
+
+function listaManual(jogo){
+  const gente = confirmados(jogo).slice(0, Number(jogo.vagas)||14);
+  const v = (jogo.times?.vermelho || []).length, c = (jogo.times?.colete || []).length;
+  if (!gente.length) return `<div class="cartao"><div class="vazio"><b>Lista vazia</b>
+    Ninguém confirmou ainda nesta rodada.</div></div>`;
+  return `<div class="cartao">
+    <div class="titulo">Escolher na mão · 🔴 ${v} · 🟡 ${c}${gente.length-v-c>0?` · ${gente.length-v-c} sem time`:""}</div>
+    ${gente.map(id => {
+      const t = timeDoAtleta(jogo, id);
+      return `<div class="item">
+        ${retratoDe(atletaDe(id))}
+        <div class="item-corpo"><div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}</div>
+          ${quemConvidou(id)?`<div class="sub">${escapar(quemConvidou(id))}</div>`:""}</div>
+        <div class="escolha-time">
+          <button class="${t==="vermelho"?"on vermelho":""}" data-por-time="vermelho" data-atleta="${id}">🔴</button>
+          <button class="${t==="colete"?"on colete":""}" data-por-time="colete" data-atleta="${id}">🟡</button>
+          <button class="${!t?"on neutro":""}" data-por-time="livre" data-atleta="${id}">—</button>
+        </div>
+      </div>`;
+    }).join("")}
+    <div class="btn-linha">
+      <button class="btn-sec" style="flex:1" data-acao="zerar-times">Limpar os dois times</button>
+    </div>
+  </div>`;
+}
+
 function telaTimes(){
   if (sorteio.girando) return;
   const el = document.getElementById("tela-times");
@@ -1865,11 +1913,31 @@ function telaTimes(){
   const { num, mes } = dataLonga(jogo.data);
   const topo = `<div class="aviso">Sorteio da rodada de <b>${num} ${mes}</b>${jogo.local?" · "+escapar(jogo.local):""}.</div>`;
 
-  if (feito) {
-    el.innerHTML = topo + `
+  if (estado.modoTimes === "mao") {
+    el.innerHTML = topo + barraModo() + listaManual(jogo)
+      + (feito ? `<div class="times-grade">
+          ${cartaoTime("vermelho","Vermelho",jogo.times.vermelho||[])}
+          ${cartaoTime("colete","Colete",jogo.times.colete||[])}
+        </div>
+        <div class="btn-linha" style="margin:0 0 14px">
+          <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar os times no grupo</button>
+        </div>` : "")
+      + blocoEscalacao(jogo);
+    return;
+  }
+
+  prepararSorteio(jogo);
+  if (!confirmados(jogo).length) {
+    el.innerHTML = topo + `<div class="cartao"><div class="vazio"><b>Lista vazia</b>
+      Ninguém confirmou ainda. O sorteio usa quem está na lista da rodada.</div></div>`;
+    return;
+  }
+
+  if (!sorteio.restantes.length) {            // todo mundo já tem time
+    el.innerHTML = topo + barraModo() + `
       <div class="times-grade">
-        ${cartaoTime("vermelho","Vermelho",jogo.times.vermelho)}
-        ${cartaoTime("colete","Colete",jogo.times.colete)}
+        ${cartaoTime("vermelho","Vermelho",jogo.times.vermelho||[])}
+        ${cartaoTime("colete","Colete",jogo.times.colete||[])}
       </div>
       <div class="btn-linha" style="margin:0 0 14px">
         <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar os times no grupo</button>
@@ -1879,17 +1947,9 @@ function telaTimes(){
     return;
   }
 
-  prepararSorteio(jogo);
-  const dentro = confirmados(jogo).length;
-  if (!sorteio.restantes.length) {
-    el.innerHTML = topo + `<div class="cartao"><div class="vazio"><b>Lista vazia</b>
-      ${dentro?"":"Ninguém confirmou ainda."} O sorteio usa quem está na lista da rodada.</div></div>`;
-    return;
-  }
-
   const proximoTime = sorteio.vez === "vermelho" ? "VERMELHO" : "COLETE";
   const gol = faseGoleiro();
-  el.innerHTML = topo
+  el.innerHTML = topo + barraModo()
     + (gol ? `<div class="aviso" style="background:#FBF3DC;border-left-color:#A8841F">
         🧤 <b>Sorteando o goleiro</b> do time ${proximoTime.toLowerCase()}.</div>` : "")
     + svgRoleta() + `
@@ -1958,8 +2018,8 @@ async function refazerSorteio(){
   const jogo = jogoDoSorteio(); if (!jogo) return;
   if (!confirm("Refazer o sorteio? Os times atuais somem.")) return;
   await gravar("jogos", { times: null }, jogo.id);
-  sorteio.jogoId = null;
-  telaTimes(); avisar("Sorteio zerado.");
+  sorteio.assin = "";
+  desenhar(); avisar("Sorteio zerado.");
 }
 
 function textoTimes(){
@@ -2745,7 +2805,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -2790,6 +2850,11 @@ document.body.addEventListener("click", async e => {
   else if (d.compartilharTexto === "mensal")     await compartilharTexto(textoMensalidades(d.mes));
   else if (d.compartilharTexto === "frequencia") await compartilharTexto(textoFrequencia());
   else if (d.ordem) { estado.ordemAtletas = d.ordem; desenhar(); }
+  else if (d.modoTimes) { estado.modoTimes = d.modoTimes; desenhar(); }
+  else if (d.porTime) {
+    const j = jogoDoSorteio();
+    if (j) await soltar(j, d.atleta, { dataset: { banco: d.porTime } });
+  }
   else if (d.compartilharTexto === "escalacao")  await compartilharTexto(textoEscalacao());
   else if (d.formacao)   { const j = jogoDoSorteio(); if (j) { await salvarEscalacao(j, { formacao:d.formacao }); desenhar(); } }
   else if (d.meuLink)     await mandarLinkPessoal(d.meuLink, true);
@@ -2803,7 +2868,7 @@ document.body.addEventListener("click", async e => {
     if (!confirm("Desfazer os times e voltar todo mundo para a roleta?")) return;
     await gravar("jogos", { times: null, escalacao: null }, j.id);
     j.times = null; j.escalacao = null;
-    sorteio.jogoId = null;
+    sorteio.assin = "";
     desenhar(); avisar("Times desfeitos.");
   }
   else if (d.acao === "limpar-escala") {
