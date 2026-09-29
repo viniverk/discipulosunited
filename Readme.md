@@ -104,9 +104,13 @@ Abaixo do sorteio há um campo de society com seis posições: goleiro e cinco n
 
 O campo mostra **os dois times ao mesmo tempo**: Colete ataca de cima para baixo, Vermelho de baixo para cima, cada um com suas seis posições. Abaixo do campo ficam os banquinhos: **⚪ Sem time** com quem ainda não foi dividido, e **🔴/🟡 Reservas** de cada lado.
 
-Para posicionar, arraste o nome até a posição, ou toque no nome e depois na posição (mais fácil com o celular na mão). Arrastar um jogador para cima de outro **troca os dois de lugar**; arrastar para o banquinho do outro time **muda o jogador de lado**; arrastar para Sem time tira ele dos dois.
+Para posicionar, arraste o nome até a posição, ou toque no nome e depois no destino. Com alguém escolhido aparece uma faixa amarela com o nome dele e dois botões: **Tirar do campo** e **Cancelar**.
 
-**A roleta é opcional.** O campo aparece desde o começo, com todo mundo em Sem time, e você pode montar os times na mão. Quem preferir sortear usa a roleta acima e depois ajusta o que quiser. **Desfazer os times** devolve todo mundo e traz a roleta de volta.
+O destino pode ser uma vaga vazia, **outro jogador** (os dois trocam de lugar) ou um banquinho. Soltar no banquinho do outro time muda o jogador de lado; soltar em Sem time tira ele dos dois.
+
+**A roleta é opcional.** No topo da aba há duas opções: **🎡 Sortear** e **✋ Escolher na mão**. No modo manual, cada confirmado vira uma linha com foto, nome e três botões — 🔴 vermelho, 🟡 colete e — para tirar dos times. O cabeçalho conta quantos estão de cada lado e quantos faltam.
+
+Os dois modos conversam: escolha 4 na mão, volte para a roleta e ela sorteia apenas os que sobraram, mantendo quem você já colocou. Depois de sorteado, dá para voltar ao manual e trocar alguém de lado. **Limpar os dois times** zera tudo.
 
 A escalação fica salva no Firestore junto da rodada, e há dois botões para mandar no grupo:
 
@@ -241,6 +245,48 @@ No dia do 1º jogo, antes de ele acontecer, ninguém aparece devendo mensalidade
 **Convidado** entra devendo os R$ 10 automaticamente. Para perdoar, abra *Fechar a rodada* e toque no selo dele: o ciclo é **a pagar → pago → isento → a pagar**. Isento sai da conta sem virar dívida nem entrada.
 
 Os quatro valores e a rodada de cobrança são configuráveis. Deixando a data da virada em branco, tudo volta ao rateio antigo.
+
+## Rodada cancelada e fechamento
+
+Em **Editar jogo** existe a caixa **🌧️ Rodada cancelada**. A rodada sai da frequência, do caixa, da cobrança e do sorteio, mas as confirmações ficam guardadas para consulta. Na agenda ela aparece riscada.
+
+Salvar o painel *Fechar a rodada* marca a rodada como **fechada**. Enquanto isso não acontece, a tela inicial mostra um aviso vermelho listando as rodadas pendentes, com botão para abrir a mais recente — é o que evita frequência e caixa mentirem por esquecimento. A agenda marca cada rodada como *a fechar* ou *fechada*.
+
+## Extrato do atleta
+
+Tocar no nome de um atleta, na aba Atletas, abre o extrato: foto, percentual de presença, furos, quanto está em aberto (separando vencido de a vencer), meses de mensalidade pagos e a lista rodada a rodada — jogou, furou, avisou que não ia — com o valor e o estado de cada uma. O botão **Mandar o extrato** monta o texto pronto com a chave Pix.
+
+## Backup
+
+Em **Caixa → Ajustes → Backup**:
+
+- **⬇️ Exportar tudo** baixa um `.json` com atletas, rodadas, mensalidades, despesas, uniformes e ajustes.
+- **⬆️ Restaurar** lê esse arquivo e sobrescreve o que está no ar, com confirmação. Serve tanto para desfazer um estrago quanto para migrar de projeto Firebase.
+
+Vale baixar de vez em quando, principalmente no fim de cada mês.
+
+## Aba Uniforme
+
+Galeria com as peças do uniforme — camisa, goleiro, calção, agasalho. O admin adiciona pelo botão, escolhe a foto (reduzida para 760px e comprimida antes de subir), dá um nome e uma observação opcional. Tocar na foto abre em tela cheia.
+
+## Regras do Firestore
+
+O arquivo `firestore.rules` traz a proteção de verdade, que substitui a trava só visual. Publicando essas regras:
+
+- as **senhas saem do alcance de todo mundo** — ficam na coleção `senhas`, que só o admin lê, e a conferência do login acontece dentro da regra, não no app;
+- **só quem fez login** enxerga rodadas, caixa, mensalidades e uniformes;
+- **só aparelhos cadastrados como admin** conseguem escrever; o atleta comum só altera o campo de presenças da rodada.
+
+**Ordem obrigatória, para não se trancar para fora:**
+
+1. No app, em Ajustes, toque em **🔒 Mover senhas antigas para o lugar protegido**. Isso copia as senhas dos cadastros para a coleção `senhas`.
+2. Ainda em Ajustes, copie a **Identificação deste aparelho**.
+3. No console do Firebase, crie a coleção `admins` com um documento cujo ID é essa identificação (qualquer campo dentro serve, por exemplo `nome: "Vinícios"`).
+4. Só então cole o conteúdo de `firestore.rules` em Firestore → Regras e publique.
+
+Se pular o passo 3, você perde o acesso de escrita e vai precisar afrouxar as regras pelo console para voltar.
+
+**O que ainda não protege:** a identificação do aparelho é anônima, então trocar de celular ou limpar os dados do navegador gera uma identificação nova — você precisa cadastrá-la de novo em `admins`. Guarde mais de uma, ou mantenha o backup em dia.
 
 ## Como as contas funcionam
 
