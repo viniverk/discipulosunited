@@ -22,6 +22,7 @@
    ============================================================ */
 :root{
   --tinta:#0B0B0A;
+  --texto:#0B0B0A;
   --quadra:#23211C;
   --quadra-esc:#121110;
   --cal:#ffffff;
@@ -41,7 +42,7 @@ html{-webkit-text-size-adjust:100%}
 body{
   font-family:var(--corpo);
   background:var(--linha);
-  color:var(--tinta);
+  color:var(--texto);
   font-size:16px;
   line-height:1.45;
   padding-bottom:calc(28px + env(safe-area-inset-bottom));
@@ -218,7 +219,8 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .check input{width:20px;height:20px;accent-color:var(--quadra);flex:none;margin:0}
 .check b{font-weight:600}
 .check .sub{margin-top:2px}
-.check:has(input:checked){border-color:var(--quadra);background:#F3F7FC}
+.check:has(input:checked){border-color:var(--quadra);background:#F3F7FC;color:#14140F}
+.check:has(input:checked) .sub{color:#6B6A5E}
 .mes-nav{display:flex;align-items:center;gap:10px;background:var(--linha);border-radius:10px;padding:8px 6px}
 .mes-nav > div{flex:1;text-align:center;min-width:0}
 .mes-nav b{display:block;font-family:var(--display);font-size:17px;font-weight:400;letter-spacing:.4px;
@@ -233,7 +235,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .grupo-rot:first-child{margin-top:4px}
 .grupo-rot.atraso{background:#FCE8E8;color:var(--deve)}
 .selo[data-clique]{cursor:pointer}
-.eu-mesmo{background:#FFF8E3;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
+.eu-mesmo{color:#14140F;background:#FFF8E3;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
 
 .foras{display:flex;flex-wrap:wrap;gap:6px}
 .fora-chip{background:var(--linha);color:var(--cinza);border-radius:999px;padding:5px 11px;font-size:13px}
@@ -290,7 +292,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .roleta{width:100%;max-width:330px;height:auto;display:block}
 .roleta-seta{position:absolute;top:-4px;left:50%;transform:translateX(-50%);z-index:2;
   font-size:26px;line-height:1;color:var(--canarinho);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
-.roleta-centro{fill:var(--cal);stroke:var(--canarinho);stroke-width:3}
+.roleta-centro{fill:#fff;stroke:var(--canarinho);stroke-width:3}
 .btn-girar{background:var(--canarinho);color:var(--tinta);width:100%;padding:16px;border-radius:12px;
   font-family:var(--display);font-size:20px;letter-spacing:1.5px;text-transform:uppercase;
   transition:transform .08s ease}
@@ -342,7 +344,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   color:var(--cinza);margin-bottom:7px}
 .banco-fichas{display:flex;flex-wrap:wrap;gap:6px}
 .banco .ficha{flex:1 1 calc(50% - 6px);min-width:0;cursor:grab;padding:5px 4px;font-size:11px}
-.banco.alvo{border-color:var(--canarinho);background:#FBF6E8}
+.banco.alvo{border-color:var(--canarinho);background:#FBF6E8;color:#14140F}
 .banco.vermelho{border-left:3px solid #C0392B}
 .banco.colete{border-left:3px solid #5A554B}
 
@@ -350,8 +352,8 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .escolha-time button{width:38px;height:38px;border-radius:9px;border:1px solid var(--borda);
   background:var(--cal);font-size:15px;line-height:1;opacity:.45}
 .escolha-time button.on{opacity:1;border-color:transparent;box-shadow:0 0 0 2px var(--quadra) inset}
-.escolha-time button.on.vermelho{background:#FCE8E8;box-shadow:0 0 0 2px #C0392B inset}
-.escolha-time button.on.colete{background:#F1EFEA;box-shadow:0 0 0 2px #5A554B inset}
+.escolha-time button.on.vermelho{background:#FCE8E8;color:#14140F;box-shadow:0 0 0 2px #C0392B inset}
+.escolha-time button.on.colete{background:#F1EFEA;color:#14140F;box-shadow:0 0 0 2px #5A554B inset}
 .escolha-time button.on.neutro{box-shadow:0 0 0 2px var(--cinza) inset}
 
 .times-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
@@ -429,8 +431,19 @@ body.trancado .portao{display:flex}
 
 .vazio{text-align:center;padding:26px 14px;color:var(--cinza)}
 .vazio b{display:block;font-family:var(--display);font-size:19px;color:var(--tinta);font-weight:400;margin-bottom:6px;text-transform:uppercase}
-.aviso{background:#FFF8E3;border-left:3px solid var(--canarinho);padding:11px 13px;border-radius:0 8px 8px 0;font-size:13.5px;margin-bottom:14px}
+.aviso{background:#FFF8E3;border-left:3px solid var(--canarinho);padding:11px 13px;border-radius:0 8px 8px 0;
+  font-size:13.5px;margin-bottom:14px;color:#14140F}
+.aviso .sub{color:#6B6A5E}
 .aviso.grave{background:#FCE8E8;border-left-color:var(--deve)}
+.temas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px}
+.tema{display:block;text-align:left;padding:10px 9px;border:1px solid var(--borda);border-radius:10px;
+  background:var(--cal);line-height:1.25}
+.tema.on{border-color:var(--canarinho);box-shadow:0 0 0 2px var(--canarinho) inset}
+.tema b{display:block;font-size:13px;margin-top:6px}
+.tema .sub{font-size:10.5px}
+.tema-amostra{display:flex;height:18px;border-radius:5px;overflow:hidden}
+.tema-amostra i{flex:1}
+
 .versao{text-align:center;font-size:11px;color:var(--cinza);margin-top:14px;letter-spacing:.4px}
 
 .toast{
@@ -449,6 +462,55 @@ body.trancado .portao{display:flex}
   .modal-caixa{border-radius:18px}
   .jogo-quando{font-size:52px}
 }
+/* ============================================================
+   TEMAS — trocáveis em Caixa → Ajustes
+   ============================================================ */
+
+/* VESTIÁRIO: claro e arejado, verde de campo, cantos mais retos,
+   cartões com contorno em vez de sombra */
+body.tema-vestiario{
+  --tinta:#10241A; --texto:#12231B;
+  --quadra:#176B45; --quadra-esc:#0E4A2F;
+  --linha:#F5F7F4; --borda:#DCE4DD; --cinza:#6B7A71;
+  --canarinho:#E8A417;
+  --raio:9px;
+  --sombra:none;
+}
+body.tema-vestiario .cartao,
+body.tema-vestiario .kpi,
+body.tema-vestiario .time,
+body.tema-vestiario .peca{border:1px solid var(--borda)}
+body.tema-vestiario .topo{background:linear-gradient(180deg,var(--quadra),var(--quadra-esc))}
+body.tema-vestiario .marca{letter-spacing:1px}
+body.tema-vestiario .num{color:var(--quadra)}
+
+/* PLACAR: escuro, para quadra à noite e telas OLED */
+body.tema-placar{
+  --tinta:#0C0E11; --texto:#E9ECF1;
+  --quadra:#23262C; --quadra-esc:#15171B;
+  --cal:#1E2126; --linha:#131519; --borda:#2E333A; --cinza:#8D95A1;
+  --canarinho:#D9B44A;
+  --sombra:0 1px 2px rgba(0,0,0,.5), 0 10px 26px rgba(0,0,0,.35);
+}
+body.tema-placar .abas{background:var(--cal);border-bottom-color:var(--borda)}
+body.tema-placar .aba.on{color:var(--canarinho);border-bottom-color:var(--canarinho)}
+body.tema-placar .eu select,
+body.tema-placar .campo input,
+body.tema-placar .campo select,
+body.tema-placar .campo textarea{background:#2A2E35;color:var(--texto);border-color:var(--borda)}
+body.tema-placar .btn-sec{background:#2A2E35;border-color:var(--borda)}
+body.tema-placar .ordem-barra button,
+body.tema-placar .campo-barra button,
+body.tema-placar .mes-nav button{background:#2A2E35;color:var(--cinza);border-color:var(--borda)}
+body.tema-placar .mes-nav{background:#181B20}
+body.tema-placar .banco{background:#181B20}
+body.tema-placar .grupo-rot{background:#23262C}
+body.tema-placar .selo.neutro{background:#2A2E35;color:var(--cinza)}
+body.tema-placar .escolha-time button{background:#2A2E35}
+body.tema-placar .ficha{color:#0B0B0A;background:#F2F3F5}
+body.tema-placar .retrato-vazio{background:#2A2E35}
+body.tema-placar .barrinha{background:#2A2E35}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -530,7 +592,7 @@ const VERSAO = "2026-08-21";
 const estado = {
   atletas: [], jogos: [], despesas: [], mensalidades: [], uniformes: [], senhas: [],
   config: { pixChave:"", pixTipo:"Celular", pixNome:"", custoPadrao:0, valorFixo:0, vagas:14, pin:"1234", diaSemana:2, hora:"20:00", linkGrupo:"", nomeGrupo:"Discípulos United", lema:"",
-    modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2, exigirLogin:false },
+    modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2, exigirLogin:false, tema:"escudo" },
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
   instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null,
   vinculo: null, cfgOk: false, vincOk: false, ordemAtletas: "nome", modoTimes: "roleta"
@@ -772,6 +834,11 @@ function valorNaRodada(j, id){
 
 function caixa(){
   const hoje = hojeISO();
+  // lançamento sem tipo é saída, para não mexer no que já estava gravado
+  const extras = estado.despesas.filter(d => d.tipo !== "entrada")
+    .reduce((s,d) => s + (Number(d.valor)||0), 0);
+  const avulsasEntrada = estado.despesas.filter(d => d.tipo === "entrada")
+    .reduce((s,d) => s + (Number(d.valor)||0), 0);
   const prox = proximaRodada();
 
   // entradas: o que já pingou de rodada e de mensalidade
@@ -783,7 +850,7 @@ function caixa(){
   const cobraveis = mesesComCobranca();
   const mensalAdiantado = estado.mensalidades.reduce((s,x) =>
     s + (cobraveis.includes(x.id) ? 0 : Object.keys(x.pagos || {}).length * vm), 0);
-  const entrou = deRodadas + deMensalidades;
+  const entrou = deRodadas + deMensalidades + avulsasEntrada;
   const adiantado = jogosValidos().filter(j => j.data > hoje).reduce((s,j) => s + recebidoNoJogo(j), 0);
 
   // saídas: quadra rateada (modelo antigo), quadra mensal e despesas avulsas
@@ -792,7 +859,6 @@ function caixa(){
   const mesesPagos = [...new Set(jogosValidos().filter(j => modeloNovo(j) && j.data <= hoje).map(j => mesDe(j.data)))];
   const quadraMensal = mesesPagos.length * cfgN("custoMensal",450);
   const quadra = quadraAntiga + quadraMensal;
-  const extras = estado.despesas.reduce((s,d) => s + (Number(d.valor)||0), 0);
 
   // a receber
   const atrasadoRodadas = jogosPassados().reduce((s,j) => s + aReceberNoJogo(j), 0);
@@ -806,7 +872,7 @@ function caixa(){
   const atrasado = atrasadoRodadas + atrasadoMensal;
   const pendente = pendenteRodadas + pendenteMensal;
 
-  return { entrou, deRodadas, deMensalidades, mensalAdiantado, adiantado, saiu: quadra+extras,
+  return { entrou, deRodadas, deMensalidades, avulsasEntrada, mensalAdiantado, adiantado, saiu: quadra+extras,
            quadra, quadraAntiga, quadraMensal, mesesQuadra: mesesPagos.length, extras,
            saldo: entrou-quadra-extras, aReceber: atrasado+pendente, atrasado, pendente };
 }
@@ -894,6 +960,20 @@ function proximoDiaDaSemana(alvo){
 }
 const escapar = t => String(t??"").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const nomeDe = id => estado.atletas.find(a => a.id === id)?.nome || "—";
+const TEMAS = {
+  escudo:     { nome:"Escudo",    desc:"preto, ouro e prata do brasão",   cores:["#23211C","#C9A227","#F1EFEA"] },
+  vestiario:  { nome:"Vestiário", desc:"claro, verde de campo",           cores:["#176B45","#E8A417","#F5F7F4"] },
+  placar:     { nome:"Placar",    desc:"escuro, para jogo à noite",       cores:["#131519","#D9B44A","#1E2126"] }
+};
+function aplicarTema(){
+  const t = TEMAS[estado.config.tema] ? estado.config.tema : "escudo";
+  document.body.classList.remove("tema-vestiario","tema-placar");
+  if (t !== "escudo") document.body.classList.add("tema-" + t);
+  const cor = { escudo:"#23211C", vestiario:"#176B45", placar:"#131519" }[t];
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = cor;
+}
+
 const nomeGrupo = () => (estado.config.nomeGrupo || "Discípulos United").toUpperCase();
 const linkPessoal = id => location.href.split("#")[0] + "#eu=" + encodeURIComponent(id);
 
@@ -1524,7 +1604,7 @@ function telaCaixa(){
     <div class="kpis">
       <div class="kpi forte"><small>Saldo em caixa</small><b>${dinheiro(c.saldo)}</b></div>
       <div class="kpi"><small>Recebido</small><b style="color:var(--pago)">${dinheiro(c.entrou)}</b>
-        <div class="sub">${dinheiro(c.deMensalidades)} mensalidades · ${dinheiro(c.deRodadas)} rodadas</div></div>
+        <div class="sub">${dinheiro(c.deMensalidades)} mensalidades · ${dinheiro(c.deRodadas)} rodadas${c.avulsasEntrada>0.005?` · ${dinheiro(c.avulsasEntrada)} avulsas`:""}</div></div>
       <div class="kpi"><small>Gasto</small><b style="color:var(--deve)">${dinheiro(c.saiu)}</b>
         <div class="sub">${c.mesesQuadra?plural(c.mesesQuadra,"mês de quadra","meses de quadra"):plural(jogosPassados().length,"rodada","rodadas")} + despesas</div></div>
       <div class="kpi" style="grid-column:1/-1"><small>A receber dos atletas</small><b>${dinheiro(c.aReceber)}</b>
@@ -1628,16 +1708,23 @@ function telaCaixa(){
     </div>
 
     <div class="cartao">
-      <div class="titulo">Despesas fora do jogo</div>
-      ${estado.despesas.length ? [...estado.despesas].sort((a,b)=>b.data.localeCompare(a.data)).map(d => `<div class="item">
-        <div class="data-caixa"><b>${dataLonga(d.data).num}</b><span>${dataLonga(d.data).mes}</span></div>
-        <div class="item-corpo"><div class="nome">${escapar(d.descricao)}</div></div>
-        <div class="valor neg">${dinheiro(d.valor)}</div>
-        ${estado.admin?`<button class="btn-sec" data-apagar-despesa="${d.id}">✕</button>`:""}</div>`).join("")
-        : `<div class="vazio">Bola, colete, camisa — o que não é aluguel de quadra entra aqui.</div>`}
+      <div class="titulo">Entradas e saídas avulsas${c.avulsasEntrada>0.005?` · +${dinheiro(c.avulsasEntrada)}`:""}${c.extras>0.005?` · −${dinheiro(c.extras)}`:""}</div>
+      ${estado.despesas.length ? [...estado.despesas].sort((a,b)=>String(b.data).localeCompare(String(a.data))).map(d => {
+        const ent = d.tipo === "entrada";
+        return `<div class="item">
+          <div class="data-caixa" style="${ent?"color:var(--pago)":""}"><b>${dataLonga(d.data).num}</b><span>${dataLonga(d.data).mes}</span></div>
+          <div class="item-corpo"><div class="nome">${escapar(d.descricao)}</div>
+            ${d.quem?`<div class="sub">${escapar(d.quem)}</div>`:""}</div>
+          <div class="valor ${ent?"pos":"neg"}">${ent?"+":"−"} ${dinheiro(d.valor)}</div>
+          ${estado.admin?`<button class="btn-sec" data-apagar-despesa="${d.id}">✕</button>`:""}</div>`;
+      }).join("")
+        : `<div class="vazio">Rifa, doação, bola, colete, arbitragem — tudo que não vem da diária nem da mensalidade entra aqui.</div>`}
       ${estado.admin?`<div class="btn-linha">
-        <button class="btn-sec" data-acao="nova-despesa">+ Lançar despesa</button>
-        <button class="btn-sec" data-acao="ajustes">Ajustes da pelada</button></div>`:""}
+        <button class="btn-main" style="flex:1" data-acao="nova-entrada">+ Entrada</button>
+        <button class="btn-sec" style="flex:1" data-acao="nova-despesa">− Saída</button>
+      </div>
+      <div class="btn-linha" style="margin-top:8px">
+        <button class="btn-sec" style="width:100%" data-acao="ajustes">Ajustes da pelada</button></div>`:""}
     </div>`;
 }
 
@@ -2441,6 +2528,7 @@ function telaEstatuto(){
 
 /* ---------- desenho geral ---------- */
 function desenhar(){
+  aplicarTema();
   const carregando = !(estado.cfgOk && estado.vincOk);
   if (carregando || trancado()) { desenharPortao(carregando); return; }
   abrirPortao();
@@ -2958,19 +3046,27 @@ function formMensalidadesAtleta(id){
   pintar();
 }
 
-function formDespesa(){
-  abrirModal("Lançar despesa", `
+function formDespesa(tipo){
+  const entrada = tipo === "entrada";
+  abrirModal(entrada ? "Lançar entrada" : "Lançar saída", `
     <div class="campo"><label>Data</label><input type="date" id="f_data" value="${hojeISO()}"></div>
-    <div class="campo"><label>Descrição</label><input id="f_desc" placeholder="Bola nova, coletes, camisa..."></div>
-    <div class="campo"><label>Valor (R$)</label><input type="number" step="0.01" id="f_valor"></div>
-    <button class="btn-main" id="f_salvar">Lançar</button>`);
-  document.getElementById("f_salvar").onclick = async () => {
+    <div class="campo"><label>Descrição</label><input id="f_desc" placeholder="${entrada
+      ? "Rifa, doação, venda de camisa, churrasco..."
+      : "Bola nova, coletes, arbitragem, premiação..."}"></div>
+    <div class="campo"><label>Valor (R$)</label><input type="number" step="0.01" inputmode="decimal" id="f_valor"></div>
+    <div class="campo"><label>Quem</label><input id="f_quem2" placeholder="opcional — de quem veio ou para quem foi"></div>
+    <button class="btn-main" style="width:100%" id="f_salvar">${entrada?"Lançar entrada":"Lançar saída"}</button>`);
+  const ir = async () => {
     const descricao = document.getElementById("f_desc").value.trim();
-    const valor = Number(document.getElementById("f_valor").value);
+    const valor = Math.abs(Number(document.getElementById("f_valor").value));
     if (!descricao || !valor) return avisar("Preencha descrição e valor.");
-    await gravar("despesas", { data:document.getElementById("f_data").value, descricao, valor });
-    fecharModal(); desenhar(); avisar("Despesa lançada.");
+    await gravar("despesas", { data:document.getElementById("f_data").value, descricao, valor,
+                               tipo: entrada ? "entrada" : "saida",
+                               quem: document.getElementById("f_quem2").value.trim() });
+    fecharModal(); desenhar(); avisar(entrada ? "Entrada lançada." : "Saída lançada.");
   };
+  document.getElementById("f_salvar").onclick = ir;
+  document.getElementById("f_valor").onkeydown = e => { if (e.key === "Enter") ir(); };
 }
 
 function formAjustes(){
@@ -3015,6 +3111,14 @@ function formAjustes(){
         <br><code style="word-break:break-all;font-size:11.5px"><b>${escapar(fb.uid)}</b></code>
         <button type="button" class="btn-sec" style="margin-top:6px" id="f_copiaUid">Copiar</button></div>` : ""}
 
+    <div class="titulo" style="margin-top:18px">Aparência</div>
+    <div class="sub" style="margin-bottom:10px">Vale para todo mundo do grupo. Toque para ver na hora.</div>
+    <div class="temas" id="f_temas">
+      ${Object.entries(TEMAS).map(([k,t]) => `<button type="button" class="tema ${(c.tema||"escudo")===k?"on":""}" data-tema="${k}">
+        <span class="tema-amostra">${t.cores.map(x=>`<i style="background:${x}"></i>`).join("")}</span>
+        <b>${t.nome}</b><span class="sub">${t.desc}</span></button>`).join("")}
+    </div>
+
     <div class="titulo" style="margin-top:18px">Backup</div>
     <div class="sub" style="margin-bottom:10px">Baixa um arquivo com atletas, rodadas, mensalidades, despesas e ajustes.
       É a única rede de segurança se alguém apagar dados sem querer.</div>
@@ -3039,6 +3143,14 @@ function formAjustes(){
     try { await navigator.clipboard.writeText(fb.uid); avisar("Identificação copiada."); }
     catch(_) { avisar(fb.uid); }
   };
+
+  document.getElementById("f_temas").addEventListener("click", async e => {
+    const b = e.target.closest("[data-tema]"); if (!b) return;
+    estado.config.tema = b.dataset.tema;
+    aplicarTema();
+    [...document.querySelectorAll("#f_temas .tema")].forEach(x => x.classList.toggle("on", x === b));
+    await gravarConfig({ tema: b.dataset.tema });
+  });
 
   document.getElementById("f_exportar").onclick = exportarTudo;
   document.getElementById("f_importar").onclick = () => document.getElementById("f_arqBackup").click();
@@ -3156,7 +3268,8 @@ document.body.addEventListener("click", async e => {
   else if (d.apagarDespesa){ if (confirm("Apagar esta despesa?")) { await apagar("despesas", d.apagarDespesa); desenhar(); } }
   else if (d.acao === "novo-jogo")    formJogo(null);
   else if (d.acao === "novo-atleta")  formAtleta(null);
-  else if (d.acao === "nova-despesa") formDespesa();
+  else if (d.acao === "nova-despesa") formDespesa("saida");
+  else if (d.acao === "nova-entrada") formDespesa("entrada");
   else if (d.acao === "ajustes")      formAjustes();
   else if (d.acao === "editar-estatuto")  formDocumento("estatuto","Estatuto da pelada",ESTATUTO_MODELO);
   else if (d.acao === "editar-identidade") formDocumento("identidade","Visão, princípios e valores",IDENTIDADE_MODELO);
