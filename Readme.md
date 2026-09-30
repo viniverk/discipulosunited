@@ -246,6 +246,18 @@ No dia do 1º jogo, antes de ele acontecer, ninguém aparece devendo mensalidade
 
 Os quatro valores e a rodada de cobrança são configuráveis. Deixando a data da virada em branco, tudo volta ao rateio antigo.
 
+## Aparência
+
+Em **Caixa → Ajustes → Aparência** há três temas, com amostra de cores em cada botão. A escolha vale para **todo o grupo**, não só para o seu celular, e muda na hora ao tocar.
+
+| tema | como é | quando usar |
+|---|---|---|
+| **Escudo** | preto, ouro e prata, tirados do brasão | padrão; combina com a identidade do time |
+| **Vestiário** | claro e arejado, verde de campo, cantos mais retos, cartões com contorno em vez de sombra | quem acha o preto pesado; lê melhor no sol |
+| **Placar** | escuro por inteiro, com ouro nos destaques | quadra à noite e telas OLED, onde gasta menos bateria |
+
+A cor da barra do navegador acompanha o tema, inclusive no app instalado.
+
 ## Rodada cancelada e fechamento
 
 Em **Editar jogo** existe a caixa **🌧️ Rodada cancelada**. A rodada sai da frequência, do caixa, da cobrança e do sorteio, mas as confirmações ficam guardadas para consulta. Na agenda ela aparece riscada.
@@ -294,7 +306,8 @@ Estas regras valem para as rodadas **anteriores** à data da virada:
 
 - **Rateio (padrão)**: o custo da quadra é dividido pelos confirmados daquela rodada. Vieram 12, a quadra custou 180 → R$ 15 cada. Vieram 8 → R$ 22,50 cada.
 - **Valor fixo**: preenchendo *Valor fixo por cabeça* no jogo, todo mundo paga aquele valor e o rateio é ignorado.
-- **Caixa** = tudo que os atletas pagaram − (custo das rodadas já jogadas + despesas avulsas).
+- **Caixa** = (o que os atletas pagaram + entradas avulsas) − (custo das rodadas já jogadas + saídas avulsas).
+- **Entradas e saídas avulsas**: o cartão no fim da aba Caixa tem os dois botões. Entrada é rifa, doação, venda de camisa, churrasco — dinheiro que não veio de diária nem de mensalidade. Saída é bola, colete, arbitragem, premiação. Cada lançamento aceita uma observação de quem pagou ou recebeu, e a lista mostra **+** em verde e **−** em vermelho. Lançamentos antigos, gravados antes desse campo existir, continuam contando como saída.
 
 Um detalhe que aparece rápido: no rateio puro o caixa nunca sobra, porque a arrecadação é exatamente igual ao custo. Se você quer formar caixa para bola, colete ou a confraternização de fim de ano, use valor fixo um pouco acima do rateio — R$ 20 numa quadra que sai a R$ 15 por cabeça deixa R$ 60 por rodada no caixa.
 
