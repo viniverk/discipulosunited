@@ -235,6 +235,8 @@ Mensalidade adiantada entra no caixa na hora, porque o dinheiro está na mão, m
 
 O botão **Mandar a mensalidade no grupo** monta o texto do mês que estiver na tela: valor, quem já pagou, quem está em aberto com o total, quem está adiantado e a chave Pix.
 
+Na lista da rodada, o ⏳ ao lado de um fixo sai do **mesmo saldo** que o selo da lista no app mostra — os dois nunca divergem. O 🎫 sozinho quer dizer mensalista sem nada em aberto; o 🎫✅ é quem já pagou o mês daquela rodada. Enquanto a mensalidade do mês não vence, o resumo diz *vence na rodada de 13/10* em vez de cobrar.
+
 A dívida segue dois marcos:
 
 - **depois do 1º jogo do mês** → a mensalidade entra como *a vencer*, e todo fixo em aberto aparece em Quem está devendo
