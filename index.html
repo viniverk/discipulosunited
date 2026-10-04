@@ -1194,13 +1194,19 @@ function textoDaLista(j){
   const livres = Math.max(0, vagas - titulares.length);
   const mesJ = mesDe(j.data);
   const temMensal = modeloNovo(j) && !!rodadaDeCobranca(mesJ);
+  // a mensalidade do mês já venceu? antes disso ninguém está devendo
+  const mensalVenceu = temMensal && mesesComCobranca().includes(mesJ);
+  const rodadaCob = temMensal ? rodadaDeCobranca(mesJ) : null;
   const marca = id => {
     const p = j.presencas[id];
     if (p.faltou) return "🚫";
     if (p.isento) return "➖";
     if (valorNaRodada(j, id) > 0) return p.pago ? "✅" : "⏳";      // convidado, ou rodada no rateio antigo
-    // fixo no modelo mensal: mantém o selo de mensalista junto do status da mensalidade
-    if (temMensal && ehFixo(id)) return mensalidadePaga(mesJ, id) ? "🎫✅" : "🎫⏳";
+    // fixo: o ⏳ vem do mesmo saldo que o selo da lista mostra, para os dois nunca divergirem
+    if (temMensal && ehFixo(id)) {
+      if (saldoAtleta(id).aberto > 0.005) return "🎫⏳";
+      return mensalidadePaga(mesJ, id) ? "🎫✅" : "🎫";
+    }
     return "🎫";
   };
 
@@ -1235,15 +1241,21 @@ function textoDaLista(j){
               : "🧤 *Nenhum goleiro confirmado ainda*");
 
   L.push("");
-  L.push((temMensal ? "🎫 mensalista  ✅ pago  ⏳ falta o Pix  ➖ isento" : "✅ pago  ⏳ falta o Pix")
+  const algumDevendo = dentro.some(id => ehFixo(id) && saldoAtleta(id).aberto > 0.005);
+  L.push((temMensal ? `🎫 mensalista  ✅ em dia  ${algumDevendo?"⏳ tem valor em aberto  ":""}➖ isento` : "✅ pago  ⏳ falta o Pix")
     + (dentro.some(id => j.presencas[id].faltou) ? "  🚫 furou" : ""));
 
   if (temMensal) {
     const fixosNaLista = dentro.filter(ehFixo);
     const devendoMensal = fixosNaLista.filter(id => !mensalidadePaga(mesJ, id)).length;
     const conv = dentro.filter(id => !ehFixo(id) && !j.presencas[id].isento && !j.presencas[id].pago).length;
-    if (fixosNaLista.length)
-      L.push(`*Mensalidade de ${rotuloMes(mesJ)}* (${dinheiro(cfgN("valorMensalista",50))}): ${fixosNaLista.length - devendoMensal} de ${fixosNaLista.length} da lista já pagaram${devendoMensal?` — faltam *${devendoMensal}*, total *${dinheiro(devendoMensal*cfgN("valorMensalista",50))}*`:""}`);
+    if (fixosNaLista.length) {
+      const base = `*Mensalidade de ${rotuloMes(mesJ)}* (${dinheiro(cfgN("valorMensalista",50))}): `
+        + `${fixosNaLista.length - devendoMensal} de ${fixosNaLista.length} da lista já pagaram`;
+      L.push(mensalVenceu
+        ? base + (devendoMensal ? ` — faltam *${devendoMensal}*, total *${dinheiro(devendoMensal*cfgN("valorMensalista",50))}*` : "")
+        : base + (rodadaCob ? ` — vence na rodada de ${dataCurta(rodadaCob.data)}` : ""));
+    }
     if (conv) L.push(`*Convidados:* ${plural(conv,"falta","faltam")} acertar ${dinheiro(cfgN("valorConvidado",10))}.`);
   } else {
     const faltam = dentro.filter(id => !j.presencas[id].pago && !j.presencas[id].isento && valorNaRodada(j,id) > 0).length;
