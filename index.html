@@ -1242,7 +1242,12 @@ function textoDaLista(j){
 
   L.push("");
   const algumDevendo = dentro.some(id => ehFixo(id) && saldoAtleta(id).aberto > 0.005);
-  L.push((temMensal ? `🎫 mensalista  ✅ em dia  ${algumDevendo?"⏳ tem valor em aberto  ":""}➖ isento` : "✅ pago  ⏳ falta o Pix")
+  const temIsento = dentro.some(id => j.presencas[id].isento);
+  const legenda = temMensal
+    ? ["🎫✅ já pagou o mês", "🎫 ainda não pagou",
+       algumDevendo ? "⏳ em atraso" : "", temIsento ? "➖ isento" : ""].filter(Boolean).join("  ·  ")
+    : "✅ pago  ·  ⏳ falta o Pix";
+  L.push(legenda
     + (dentro.some(id => j.presencas[id].faltou) ? "  🚫 furou" : ""));
 
   if (temMensal) {
