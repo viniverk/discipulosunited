@@ -814,7 +814,13 @@ const mesesPagosDe = id => estado.mensalidades.filter(x => (x.pagos||{})[id]).ma
 const mensalidadeDoMes = m => estado.mensalidades.find(x => x.id === m);
 const mensalidadePaga = (m,id) => !!(mensalidadeDoMes(m)?.pagos || {})[id];
 const ehFixo = id => situacaoDe(atletaDe(id)) === "fixo";
+// fixo que entrou no meio do caminho só vira mensalista a partir do mês marcado no cadastro
+const jaMensalista = (id, mes) => {
+  const d = atletaDe(id)?.mensalDesde;
+  return !d || mes >= d;
+};
 const mensalistas = () => estado.atletas.filter(a => situacaoDe(a) === "fixo");
+const mensalistasDoMes = m => mensalistas().filter(a => jaMensalista(a.id, m));
 
 async function marcarMensalidade(m, id, pago){
   const atual = mensalidadeDoMes(m) || { id:m, pagos:{} };
@@ -828,7 +834,8 @@ async function marcarMensalidade(m, id, pago){
 // quanto este atleta deve por participar desta rodada
 function valorNaRodada(j, id){
   if (!modeloNovo(j)) return valorPorJogador(j);
-  return ehFixo(id) ? 0 : cfgN("valorConvidado",10);
+  if (ehFixo(id) && jaMensalista(id, mesDe(j.data))) return 0;   // coberto pela mensalidade
+  return cfgN("valorConvidado",10);                               // convidado, ou fixo ainda avulso
 }
 
 
@@ -866,7 +873,7 @@ function caixa(){
   let atrasadoMensal = 0, pendenteMensal = 0;
   mesesComCobranca().forEach(m => {
     const r = rodadaDeCobranca(m);
-    const abertos = mensalistas().filter(a => !mensalidadePaga(m, a.id)).length * vm;
+    const abertos = mensalistasDoMes(m).filter(a => !mensalidadePaga(m, a.id)).length * vm;
     if (r.data < hoje) atrasadoMensal += abertos; else pendenteMensal += abertos;
   });
   const atrasado = atrasadoRodadas + atrasadoMensal;
@@ -897,7 +904,7 @@ function saldoAtleta(id){
     const v = cfgN("valorMensalista",50);
     const cobraveis = mesesComCobranca();
     mesesAdiantados = mesesPagosDe(id).filter(m => !cobraveis.includes(m)).length;
-    cobraveis.forEach(m => {
+    cobraveis.filter(m => jaMensalista(id, m)).forEach(m => {
       devido += v;
       if (mensalidadePaga(m, id)) { pago += v; return; }
       if (rodadaDeCobranca(m).data < hoje) atrasado += v; else pendente += v;
@@ -1103,7 +1110,7 @@ function formExtrato(id){
   abrirModal(a.nome, `
     <div class="foto-bloco">${retratoDe(a)}
       <div><div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}</div>
-        <div class="sub">${situacaoDe(a)==="convidado"?escapar(quemConvidou(id)||"convidado"):situacaoDe(a)==="inativo"?"inativo":"fixo"}
+        <div class="sub">${situacaoDe(a)==="convidado"?escapar(quemConvidou(id)||"convidado"):situacaoDe(a)==="inativo"?"inativo":"fixo"}${a.mensalDesde&&!jaMensalista(id,mesAtual())?` · mensalista a partir de ${escapar(rotuloMes(a.mensalDesde))}`:""}
           ${f.entrouDepois?` · desde ${dataCurta(f.inicio)}`:""}</div></div></div>
 
     <div class="kpis" style="margin-bottom:14px">
@@ -1288,7 +1295,7 @@ async function compartilharTexto(texto){
 function textoMensalidades(m){
   const v = cfgN("valorMensalista",50);
   const r = rodadaDeCobranca(m);
-  const gente = mensalistas().sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
+  const gente = mensalistasDoMes(m).sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
   const pagos = gente.filter(a => mensalidadePaga(m, a.id));
   const abertos = gente.filter(a => !mensalidadePaga(m, a.id));
 
@@ -1568,7 +1575,7 @@ function telaAtletas(){
     return `<div class="item">
       ${retratoDe(a)}
       <div class="item-corpo" data-extrato="${a.id}" style="cursor:pointer">
-        <div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}${a.goleiro?' <span class="selo gol">goleiro</span>':""}</div>
+        <div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}${a.goleiro?' <span class="selo gol">goleiro</span>':""}${sit==="fixo"&&a.mensalDesde&&!jaMensalista(a.id,mesAtual())?` <span class="selo neutro">avulso até ${escapar(rotuloMes(a.mensalDesde))}</span>`:""}</div>
         <div class="sub">${sit==="convidado"&&quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${f.rodadas?`${f.presencas} de ${plural(f.rodadas,"rodada","rodadas")} · <b>${f.pct}%</b>`:"ainda sem rodada"}${f.entrouDepois?` · desde ${dataCurta(f.inicio)}`:""}${f.furos?` · <b style="color:var(--deve)">${plural(f.furos,"furo","furos")}</b>`:""}${estado.admin?(senhaDe(a.id)?` · senha <b>${escapar(senhaDe(a.id))}</b>`:` · <span style="color:var(--deve)">sem senha</span>`):""}
           <div class="barrinha ${forca}"><i style="width:${f.pct}%"></i></div></div>
       </div>
@@ -1634,7 +1641,7 @@ function telaCaixa(){
       const m = estado.mesMensal || mesEmFoco() || mesAtual();
       const meses = mesesComCobranca();
       const r = rodadaDeCobranca(m), v = cfgN("valorMensalista",50);
-      const gente = mensalistas().sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
+      const gente = mensalistasDoMes(m).sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
       const pagos = gente.filter(a => mensalidadePaga(m,a.id)).length;
       const situacao = r ? (meses.includes(m)
             ? `cobrada na rodada de ${dataCurta(r.data)}`
@@ -1665,9 +1672,9 @@ function telaCaixa(){
           </div>`;
         }).join("")}
         ${(()=>{
-          const abertos = meses.filter(x => x !== m && mensalistas().some(a => !mensalidadePaga(x,a.id)));
+          const abertos = meses.filter(x => x !== m && mensalistasDoMes(x).some(a => !mensalidadePaga(x,a.id)));
           return abertos.length ? `<div class="sub" style="margin-top:10px">Também em aberto: ${abertos.map(x =>
-            `${escapar(rotuloMes(x))} (${mensalistas().filter(a=>!mensalidadePaga(x,a.id)).length})`).join(" · ")}</div>` : "";
+            `${escapar(rotuloMes(x))} (${mensalistasDoMes(x).filter(a=>!mensalidadePaga(x,a.id)).length})`).join(" · ")}</div>` : "";
         })()}
         ${c.mensalAdiantado>0.005?`<div class="sub" style="margin-top:6px">${dinheiro(c.mensalAdiantado)} já no caixa de meses que ainda não venceram.</div>`:""}
         <button class="btn-zap" style="width:100%;margin-top:12px" data-compartilhar-texto="mensal" data-mes="${m}">📤 Mandar a mensalidade no grupo</button>
@@ -2759,7 +2766,8 @@ function formJogo(jogo){
 }
 
 function formAtleta(atleta){
-  const a = atleta || { nome:"", apelido:"", telefone:"", situacao:"fixo", convidadoPor:"", goleiro:false };
+  const a = atleta || { nome:"", apelido:"", telefone:"", situacao:"fixo", convidadoPor:"", goleiro:false,
+                        mensalDesde: mesMais(mesAtual(), 1) };
   const senhaAtual = atleta ? senhaDe(atleta.id) : novaSenha();
   const sit = situacaoDe(a);
   const anfitrioes = estado.atletas
@@ -2775,6 +2783,11 @@ function formAtleta(atleta){
     <div class="campo"><label>Nome</label><input id="f_nome" value="${escapar(a.nome)}" placeholder="Como aparece no grupo"></div>
     <div class="dupla"><div class="campo"><label>Apelido</label><input id="f_apelido" value="${escapar(a.apelido)}"></div>
       <div class="campo"><label>Telefone</label><input id="f_tel" value="${escapar(a.telefone)}" placeholder="47 99999-0000"></div></div>
+    <div class="campo" id="f_bloco_mensal" style="display:${sit==="fixo"?"block":"none"}">
+      <label>Mensalista a partir de</label>
+      <input type="month" id="f_mensalDesde" value="${escapar(a.mensalDesde||"")}">
+      <div class="sub" style="margin-top:5px">Quem entra no meio do mês costuma começar a pagar no mês seguinte.
+        Até lá ele paga por rodada, como avulso. Vazio: paga mensalidade desde sempre.</div></div>
     <div class="campo"><label>No time desde</label><input type="date" id="f_noTime" value="${escapar(a.desde||"")}">
       <div class="sub" style="margin-top:5px">Só conta a frequência a partir daqui. Vazio: o app usa a primeira rodada em que ele aparece.</div></div>
     <div class="campo"><label>Senha do atleta</label>
@@ -2883,6 +2896,7 @@ function formAtleta(atleta){
   document.getElementById("f_gerar").onclick = () => { document.getElementById("f_senhaAt").value = novaSenha(); };
   document.getElementById("f_sit").onchange = e => {
     document.getElementById("f_bloco_conv").style.display = e.target.value === "convidado" ? "block" : "none";
+    document.getElementById("f_bloco_mensal").style.display = e.target.value === "fixo" ? "block" : "none";
   };
 
   document.getElementById("f_salvar").onclick = async () => {
@@ -2895,6 +2909,7 @@ function formAtleta(atleta){
       goleiro: document.getElementById("f_gol").checked,
       foto: fotoNova,
       desde: document.getElementById("f_noTime").value,
+      mensalDesde: situacao === "fixo" ? document.getElementById("f_mensalDesde").value : "",
       convidadoPor: situacao === "convidado" ? document.getElementById("f_conv").value : "" }, atleta?.id);
     await guardarSenha(alvoId, document.getElementById("f_senhaAt").value.trim());
     fecharModal(); desenhar(); avisar("Atleta salvo.");
