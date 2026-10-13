@@ -824,7 +824,25 @@ const jaMensalista = (id, mes) => {
   return !d || mes >= d;
 };
 const mensalistas = () => estado.atletas.filter(a => situacaoDe(a) === "fixo");
-const mensalistasDoMes = m => mensalistas().filter(a => jaMensalista(a.id, m));
+// inativo que era fixo: "fixoAte" guarda o último mês em que ele foi mensalista
+const fixoAteDe = id => atletaDe(id)?.fixoAte || "";
+// a rodada desse mês fica coberta pela mensalidade? (sem fixoAte, o inativo segue coberto no passado todo)
+const cobertoNoMes = (id, mes) => {
+  if (!eraMensalista(id) || !jaMensalista(id, mes)) return false;
+  if (situacaoDe(atletaDe(id)) !== "inativo") return true;
+  const ate = fixoAteDe(id);
+  return !ate || mes <= ate;
+};
+// ele deve a mensalidade desse mês? Inativo só deve até o fixoAte marcado no cadastro
+const deveMensalNoMes = (id, mes) => {
+  const a = atletaDe(id);
+  if (!a || !jaMensalista(id, mes)) return false;
+  const sit = situacaoDe(a);
+  if (sit === "fixo") return true;
+  const ate = fixoAteDe(id);
+  return sit === "inativo" && eraMensalista(id) && !!ate && mes <= ate;
+};
+const mensalistasDoMes = m => estado.atletas.filter(a => deveMensalNoMes(a.id, m));
 
 async function marcarMensalidade(m, id, pago){
   const atual = mensalidadeDoMes(m) || { id:m, pagos:{} };
@@ -838,7 +856,7 @@ async function marcarMensalidade(m, id, pago){
 // quanto este atleta deve por participar desta rodada
 function valorNaRodada(j, id){
   if (!modeloNovo(j)) return valorPorJogador(j);
-  if (eraMensalista(id) && jaMensalista(id, mesDe(j.data))) return 0;   // coberto pela mensalidade
+  if (cobertoNoMes(id, mesDe(j.data))) return 0;                        // coberto pela mensalidade
   return cfgN("valorConvidado",10);                                     // convidado, ou fixo ainda avulso
 }
 
@@ -904,11 +922,12 @@ function saldoAtleta(id){
   });
 
   let mesesAdiantados = 0;
-  if (ehFixo(id)) {
+  const cobraveis = mesesComCobranca();
+  const mesesDele = cobraveis.filter(m => deveMensalNoMes(id, m));
+  if (ehFixo(id) || mesesDele.length) {
     const v = cfgN("valorMensalista",50);
-    const cobraveis = mesesComCobranca();
-    mesesAdiantados = mesesPagosDe(id).filter(m => !cobraveis.includes(m)).length;
-    cobraveis.filter(m => jaMensalista(id, m)).forEach(m => {
+    if (ehFixo(id)) mesesAdiantados = mesesPagosDe(id).filter(m => !cobraveis.includes(m)).length;
+    mesesDele.forEach(m => {
       devido += v;
       if (mensalidadePaga(m, id)) { pago += v; return; }
       if (rodadaDeCobranca(m).data < hoje) atrasado += v; else pendente += v;
@@ -2802,6 +2821,11 @@ function formAtleta(atleta){
       <option value="fixo" ${sit==="fixo"?"selected":""}>Fixo — é da turma</option>
       <option value="convidado" ${sit==="convidado"?"selected":""}>Convidado — veio com alguém</option>
       <option value="inativo" ${sit==="inativo"?"selected":""}>Inativo — sai da lista, histórico fica</option></select></div>
+    <div class="campo" id="f_bloco_fixoAte" style="display:${sit==="inativo"?"block":"none"}">
+      <label>Foi mensalista até</label>
+      <input type="month" id="f_fixoAte" value="${escapar(a.fixoAte||"")}">
+      <div class="sub" style="margin-top:5px">Último mês de mensalidade que ele deve. Se ficou algum desses meses sem pagar,
+        continua aparecendo como dívida. Vazio: não cobra mensalidade nenhuma dele.</div></div>
     <div class="campo" id="f_bloco_conv" style="display:${sit==="convidado"?"block":"none"}">
       <label>Quem convidou</label>
       <select id="f_conv"><option value="">— não informado —</option>
@@ -2901,6 +2925,7 @@ function formAtleta(atleta){
   document.getElementById("f_sit").onchange = e => {
     document.getElementById("f_bloco_conv").style.display = e.target.value === "convidado" ? "block" : "none";
     document.getElementById("f_bloco_mensal").style.display = e.target.value === "fixo" ? "block" : "none";
+    document.getElementById("f_bloco_fixoAte").style.display = e.target.value === "inativo" ? "block" : "none";
   };
 
   document.getElementById("f_salvar").onclick = async () => {
@@ -2916,7 +2941,9 @@ function formAtleta(atleta){
       goleiro: document.getElementById("f_gol").checked,
       foto: fotoNova,
       desde: document.getElementById("f_noTime").value,
-      mensalDesde: situacao === "fixo" ? document.getElementById("f_mensalDesde").value : "",
+      // o inativo guarda o mensalDesde: sem ele, rodadas em que ele era avulso virariam "cobertas"
+      mensalDesde: situacao !== "convidado" ? document.getElementById("f_mensalDesde").value : "",
+      fixoAte: situacao === "inativo" ? document.getElementById("f_fixoAte").value : "",
       convidadoPor: situacao === "convidado" ? document.getElementById("f_conv").value : "" }, atleta?.id);
     await guardarSenha(alvoId, document.getElementById("f_senhaAt").value.trim());
     fecharModal(); desenhar(); avisar("Atleta salvo.");
