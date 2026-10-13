@@ -1,68 +1,331 @@
-# Nossas Finanças — app + alertas no celular
+# Discípulos United — app da pelada
 
-## O que tem nesta pasta
-| Arquivo | Para que serve |
-|---|---|
-| `index.html` | O app (menu lateral, lançamentos, calendário, gastos e limites) |
-| `manifest.json`, `icon-*.png` | Fazem o site virar um **app instalável** no celular |
-| `sw.js` | Recebe e mostra as notificações no celular |
-| `scripts/notify.js` + `.github/workflows/alertas.yml` | Mandam o **resumo diário** (contas perto de vencer e limites quase estourados) |
-| `regras-do-banco.json` | Regras de segurança novas do Realtime Database |
+Página única (`index.html`), sem build, sem servidor. Roda no GitHub Pages e guarda os dados no Firestore.
 
-## Passo a passo (faça uma vez)
+---
 
-### 1) Subir os arquivos no GitHub
-No repositório do site: **Add file → Upload files** e arraste **tudo** (inclusive as pastas `scripts` e `.github`), substituindo o `index.html` antigo.
-> Se a pasta `.github` não subir arrastando, use **Add file → Create new file**, digite `.github/workflows/alertas.yml` como nome e cole o conteúdo do arquivo.
+## Testar agora, sem configurar nada
 
-### 2) Atualizar as regras do banco (obrigatório)
-Firebase → **Realtime Database → Regras** → apague tudo, cole o conteúdo de `regras-do-banco.json` → **Publicar**.
-(Sem isso, o histórico de gastos, os limites e as notificações não salvam.)
+Abra o `index.html` no navegador. Ele já sobe em **modo demonstração**: 16 atletas, 4 rodadas, pagamentos e caixa de exemplo. Dá para clicar em tudo — só não salva. Serve para você ver se o formato serve antes de mexer no Firebase.
 
-### 3) Chave das notificações (VAPID) — já está colada no `index.html`
-Firebase → ⚙️ **Configurações do projeto → Cloud Messaging → Certificados push da Web → Gerar par de chaves**.
-Copie a chave e cole no `index.html`, no lugar de `COLE_AQUI_A_CHAVE_VAPID` (perto do começo do `<script>`). Salve o arquivo no GitHub.
+A senha de admin na demonstração é `1234` (botão 🔒 no topo).
 
-### 4) Liberar o envio automático (GitHub Actions)
-1. Firebase → ⚙️ **Configurações do projeto → Contas de serviço → Gerar nova chave privada**. Baixa um arquivo `.json`. **Não suba esse arquivo no site, no chat nem em nenhum lugar — ele dá acesso total ao banco.**
-2. GitHub → seu repositório → **Settings → Secrets and variables → Actions → New repository secret**
-   - Nome: `FIREBASE_SERVICE_ACCOUNT`
-   - Valor: abra o `.json` no bloco de notas, copie **tudo** e cole.
-3. (Opcional) Na aba **Variables**, crie `SITE_URL` com o endereço do seu site (para a notificação abrir o app ao ser tocada).
+---
 
-### 5) Ativar em cada celular (você e sua esposa)
-1. Abra o site no celular e **instale o app**:
-   - Android (Chrome): menu ⋮ → **Instalar app**.
-   - iPhone (Safari): **Compartilhar → Adicionar à Tela de Início** (precisa ser iOS 16.4 ou mais novo e abrir **pelo ícone**).
-2. Entre na conta → **Configurações → Notificações no celular → Ativar** → permita.
-3. Toque em **Testar** para ver a notificação de teste.
+## 1. Criar o projeto no Firebase
 
-### 6) Testar o envio automático
-GitHub → aba **Actions → Alertas diários no celular → Run workflow**. Marque “Modo teste” para só ver no log; desmarque para enviar de verdade.
-O envio automático acontece todo dia às 08:00 (Brasília).
+1. Acesse `console.firebase.google.com` → **Adicionar projeto**. Nome: `fut-dos-filhos`. Pode desativar o Google Analytics.
+2. Menu **Criar** → **Firestore Database** → **Criar banco de dados** → modo de produção → região `southamerica-east1` (São Paulo).
+3. Menu **Criar** → **Authentication** → **Vamos começar** → aba **Sign-in method** → ative **Anônimo**.
+   Sem isso as regras do passo 3 bloqueiam tudo.
+4. Ícone de engrenagem → **Configurações do projeto** → role até **Seus apps** → ícone `</>` (Web) → registre o app → copie o bloco `firebaseConfig`.
 
+## 2. Colar a configuração — **já feito**
 
-## Cartão de crédito
-1. Aba **Cartões → + Novo cartão**: dia de **vencimento**, dia de **fechamento** (ou marque **“Fecha no último dia do mês”** para jogar todas as compras do mês na fatura do mês seguinte) e, se quiser, um **limite de gastos por mês**.
-2. **+ Compra no cartão**: escolha o cartão; a compra entra na fatura certa e **debita o limite do mês em que foi feita**.
-   - **Compra parcelada**: escolha o número de parcelas (2x a 24x) e se o valor digitado é o total ou o de cada parcela. Cada parcela vira um lançamento (ex.: “TV (2/3)”) na fatura do seu mês e conta no limite daquele mês. Ao excluir uma parcela, o app pergunta se quer apagar todas.
-   - **Editar**: nas compras do cartão, nos gastos avulsos e nos pagamentos concluídos aparece o botão ✏️ (ao lado da 🗑). Em compra parcelada dá para aplicar a mudança a todas as parcelas ou só a escolhida.
-   - **Expandir/recolher**: na aba Cartões, clique no nome do cartão para recolher, em “Ver/Ocultar compras” para esconder as compras de cada fatura e use **Por data / Por categoria** para agrupar as compras (cada categoria também recolhe, com subtotal). “Expandir tudo / Recolher tudo” no topo. O app lembra o que você deixou aberto.
-   - **Compilados**: no topo da aba Cartões aparece o total por cartão e por categoria (soma de todos os cartões) das faturas que vencem no mês. Em Gastos e limites, “De onde saiu o gasto” separa crédito × débito/à vista (gasto avulso) × contas, por categoria.
-   - **Previsão**: aba nova com receitas, contas/parcelas e faturas de cada mês (3, 6 ou 12 meses) e o saldo acumulado.
-   - **Verificar dados** (Configurações): acha duplicados, total de fatura de cartão apagado, limites inúteis, juros na fatura errada, despesa e receita que se anulam e contas pagas sem lançamento mensal, com botão de correção.
-   - **Desconto em folha**: no salário, informe o bruto e o desconto (ex.: Pensão); o app usa o líquido.
-3. **+ Fatura (informar total)**: lance só o total que veio no banco (ex.: R$ 1.500), com o **vencimento que você escolher**. Ela entra no caixa/calendário na data do vencimento, mas o **gasto conta no limite do mês em que a fatura foi gerada** (mês do meio do período), não no mês em que vence.
-4. Em cada fatura há **Editar vencimento / total** e **Marcar como paga**. Só o pagamento mexe no saldo.
-5. Fatura que você já tinha lançado como conta comum? Abra o lançamento e use **“Converter em fatura do cartão”**.
-6. Em **Gastos e limites** aparece uma linha 💳 por cartão (gasto do mês × limite) e os alertas (Início e celular) avisam quando chega perto.
+O `index.html` já aponta para o projeto `futfilhos`. Este passo só interessa se um dia você trocar de projeto: procure `firebaseConfig` (por volta da linha 268) e substitua o bloco pelo que o Firebase te der.
 
-## Observações
-- Só chega notificação se houver algo importante no dia (conta perto de vencer/atrasada ou limite ≥ % escolhido nas Configurações).
-- Se o repositório ficar 60 dias sem nenhuma alteração, o GitHub pausa agendamentos: é só reativar na aba Actions.
-- WhatsApp: não incluí porque o jeito oficial exige conta comercial da Meta e é pago por mensagem. Dá para adicionar um aviso por Telegram ou CallMeBot depois, se quiserem.
+```js
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "fut-dos-filhos.firebaseapp.com",
+  projectId: "fut-dos-filhos",
+  storageBucket: "fut-dos-filhos.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abc123"
+};
+```
 
-### Aba Cartões (novo layout)
-- Topo com 3 indicadores (faturas do mês, a pagar, já pago).
-- Cartões como "cartões" coloridos selecionáveis; **Todos** mostra o peso de cada cartão e a pizza por categoria.
-- Ao selecionar um cartão: fatura com status (paga / vence amanhã / atrasada), datas, ações, pizza e lista de compras recolhível com total.
+Com o `apiKey` preenchido, o modo demonstração está desligado: o app lê e grava de verdade. Os 16 atletas de exemplo não existem mais — a tela abre vazia até você cadastrar o pessoal.
+
+> Essa `apiKey` fica visível no código-fonte da página, e tudo bem: no Firebase Web ela identifica o projeto, não autentica ninguém. Quem protege os dados são as regras abaixo.
+
+## 3. Regras do Firestore
+
+Firestore → aba **Regras** → cole e publique:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+**O que isso protege e o que não protege.** Bloqueia acesso anônimo de fora do app (robôs varrendo a internet, por exemplo). Não impede que alguém com o link do site escreva no banco — o login anônimo é automático para qualquer visitante. A senha de admin trava a interface, não o banco: ela fica salva no próprio Firestore e alguém que abra o DevTools consegue ler.
+
+Para uma pelada de amigos isso costuma bastar. Se um dia incomodar, o caminho é trocar o login anônimo por login com Google e liberar escrita só para UIDs de uma lista — dá umas 30 linhas a mais no app.
+
+## 4. Publicar no GitHub Pages
+
+1. Crie um repositório público, por exemplo `fut-dos-filhos`.
+2. Suba na raiz do repositório: `index.html`, `manifest.json`, `sw.js`, `icon-192.png` e `icon-512.png` (dá para arrastar tudo de uma vez em **Add file → Upload files**).
+   O escudo está embutido dentro do HTML — o site abre só com ele. Os outros quatro arquivos servem para o app poder ser instalado no celular; depois de subir uma vez, você não mexe mais neles.
+3. **Settings** → **Pages** → em *Source* escolha **Deploy from a branch** → branch `main`, pasta `/ (root)` → **Save**.
+4. Em um ou dois minutos o site fica em `https://SEU-USUARIO.github.io/fut-dos-filhos/`.
+
+Cada `index.html` novo que você subir republica sozinho.
+
+## 5. Primeiro uso
+
+1. Abra o site, clique em 🔒 e entre com a senha `1234`.
+2. **Caixa → Ajustes da pelada**: nome do grupo, chave Pix, favorecido, dia e hora da pelada, custo padrão da quadra, vagas por rodada e — importante — **troque a senha**. O nome do grupo aparece no cabeçalho, na aba do navegador e em todo texto que vai para o WhatsApp. O **lema** é a linha embaixo do nome: deixe vazio e ele mostra o dia da pelada automaticamente, ou escreva o que quiser e o texto fixo passa a valer. O dia escolhido vira o padrão ao marcar um jogo novo e aparece embaixo do escudo.
+3. **Atletas**: cadastre a galera. Cada um entra como **fixo**, **convidado** (aí você indica quem trouxe) ou **inativo**.
+4. **Agenda → Marcar jogo**: data, local e custo.
+5. Mande o link no grupo do WhatsApp.
+
+Cada um escolhe o próprio nome no topo e toca em **Vou jogar**. Quem passar do número de vagas cai na lista de espera automaticamente.
+
+## 6. Instalar no celular
+
+O site é um app instalável. **Android/Chrome:** aparece um convite "Instalar no celular" no topo da lista; um toque e o ícone vai para a tela inicial. **iPhone/Safari:** o convite mostra o caminho manual — botão Compartilhar, depois *Adicionar à Tela de Início*.
+
+Instalado, abre em tela cheia, sem barra de navegador, com o escudo como ícone. O `sw.js` guarda uma cópia da última versão: se o celular estiver sem sinal, o app ainda abre (os dados aparecem quando a conexão voltar).
+
+A estratégia é **rede primeiro**: com internet, sempre carrega a versão mais nova que está no GitHub. Não fica preso numa versão velha.
+
+O nome que aparece embaixo do ícone vem do `manifest.json`, não do campo Nome do grupo. Se trocar o nome do grupo, edite também `"name"` e `"short_name"` nesse arquivo.
+
+## 7. Times
+
+A aba 🎡 sorteia **Time Vermelho** e **Time de Colete** entre quem está na lista da rodada (só os titulares, não a espera).
+
+Cada toque em **Girar** roda a roleta e o sorteado cai no time da vez, alternando um para cada lado — assim os times terminam equilibrados em número. Tem também **Sortear o resto de uma vez** para quando a paciência acabar.
+
+Quando o último jogador é sorteado, os times ficam salvos no Firestore: todo mundo que abrir o site vê a mesma escalação. **Refazer** apaga e libera nova roleta. O botão de compartilhar monta a lista dos dois times para o WhatsApp.
+
+A roleta usa a rodada aberta no momento — se você entrou por uma rodada antiga na Agenda, é ela que vai ao sorteio.
+
+### Escalação no campo
+
+Abaixo do sorteio há um campo de society com seis posições: goleiro e cinco na linha. Três formações disponíveis — **2-2-1**, **1-2-2** e **2-1-2**.
+
+O campo mostra **os dois times ao mesmo tempo**: Colete ataca de cima para baixo, Vermelho de baixo para cima, cada um com suas seis posições. Abaixo do campo ficam os banquinhos: **⚪ Sem time** com quem ainda não foi dividido, e **🔴/🟡 Reservas** de cada lado.
+
+Para posicionar, arraste o nome até a posição, ou toque no nome e depois no destino. Com alguém escolhido aparece uma faixa amarela com o nome dele e dois botões: **Tirar do campo** e **Cancelar**.
+
+O destino pode ser uma vaga vazia, **outro jogador** (os dois trocam de lugar) ou um banquinho. Soltar no banquinho do outro time muda o jogador de lado; soltar em Sem time tira ele dos dois.
+
+**A roleta é opcional.** No topo da aba há duas opções: **🎡 Sortear** e **✋ Escolher na mão**. No modo manual, cada confirmado vira uma linha com foto, nome e três botões — 🔴 vermelho, 🟡 colete e — para tirar dos times. O cabeçalho conta quantos estão de cada lado e quantos faltam.
+
+Os dois modos conversam: escolha 4 na mão, volte para a roleta e ela sorteia apenas os que sobraram, mantendo quem você já colocou. Depois de sorteado, dá para voltar ao manual e trocar alguém de lado. **Limpar os dois times** zera tudo.
+
+A escalação fica salva no Firestore junto da rodada, e há dois botões para mandar no grupo:
+
+- **🖼️ Mandar imagem** — desenha o campo num PNG (900×1380) com cabeçalho, as doze fichas nas posições, dashes nas vagas ainda abertas e os dois banquinhos de reservas embaixo. Vai pelo compartilhamento do celular, direto como foto; no computador, baixa o arquivo.
+- **📤 Mandar texto** — a mesma escalação em lista, posição por posição, com o banco no fim. Serve quando alguém está sem dados ou quer copiar os nomes.
+
+## 8. Valores
+
+A aba ✝️ traz visão, princípios e valores do grupo. A visão aparece em destaque num cartão escuro; princípios e valores viram lista numerada com o nome em maiúsculas e a descrição embaixo.
+
+Em modo admin há **Editar** e **Mandar no grupo** — o segundo monta o texto formatado para WhatsApp, com negrito de um asterisco só, do jeito que o app entende.
+
+## 9. Estatuto
+
+A quinta aba guarda as regras da pelada. Em modo admin, **Editar estatuto** abre um editor simples:
+
+- linha começando com `##` vira título de artigo
+- linha começando com `-` vira item
+- texto entre `**asteriscos**` fica em negrito
+
+O botão **Carregar modelo** traz um estatuto pronto com sete artigos (a pelada, quem joga, a lista, dinheiro, em campo, o caixa, alterações), já alinhado com o que o app faz. É rascunho: leia e ajuste ao que a turma combinou de verdade.
+
+O texto fica no Firestore, não no código — atualiza para todo mundo na hora e aparece a data da última alteração no rodapé.
+
+## 10. Fechar a rodada depois que o jogo acontece
+
+Na **Agenda**, toque em qualquer rodada — passada ou futura — para abrir a lista dela. Em modo admin aparece o botão **Fechar a rodada**, que abre o painel com todos os atletas e dois botões por linha:
+
+- **jogou / fora** — quem realmente apareceu, independente do que confirmou antes
+- **pago / a pagar** — só fica ativo para quem jogou
+
+O topo do painel mostra ao vivo quantos jogaram, quanto ficou por cabeça e quanto já entrou. No rateio o valor por cabeça muda a cada pessoa que você inclui — 180 divididos por 9 dá 20, por 10 dá 18. Tem também **Todos pagaram**, para quando a rodada fecha redonda.
+
+Nada disso mexe no caixa até você tocar em **Salvar rodada**.
+
+Para voltar à próxima partida, use o botão na faixa preta do topo ou toque na aba *A lista*.
+
+### Frequência e furos
+
+No painel **Fechar a rodada**, o primeiro selo de cada atleta gira entre três estados: **fora → jogou → furou**. *Furou* é quem confirmou presença e não apareceu — ele continua na lista da rodada, com um selo vermelho, e **continua devendo**, já que ocupou a vaga. Para perdoar, use o selo de pagamento (isento).
+
+Na aba **Atletas**, cada linha mostra `3 de 5 rodadas · 60%` com uma barrinha colorida (verde acima de 70%, amarela entre 40 e 70, vermelha abaixo), mais a contagem de furos quando houver. A barra no topo reordena a lista por **A-Z**, **Mais presentes** ou **Mais furos**.
+
+O botão **Mandar a frequência no grupo** monta o ranking de presenças e, embaixo, a lista de quem confirmou e não veio. No texto da rodada, quem furou aparece com 🚫.
+
+A conta usa apenas rodadas já jogadas, então a rodada que ainda vem não derruba o percentual de ninguém. E **cada atleta conta a partir de quando entrou no time** — quem chegou na segunda rodada não é punido pela primeira. O app descobre isso sozinho pela primeira rodada em que a pessoa aparece, confirmando ou recusando; para corrigir, o cadastro tem o campo **No time desde**. Quando a data é diferente da primeira rodada do grupo, a linha mostra *desde 17/09* para deixar claro de onde vem o percentual.
+
+### Foto do atleta
+
+Na aba **Atletas** cada linha mostra o retrato do jogador ao lado do nome; quem ainda não tem foto aparece com as iniciais.
+
+Em **Editar atleta**, o botão *Escolher foto* abre a galeria ou a câmera. A imagem cai num recorte circular onde você **arrasta para posicionar** e usa a barra para aproximar — é assim que se enquadra rosto e tronco, como nas fotos de time. O corte sai em 256×256, comprimido em WebP (JPEG onde o WebP não for suportado), com uns 10 KB por atleta.
+
+A foto fica guardada no próprio cadastro do atleta, dentro do Firestore, não em armazenamento separado. Para 25 jogadores isso dá algo perto de 250 KB no total.
+
+### Login dos atletas
+
+Em **Caixa → Ajustes → Acesso dos atletas**, a chave *Exigir senha dos atletas* muda o jeito de entrar:
+
+- **desligada** (padrão) — o seletor "Quem é você" funciona como sempre, qualquer um escolhe qualquer nome
+- **ligada** — o app inteiro fica atrás de uma **tela de entrada**: escudo, nome do grupo, a lista de nomes e o campo de senha. Nada de lista, caixa, mensalidades ou agenda aparece antes do login. Depois de entrar, o atleta só consegue confirmar a própria presença
+
+Enquanto os dados carregam, a tela de entrada mostra "carregando…" — assim o app nunca pisca o conteúdo antes de decidir se tranca. O organizador entra pelo link **Sou o organizador**, no pé da tela, com a senha de admin.
+
+**O celular lembra.** Depois do primeiro login, o aparelho fica vinculado ao atleta — inclusive no app instalado do Android. O vínculo usa a identificação anônima que o Firebase já guarda no aparelho e fica registrado na coleção `vinculos` do Firestore. *Sair* desfaz.
+
+**Para colocar em uso:** abra os Ajustes, toque em *Gerar senha para quem não tem* (sorteia 4 números para cada um), e só então ligue a chave. Na aba Atletas, em modo admin, cada linha mostra a senha e ganha um **🔑** que monta a mensagem pronta para mandar no privado.
+
+A senha de admin continua separada e só muda nos Ajustes, que exigem modo admin. O organizador também é atleta: entra com a senha de atleta para confirmar a própria presença, e com a de admin para gerenciar.
+
+**Evite senha igual ao nome** — se a do Atílio for "atilio", qualquer um entra como ele. A comparação ignora maiúsculas e acentos.
+
+**É uma trava de convivência, não de segurança.** A tela de entrada esconde os dados, mas eles continuam sendo baixados do Firestore para o navegador, e as senhas ficam num lugar legível. Quem souber abrir as ferramentas de desenvolvedor consegue ver tudo. Impede curiosidade e confirmação no lugar do outro; não impede quem quiser burlar de propósito. Proteção de verdade exige mover as senhas para uma coleção fechada e trocar as regras do Firestore, para que o próprio banco só entregue os dados a aparelhos que fizeram login.
+
+### Link pessoal por atleta (com o login desligado)
+
+Quando alguém escolhe o nome, a URL vira `.../#eu=a-xxxx` e aparece no cabeçalho o botão **🔗 Guardar meu link**, que copia ou compartilha esse endereço. Abrindo o site por ele, o nome já vem escolhido e é só tocar em *Vou jogar*.
+
+Em modo admin, cada linha da aba Atletas ganha um **🔗** que monta a mensagem pronta com o link daquela pessoa, para mandar no privado.
+
+**Cuidado com o app instalado:** no Android, o atalho instalado abre pelo `start_url` do `manifest.json`, que não carrega o `#eu=`. Quem instalar pelo Android vai precisar escolher o nome a cada abertura. No iPhone, o atalho guarda a URL inteira, então o link pessoal sobrevive — adicione à tela de início **já com o nome escolhido**.
+
+---
+
+## QR Code e baixa de pagamento
+
+O botão **QR Code**, na caixa do jogo, monta um BR Code no padrão EMV do Banco Central com chave, valor da diária, nome, cidade e um identificador (`FUT` + data + nome do atleta). Quem escaneia já vê o valor preenchido no app do banco. Abaixo do código vem o **copia e cola**, para quem prefere colar.
+
+Se o atleta tiver dívida de rodadas anteriores, aparecem duas opções: pagar só a rodada ou tudo em aberto.
+
+Depois de pagar, ele toca em **Já fiz o Pix**. Isso não dá baixa — marca a linha dele como *avisou o Pix* (selo âmbar). O organizador confere o extrato e confirma tocando no selo. Se o atleta não estiver escalado na rodada aberta, o aviso cai automaticamente na pendência mais antiga dele.
+
+### Por que a baixa não é automática
+
+Para o site marcar "pago" sozinho, alguém precisa avisá-lo de que o dinheiro caiu — e só o banco sabe disso. Isso exige três coisas que uma página estática no GitHub Pages não tem:
+
+1. Uma conta com **API Pix** (bancos como Inter, Sicredi, Efí, ou gateways como Mercado Pago e Asaas). Boa parte exige CNPJ.
+2. Um **servidor** para receber o webhook do banco e guardar o certificado/segredo. Não dá para deixar isso no JavaScript da página: qualquer visitante leria as credenciais.
+3. Cobranças com identificador único por atleta, para casar o Pix recebido com a pessoa certa.
+
+O caminho natural, já que o projeto usa Firebase, seria uma **Cloud Function** recebendo o webhook e escrevendo `pago: true` no Firestore. Funciona bem, mas exige o plano Blaze (pré-pago, com cota gratuita) e uma conta habilitada na API do banco. Se um dia você quiser seguir por aí, o identificador que já vai dentro do QR (`FUT2308GUSTAVO`) é exatamente o que amarra o Pix recebido ao atleta.
+
+Enquanto isso, o fluxo *avisou → organizador confirma* resolve o essencial: você para de garimpar mensagem no grupo e passa a olhar só quem levantou a mão.
+
+## Modelo mensal (a partir de 08/09/2026)
+
+A pelada mudou de rateio por rodada para modelo mensal. A virada é uma data em **Caixa → Ajustes → Modelo mensal → Vale a partir de**. Rodadas anteriores a ela continuam no rateio antigo, com o histórico intacto — nada do que já aconteceu é recalculado.
+
+Depois da data:
+
+| item | valor | quando |
+|---|---|---|
+| Quadra | R$ 450 | por mês em que houve rodada |
+| Fixo | R$ 50 | por mês, cobrado na 2ª rodada do mês |
+| Convidado | R$ 10 | por rodada em que jogou |
+
+**Fixo que entra no meio do caminho** tem o campo *Mensalista a partir de* no cadastro, em mês/ano. Antes desse mês ele não entra na cobrança da mensalidade e paga por rodada, como avulso, no mesmo valor do convidado. Na lista de atletas aparece o selo *avulso até novembro de 2026*. Atleta novo já nasce com o mês seguinte preenchido; deixando o campo vazio, ele paga mensalidade desde sempre.
+
+**Fixo que entra no meio do caminho** tem o campo *Mensalista a partir de* no cadastro, em mês/ano. Antes desse mês ele fica fora da cobrança da mensalidade e paga por rodada, como avulso, no mesmo valor do convidado. Na lista de atletas aparece o selo *avulso até novembro de 2026*, e ele some do cartão de mensalidades dos meses anteriores. Atleta novo já nasce com o mês seguinte preenchido; deixando o campo vazio, ele paga mensalidade desde sempre.
+
+O fixo que pagou a mensalidade está coberto em todas as rodadas do mês — na lista ele aparece como **mensalista**, sem botão de pagamento por jogo.
+
+**Mensalidades** ficam num cartão próprio na aba Caixa. As setas ‹ › no topo navegam por qualquer mês, inclusive meses sem rodada na agenda — dá para receber adiantado sem ter marcado os jogos ainda. Tocar no **nome** de um jogador abre a ficha dele com doze meses (quatro para trás, sete para frente), para quitar vários de uma vez; quem tem meses pagos à frente mostra *adiantado até dezembro de 2026* na lista.
+
+Mensalidade adiantada entra no caixa na hora, porque o dinheiro está na mão, mas **não abate dívida de mês que ainda não venceu**. O cartão separa quanto do recebido veio de meses futuros.
+
+O botão **Mandar a mensalidade no grupo** monta o texto do mês que estiver na tela: valor, quem já pagou, quem está em aberto com o total, quem está adiantado e a chave Pix.
+
+Na lista da rodada, o ⏳ ao lado de um fixo sai do **mesmo saldo** que o selo da lista no app mostra — os dois nunca divergem. O 🎫 sozinho quer dizer mensalista sem nada em aberto; o 🎫✅ é quem já pagou o mês daquela rodada. Enquanto a mensalidade do mês não vence, o resumo diz *vence na rodada de 13/10* em vez de cobrar.
+
+A dívida segue dois marcos:
+
+- **depois do 1º jogo do mês** → a mensalidade entra como *a vencer*, e todo fixo em aberto aparece em Quem está devendo
+- **depois da rodada de cobrança** (a 2ª do mês) → passa para *em atraso*
+
+No dia do 1º jogo, antes de ele acontecer, ninguém aparece devendo mensalidade.
+
+**Convidado** entra devendo os R$ 10 automaticamente. Para perdoar, abra *Fechar a rodada* e toque no selo dele: o ciclo é **a pagar → pago → isento → a pagar**. Isento sai da conta sem virar dívida nem entrada.
+
+Os quatro valores e a rodada de cobrança são configuráveis. Deixando a data da virada em branco, tudo volta ao rateio antigo.
+
+## Aparência
+
+Em **Caixa → Ajustes → Aparência** há três temas, com amostra de cores em cada botão. A escolha vale para **todo o grupo**, não só para o seu celular, e muda na hora ao tocar.
+
+| tema | como é | quando usar |
+|---|---|---|
+| **Escudo** | preto, ouro e prata, tirados do brasão | padrão; combina com a identidade do time |
+| **Vestiário** | claro e arejado, verde de campo, cantos mais retos, cartões com contorno em vez de sombra | quem acha o preto pesado; lê melhor no sol |
+| **Placar** | escuro por inteiro, com ouro nos destaques | quadra à noite e telas OLED, onde gasta menos bateria |
+
+A cor da barra do navegador acompanha o tema, inclusive no app instalado.
+
+## Rodada cancelada e fechamento
+
+Em **Editar jogo** existe a caixa **🌧️ Rodada cancelada**. A rodada sai da frequência, do caixa, da cobrança e do sorteio, mas as confirmações ficam guardadas para consulta. Na agenda ela aparece riscada.
+
+Salvar o painel *Fechar a rodada* marca a rodada como **fechada**. Enquanto isso não acontece, a tela inicial mostra um aviso vermelho listando as rodadas pendentes, com botão para abrir a mais recente — é o que evita frequência e caixa mentirem por esquecimento. A agenda marca cada rodada como *a fechar* ou *fechada*.
+
+## Extrato do atleta
+
+Tocar no nome de um atleta, na aba Atletas, abre o extrato: foto, percentual de presença, furos, quanto está em aberto (separando vencido de a vencer), meses de mensalidade pagos e a lista rodada a rodada — jogou, furou, avisou que não ia — com o valor e o estado de cada uma. O botão **Mandar o extrato** monta o texto pronto com a chave Pix.
+
+## Backup
+
+Em **Caixa → Ajustes → Backup**:
+
+- **⬇️ Exportar tudo** baixa um `.json` com atletas, rodadas, mensalidades, despesas, uniformes e ajustes.
+- **⬆️ Restaurar** lê esse arquivo e sobrescreve o que está no ar, com confirmação. Serve tanto para desfazer um estrago quanto para migrar de projeto Firebase.
+
+Vale baixar de vez em quando, principalmente no fim de cada mês.
+
+## Aba Uniforme
+
+Galeria com as peças do uniforme — camisa, goleiro, calção, agasalho. O admin adiciona pelo botão, escolhe a foto (reduzida para 760px e comprimida antes de subir), dá um nome e uma observação opcional. Tocar na foto abre em tela cheia.
+
+## Regras do Firestore
+
+O arquivo `firestore.rules` traz a proteção de verdade, que substitui a trava só visual. Publicando essas regras:
+
+- as **senhas saem do alcance de todo mundo** — ficam na coleção `senhas`, que só o admin lê, e a conferência do login acontece dentro da regra, não no app;
+- **só quem fez login** enxerga rodadas, caixa, mensalidades e uniformes;
+- **só aparelhos cadastrados como admin** conseguem escrever; o atleta comum só altera o campo de presenças da rodada.
+
+**Ordem obrigatória, para não se trancar para fora:**
+
+1. No app, em Ajustes, toque em **🔒 Mover senhas antigas para o lugar protegido**. Isso copia as senhas dos cadastros para a coleção `senhas`.
+2. Ainda em Ajustes, copie a **Identificação deste aparelho**.
+3. No console do Firebase, crie a coleção `admins` com um documento cujo ID é essa identificação (qualquer campo dentro serve, por exemplo `nome: "Vinícios"`).
+4. Só então cole o conteúdo de `firestore.rules` em Firestore → Regras e publique.
+
+Se pular o passo 3, você perde o acesso de escrita e vai precisar afrouxar as regras pelo console para voltar.
+
+**O que ainda não protege:** a identificação do aparelho é anônima, então trocar de celular ou limpar os dados do navegador gera uma identificação nova — você precisa cadastrá-la de novo em `admins`. Guarde mais de uma, ou mantenha o backup em dia.
+
+## Como as contas funcionam
+
+Estas regras valem para as rodadas **anteriores** à data da virada:
+
+- **Rateio (padrão)**: o custo da quadra é dividido pelos confirmados daquela rodada. Vieram 12, a quadra custou 180 → R$ 15 cada. Vieram 8 → R$ 22,50 cada.
+- **Valor fixo**: preenchendo *Valor fixo por cabeça* no jogo, todo mundo paga aquele valor e o rateio é ignorado.
+- **Caixa** = (o que os atletas pagaram + entradas avulsas) − (custo das rodadas já jogadas + saídas avulsas).
+- **Entradas e saídas avulsas**: o cartão no fim da aba Caixa tem os dois botões. Entrada é rifa, doação, venda de camisa, churrasco — dinheiro que não veio de diária nem de mensalidade. Saída é bola, colete, arbitragem, premiação. Cada lançamento aceita uma observação de quem pagou ou recebeu, e a lista mostra **+** em verde e **−** em vermelho. Lançamentos antigos, gravados antes desse campo existir, continuam contando como saída.
+
+Um detalhe que aparece rápido: no rateio puro o caixa nunca sobra, porque a arrecadação é exatamente igual ao custo. Se você quer formar caixa para bola, colete ou a confraternização de fim de ano, use valor fixo um pouco acima do rateio — R$ 20 numa quadra que sai a R$ 15 por cabeça deixa R$ 60 por rodada no caixa.
+
+Só entram na conta os jogos com data igual ou anterior a hoje. Rodada futura já confirmada não vira dívida antes de acontecer.
+
+## Custo
+
+Zero, na prática. O plano gratuito do Firebase dá 50 mil leituras e 20 mil gravações por dia; uma pelada de 25 pessoas usa uma fração disso. O GitHub Pages é gratuito para repositório público.
+
+## Limitações conhecidas
+
+- Sem histórico de quem alterou o quê.
+- Remover um atleta apaga o histórico de presença dele junto. Para tirar alguém da lista mantendo o histórico, marque como **inativo**.
+- Convidado é uma situação do cadastro, não um tipo de cobrança: ele paga a mesma diária dos fixos. Se na sua pelada o convidado paga mais, cadastre a rodada com *valor fixo por cabeça* e acerte a diferença por fora.
+- Um pagamento avulso (adiantar três rodadas de uma vez) precisa ser marcado rodada a rodada, no painel de cada uma.

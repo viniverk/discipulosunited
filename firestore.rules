@@ -1,0 +1,108 @@
+rules_version = '2';
+
+// ============================================================
+//  DISCÍPULOS UNITED — regras do Firestore
+//
+//  ANTES DE PUBLICAR, leia o README (seção "Regras do Firestore").
+//  Resumo do que muda:
+//   • as senhas saem do alcance de todo mundo;
+//   • só quem fez login enxerga rodadas, caixa e mensalidades;
+//   • só aparelhos cadastrados como admin conseguem escrever.
+//
+//  Passo obrigatório: crie no Firestore a coleção "admins" com um
+//  documento cujo ID é a identificação do SEU aparelho (o app mostra
+//  em Caixa → Ajustes → "Identificação deste aparelho"). Sem isso
+//  você fica sem conseguir editar nada.
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- quem é quem ----------
+    function autenticado() {
+      return request.auth != null;
+    }
+    function ehAdmin() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function fezLogin() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/vinculos/$(request.auth.uid));
+    }
+    function senhaConfere(atletaId, senha) {
+      return exists(/databases/$(database)/documents/senhas/$(atletaId))
+        && get(/databases/$(database)/documents/senhas/$(atletaId)).data.senha == senha;
+    }
+
+    // ---------- senhas: ninguém lê, só o admin escreve ----------
+    // A conferência acontece dentro da regra de /vinculos, nunca no app.
+    match /senhas/{atletaId} {
+      allow read: if ehAdmin();
+      allow write: if ehAdmin();
+    }
+
+    // ---------- vínculo aparelho → atleta (o "login") ----------
+    // Cada aparelho só mexe no próprio vínculo, e só cria se acertar a senha.
+    match /vinculos/{uid} {
+      allow read, delete: if autenticado() && request.auth.uid == uid;
+      allow create, update: if autenticado()
+        && request.auth.uid == uid
+        && request.resource.data.atletaId is string
+        && senhaConfere(request.resource.data.atletaId, request.resource.data.senha);
+    }
+
+    // ---------- lista de admins ----------
+    // Só se cria pelo console do Firebase. O app nunca escreve aqui.
+    match /admins/{uid} {
+      allow read: if autenticado() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // ---------- nomes dos atletas ----------
+    // Leitura aberta a quem está autenticado: a tela de entrada precisa
+    // montar a lista de nomes antes do login. Não há senha aqui.
+    match /atletas/{id} {
+      allow read: if autenticado();
+      allow write: if ehAdmin();
+    }
+
+    // ---------- identidade do grupo ----------
+    // A tela de entrada mostra nome e lema, então precisa ler antes do login.
+    match /config/{doc} {
+      allow read: if autenticado();
+      allow write: if ehAdmin();
+    }
+
+    // ---------- o resto só depois de entrar ----------
+    match /jogos/{id} {
+      allow read: if fezLogin() || ehAdmin();
+      // o atleta mexe só na própria confirmação de presença
+      allow update: if ehAdmin()
+        || (fezLogin()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['presencas']));
+      allow create, delete: if ehAdmin();
+    }
+
+    match /mensalidades/{id} {
+      allow read: if fezLogin() || ehAdmin();
+      allow write: if ehAdmin();
+    }
+
+    match /despesas/{id} {
+      allow read: if fezLogin() || ehAdmin();
+      allow write: if ehAdmin();
+    }
+
+    match /uniformes/{id} {
+      allow read: if fezLogin() || ehAdmin();
+      allow write: if ehAdmin();
+    }
+
+    // qualquer coisa fora do previsto fica trancada
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
