@@ -76,7 +76,7 @@ a{color:var(--quadra)}
 }
 .chave.on{background:var(--canarinho);color:var(--tinta)}
 @media (max-width:400px){ .chave span{display:none} .chave{padding:8px 10px} .marca{font-size:20px} .brasao{width:48px}
-  .aba{font-size:8.5px;letter-spacing:0;padding:8px 1px 0} .aba i{font-size:15px} .aba em{padding-bottom:7px} }
+  .aba{font-size:9.5px;letter-spacing:.2px;padding:8px 2px 0} .aba i{font-size:15px} .aba em{padding-bottom:7px} }
 .eu{margin-top:12px;position:relative;z-index:1}
 .eu label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.75;margin-bottom:5px;font-weight:600}
 .meu-link{margin-top:9px;display:flex;align-items:center;gap:8px;position:relative;z-index:1}
@@ -94,7 +94,7 @@ a{color:var(--quadra)}
 .abas{
   position:sticky;top:0;z-index:50;
   background:var(--cal);border-bottom:1px solid var(--borda);
-  display:grid;grid-template-columns:repeat(8,minmax(42px,1fr));overflow-x:auto;
+  display:grid;grid-auto-flow:column;grid-auto-columns:minmax(64px,1fr);overflow-x:auto;scrollbar-width:none;
   box-shadow:0 2px 10px rgba(16,24,38,.05);
 }
 .aba{
@@ -105,6 +105,8 @@ a{color:var(--quadra)}
 .aba.on{color:var(--quadra);border-bottom-color:var(--quadra)}
 .aba i{display:block;font-size:19px;font-style:normal;margin-bottom:1px}
 .aba em{display:block;font-style:normal;padding-bottom:8px}
+.abas::-webkit-scrollbar{display:none}
+.aba em{white-space:nowrap}
 
 .tela{padding:16px;max-width:760px;margin:0 auto;display:none}
 .tela.on{display:block}
@@ -357,6 +359,37 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .escolha-time button.on.neutro{box-shadow:0 0 0 2px var(--cinza) inset}
 
 .times-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+#tela-times .banco.livre{margin-bottom:8px}
+.quiz-capa{background:var(--tinta);color:#fff;border-radius:var(--raio);padding:20px;margin-bottom:14px;text-align:center;
+  display:flex;flex-direction:column;gap:4px}
+.quiz-capa-ico{font-size:30px}
+.quiz-capa b{font-family:var(--display);font-size:22px;letter-spacing:.6px;text-transform:uppercase;font-weight:400}
+.quiz-capa span{color:var(--canarinho);font-size:13.5px}
+.quiz-regras{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.quiz-regras div{background:var(--linha);border-radius:10px;padding:10px 4px;display:flex;flex-direction:column}
+.quiz-regras b{font-family:var(--display);font-size:24px;font-weight:400}
+.quiz-regras span{font-size:11.5px;color:var(--cinza)}
+.quiz-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13.5px;margin-bottom:10px}
+.quiz-barra{height:7px;border-radius:9px;background:var(--linha);overflow:hidden;margin-bottom:16px}
+.quiz-barra i{display:block;height:100%;width:100%;background:var(--canarinho);transition:width .1s linear}
+.quiz-barra i.fim{background:#C0392B}
+.quiz-pergunta{font-size:19px;font-weight:700;line-height:1.35;margin-bottom:16px}
+.quiz-opcoes{display:flex;flex-direction:column;gap:9px}
+.quiz-opcoes button{text-align:left;padding:14px;border-radius:11px;border:1.5px solid var(--borda);background:var(--cal);
+  font:inherit;font-size:15.5px;font-weight:600;color:inherit;cursor:pointer}
+.quiz-opcoes button:not(:disabled):active{transform:scale(.99)}
+.quiz-opcoes button.certa{border-color:#1E8E4F;background:#E5F5EC;color:#14140F}
+.quiz-opcoes button.errada{border-color:#C0392B;background:#FCE8E8;color:#14140F}
+.quiz-opcoes button:disabled:not(.certa):not(.errada){opacity:.55}
+.quiz-resultado{text-align:center;padding:8px 0}
+.quiz-resultado b{display:block;font-family:var(--display);font-size:52px;font-weight:400;line-height:1}
+.quiz-resultado span{color:var(--cinza);font-size:14px}
+.quiz-revisao summary,.quiz-admin summary{cursor:pointer;font-weight:600;font-size:14px}
+.quiz-admin summary{list-style:none;display:flex;flex-direction:column;gap:2px}
+.quiz-admin summary::-webkit-details-marker{display:none}
+.quiz-pos{width:30px;text-align:center;font-weight:700;font-size:15px;flex-shrink:0}
+.quiz-pts{font-family:var(--display);font-size:19px;font-weight:400;flex-shrink:0}
+.item.quiz-eu{background:#FBF6E8;border-radius:10px;padding-left:6px;padding-right:6px}
 #tela-times .banco.vermelho .ficha,#tela-times .banco.colete .ficha{flex:1 1 100%;font-size:12.5px;padding:6px 8px;text-align:left}
 .time{background:var(--cal);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden}
 .time-topo{padding:10px 12px;font-family:var(--display);font-size:15px;letter-spacing:.8px;
@@ -539,6 +572,7 @@ body.tema-placar .barrinha{background:#2A2E35}
   <button class="aba" data-tela="atletas"><i>👟</i><em>Atletas</em></button>
   <button class="aba" data-tela="caixa"><i>💰</i><em>Caixa</em></button>
   <button class="aba" data-tela="times"><i>🎲</i><em>Times</em></button>
+  <button class="aba" data-tela="quiz"><i>📖</i><em>Quiz</em></button>
   <button class="aba" data-tela="uniforme"><i>👕</i><em>Uniforme</em></button>
   <button class="aba" data-tela="valores"><i>✝️</i><em>Valores</em></button>
   <button class="aba" data-tela="estatuto"><i>📜</i><em>Estatuto</em></button>
@@ -550,6 +584,7 @@ body.tema-placar .barrinha{background:#2A2E35}
   <section class="tela" id="tela-atletas"></section>
   <section class="tela" id="tela-caixa"></section>
   <section class="tela" id="tela-times"></section>
+  <section class="tela" id="tela-quiz"></section>
   <section class="tela" id="tela-uniforme"></section>
   <section class="tela" id="tela-valores"></section>
   <section class="tela" id="tela-estatuto"></section>
@@ -587,7 +622,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-20";
+const VERSAO = "2026-10-20b";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -596,7 +631,8 @@ const estado = {
     modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2, exigirLogin:false, tema:"escudo" },
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
   instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null,
-  vinculo: null, cfgOk: false, vincOk: false, ordemAtletas: "nome", modoTimes: "roleta"
+  vinculo: null, cfgOk: false, vincOk: false, ordemAtletas: "nome", modoTimes: "roleta",
+  quizPerguntas: [], quizRodadas: [], quizErro: false
 };
 
 /* ---------- camada de dados ---------- */
@@ -641,6 +677,13 @@ async function iniciar(){
       fs.onSnapshot(fs.collection(db,"mensalidades"), s => {
         estado.mensalidades = s.docs.map(d => ({ id:d.id, ...d.data() })); desenhar();
       }, erroFirebase);
+      // quiz: se as regras ainda não liberam, a aba avisa e segue sem quebrar o resto
+      fs.onSnapshot(fs.collection(db,"quizPerguntas"), s => {
+        estado.quizPerguntas = s.docs.map(d => ({ id:d.id, ...d.data() })); desenhar();
+      }, () => { estado.quizPerguntas = []; });
+      fs.onSnapshot(fs.collection(db,"quizRodadas"), s => {
+        estado.quizRodadas = s.docs.map(d => ({ id:d.id, ...d.data() })); estado.quizErro = false; desenhar();
+      }, () => { estado.quizRodadas = []; estado.quizErro = true; });
       fs.onSnapshot(fs.doc(db,"config","geral"), d => {
         if (d.exists()) estado.config = { ...estado.config, ...d.data() };
         estado.cfgOk = true; desenhar();
@@ -1053,7 +1096,9 @@ function montarBackup(){
     jogos: estado.jogos,
     mensalidades: estado.mensalidades,
     despesas: estado.despesas,
-    uniformes: estado.uniformes || []
+    uniformes: estado.uniformes || [],
+    quizPerguntas: estado.quizPerguntas || [],
+    quizRodadas: estado.quizRodadas || []
   };
 }
 
@@ -1082,6 +1127,8 @@ async function restaurarTudo(dados){
     for (const m of dados.mensalidades || []) await gravar("mensalidades", m, m.id);
     for (const d of dados.despesas || [])     await gravar("despesas", d, d.id);
     for (const u of dados.uniformes || [])    await gravar("uniformes", u, u.id);
+    for (const q of dados.quizPerguntas || []) await gravar("quizPerguntas", q, q.id);
+    for (const r of dados.quizRodadas || [])   await gravar("quizRodadas", r, r.id);
     if (dados.config) await gravarConfig(dados.config);
     fecharModal(); desenhar(); avisar("Backup restaurado.");
   } catch (e) { console.error(e); avisar("Falhou no meio da restauração. Confira os dados."); }
@@ -2227,6 +2274,442 @@ function listaManual(jogo){
   </div>`;
 }
 
+/* ---------- Quiz: banco de perguntas ----------
+   t: "b" Bíblia / "f" futebol · n: 1 fácil, 2 média, 3 difícil
+   o[0] é sempre a resposta certa (o app embaralha as opções) · r: referência ou explicação */
+const QUIZ_BANCO = [
+  ["b",1,"Quem construiu a arca para escapar do dilúvio?",["Noé","Abraão","Moisés","Davi"],"Gênesis 6:13-14"],
+  ["b",1,"Por quantos dias e noites choveu no dilúvio?",["40","7","12","100"],"Gênesis 7:12"],
+  ["b",1,"Quem derrotou o gigante Golias?",["Davi","Saul","Sansão","Jônatas"],"1 Samuel 17:49-50"],
+  ["b",1,"Com o que Davi derrubou Golias?",["Uma pedra atirada com a funda","Uma espada","Uma lança","Um arco e flecha"],"1 Samuel 17:49"],
+  ["b",1,"Quem foi engolido por um grande peixe?",["Jonas","Pedro","Elias","Jeremias"],"Jonas 1:17"],
+  ["b",2,"Para qual cidade Deus enviou o profeta Jonas?",["Nínive","Babilônia","Jericó","Tarso"],"Jonas 1:2"],
+  ["b",1,"Quantos discípulos Jesus escolheu?",["12","7","10","70"],"Marcos 3:14"],
+  ["b",1,"Em que cidade Jesus nasceu?",["Belém","Nazaré","Jerusalém","Cafarnaum"],"Mateus 2:1"],
+  ["b",1,"Qual discípulo traiu Jesus?",["Judas Iscariotes","Pedro","Tomé","Tiago"],"Mateus 26:14-16"],
+  ["b",2,"Por quantas moedas de prata Judas traiu Jesus?",["30","20","40","100"],"Mateus 26:15"],
+  ["b",1,"Qual discípulo negou Jesus três vezes?",["Pedro","João","André","Filipe"],"Lucas 22:61"],
+  ["b",1,"Qual foi o primeiro milagre de Jesus, nas bodas de Caná?",["Transformou água em vinho","Multiplicou pães","Curou um cego","Andou sobre as águas"],"João 2:1-11"],
+  ["b",1,"Qual é o primeiro livro da Bíblia?",["Gênesis","Êxodo","Mateus","Salmos"],"Gênesis 1:1"],
+  ["b",1,"Qual é o último livro da Bíblia?",["Apocalipse","Judas","Malaquias","Atos"],"Apocalipse 22"],
+  ["b",1,"Quem recebeu de Deus as tábuas dos Dez Mandamentos no monte Sinai?",["Moisés","Josué","Arão","Elias"],"Êxodo 31:18"],
+  ["b",2,"Quantos livros tem a Bíblia usada pelas igrejas evangélicas?",["66","73","39","27"],"39 no Antigo e 27 no Novo Testamento"],
+  ["b",2,"Quantos livros tem o Antigo Testamento (na Bíblia evangélica)?",["39","27","46","50"],"De Gênesis a Malaquias"],
+  ["b",2,"Quantos livros tem o Novo Testamento?",["27","39","21","33"],"De Mateus a Apocalipse"],
+  ["b",2,"Quem era o pai de João Batista?",["Zacarias","José","Simeão","Eli"],"Lucas 1:13"],
+  ["b",1,"Quem foi lançado na cova dos leões?",["Daniel","José","Jeremias","Ezequiel"],"Daniel 6:16"],
+  ["b",2,"Quais três jovens foram lançados na fornalha ardente?",["Sadraque, Mesaque e Abede-Nego","Pedro, Tiago e João","Sem, Cam e Jafé","Arão, Hur e Josué"],"Daniel 3:20-23"],
+  ["b",1,"Quem foi o primeiro homem criado por Deus?",["Adão","Noé","Abel","Sete"],"Gênesis 2:7"],
+  ["b",1,"Quem matou Abel?",["Caim","Sete","Esaú","Lameque"],"Gênesis 4:8"],
+  ["b",1,"Quem batizou Jesus?",["João Batista","Pedro","André","Zacarias"],"Mateus 3:13"],
+  ["b",1,"Em que rio Jesus foi batizado?",["Jordão","Nilo","Eufrates","Tigre"],"Mateus 3:13"],
+  ["b",1,"Por quantos dias Jesus jejuou no deserto?",["40","7","3","30"],"Mateus 4:2"],
+  ["b",1,"Qual filho de Jacó foi vendido pelos irmãos e se tornou governador do Egito?",["José","Benjamim","Rúben","Judá"],"Gênesis 37:28; 41:41"],
+  ["b",2,"Quantos filhos homens Jacó teve?",["12","10","7","13"],"Gênesis 35:22"],
+  ["b",2,"Que novo nome Deus deu a Jacó?",["Israel","Abraão","Judá","Efraim"],"Gênesis 32:28"],
+  ["b",1,"Quem era o pai de Isaque?",["Abraão","Jacó","Noé","Ló"],"Gênesis 21:3"],
+  ["b",1,"Como se chamava a esposa de Abraão?",["Sara","Rebeca","Raquel","Lia"],"Gênesis 17:15"],
+  ["b",1,"De quem era a força ligada ao cabelo comprido?",["Sansão","Gideão","Davi","Absalão"],"Juízes 16:17"],
+  ["b",2,"Quem descobriu o segredo de Sansão e o entregou aos filisteus?",["Dalila","Jezabel","Mical","Raabe"],"Juízes 16:18-19"],
+  ["b",2,"Quem liderou Israel depois da morte de Moisés?",["Josué","Arão","Calebe","Samuel"],"Josué 1:1-2"],
+  ["b",1,"As muralhas de qual cidade caíram depois que o povo a rodeou?",["Jericó","Ai","Jerusalém","Nínive"],"Josué 6:20"],
+  ["b",2,"No sétimo dia, quantas voltas o povo deu ao redor de Jericó?",["7","1","3","12"],"Josué 6:15"],
+  ["b",1,"Qual filho de Davi ficou conhecido pela sabedoria?",["Salomão","Absalão","Amnom","Natã"],"1 Reis 3:12"],
+  ["b",2,"Quem construiu o primeiro templo em Jerusalém?",["Salomão","Davi","Saul","Ezequias"],"1 Reis 6:1"],
+  ["b",2,"Quem foi o primeiro rei de Israel?",["Saul","Davi","Salomão","Samuel"],"1 Samuel 10:1"],
+  ["b",2,"Qual profeta subiu ao céu num redemoinho?",["Elias","Eliseu","Isaías","Enoque"],"2 Reis 2:11"],
+  ["b",2,"Quem recebeu a capa de Elias e continuou seu ministério?",["Eliseu","Geazi","Jonas","Samuel"],"2 Reis 2:13-15"],
+  ["b",3,"Em qual monte Elias desafiou os profetas de Baal?",["Carmelo","Sinai","Sião","Horebe"],"1 Reis 18:19-20"],
+  ["b",2,"Qual rainha arriscou a vida para salvar seu povo na Pérsia?",["Ester","Jezabel","Vasti","Rainha de Sabá"],"Ester 4:16"],
+  ["b",3,"Quem criou Ester como filha e a orientou?",["Mordecai","Hamã","Neemias","Esdras"],"Ester 2:7"],
+  ["b",2,"Qual nora disse a Noemi: \"o teu povo é o meu povo\"?",["Rute","Orfa","Ana","Mical"],"Rute 1:16"],
+  ["b",2,"Com quem Rute se casou em Belém?",["Boaz","Obede","Elimeleque","Jessé"],"Rute 4:13"],
+  ["b",1,"Quem perdeu bens, filhos e saúde, mas permaneceu fiel a Deus?",["Jó","Ló","Jonas","Jeremias"],"Jó 1:21-22"],
+  ["b",2,"Quantos capítulos tem o livro de Salmos?",["150","100","120","66"],"Salmos 1–150"],
+  ["b",2,"Qual salmo começa com \"O Senhor é o meu pastor\"?",["Salmo 23","Salmo 1","Salmo 91","Salmo 150"],"Salmos 23:1"],
+  ["b",3,"Qual é o maior capítulo da Bíblia?",["Salmo 119","Salmo 23","Isaías 53","Gênesis 1"],"Salmos 119 tem 176 versículos"],
+  ["b",2,"O que diz o primeiro dos Dez Mandamentos?",["Não ter outros deuses além do Senhor","Não matar","Honrar pai e mãe","Guardar o sábado"],"Êxodo 20:3"],
+  ["b",1,"Quantos são os Evangelhos?",["4","3","5","12"],"Mateus, Marcos, Lucas e João"],
+  ["b",2,"Qual autor de Evangelho era médico?",["Lucas","Marcos","Mateus","João"],"Colossenses 4:14"],
+  ["b",1,"Quem escreveu a maior parte das cartas do Novo Testamento?",["Paulo","Pedro","João","Tiago"],"Romanos a Filemom levam o nome de Paulo"],
+  ["b",1,"Qual era o nome de Paulo antes da conversão?",["Saulo","Simão","Silas","Silvano"],"Atos 13:9"],
+  ["b",2,"A caminho de qual cidade Saulo teve o encontro com Jesus?",["Damasco","Jerusalém","Antioquia","Roma"],"Atos 9:3"],
+  ["b",1,"Qual cobrador de impostos subiu numa árvore para ver Jesus?",["Zaqueu","Mateus","Nicodemos","Bartimeu"],"Lucas 19:2-4"],
+  ["b",3,"Em que árvore Zaqueu subiu?",["Sicômoro","Oliveira","Figueira","Cedro"],"Lucas 19:4"],
+  ["b",1,"Quem Jesus ressuscitou depois de quatro dias no túmulo?",["Lázaro","Jairo","Estêvão","Bartimeu"],"João 11:39-44"],
+  ["b",2,"Como se chamavam as irmãs de Lázaro?",["Marta e Maria","Ana e Isabel","Raquel e Lia","Lídia e Dorcas"],"João 11:1"],
+  ["b",1,"Na multiplicação para cinco mil homens, quantos pães e peixes havia?",["5 pães e 2 peixes","7 pães e 3 peixes","2 pães e 5 peixes","12 pães e 12 peixes"],"Mateus 14:17"],
+  ["b",1,"Qual discípulo andou sobre as águas em direção a Jesus?",["Pedro","João","Tomé","André"],"Mateus 14:29"],
+  ["b",1,"Como é conhecida a parábola do filho que gastou a herança e voltou para casa?",["Filho pródigo","Bom samaritano","Semeador","Talentos"],"Lucas 15:11-32"],
+  ["b",1,"Na parábola, quem parou para ajudar o homem ferido na estrada?",["Um samaritano","Um sacerdote","Um levita","Um soldado"],"Lucas 10:33"],
+  ["b",2,"Quantas ovelhas o pastor deixou para buscar a que se perdeu?",["99","9","49","100"],"Lucas 15:4"],
+  ["b",2,"Em que jardim Jesus orou antes de ser preso?",["Getsêmani","Éden","Betânia","Siló"],"Mateus 26:36"],
+  ["b",1,"Qual governador romano julgou Jesus?",["Pôncio Pilatos","Herodes","César Augusto","Félix"],"Mateus 27:2"],
+  ["b",2,"Qual preso foi solto no lugar de Jesus?",["Barrabás","Barnabé","Dimas","Malco"],"Mateus 27:26"],
+  ["b",2,"Qual o nome do lugar onde Jesus foi crucificado?",["Gólgota","Getsêmani","Monte das Oliveiras","Betel"],"João 19:17"],
+  ["b",2,"Quem foi obrigado a ajudar Jesus a carregar a cruz?",["Simão Cireneu","Simão Pedro","José de Arimateia","Nicodemos"],"Lucas 23:26"],
+  ["b",2,"Segundo Marcos, a quem Jesus apareceu primeiro depois de ressuscitar?",["Maria Madalena","Pedro","João","Tomé"],"Marcos 16:9"],
+  ["b",3,"Por quantos dias Jesus apareceu aos discípulos antes de subir ao céu?",["40","3","7","50"],"Atos 1:3"],
+  ["b",2,"Em que festa o Espírito Santo desceu sobre os discípulos?",["Pentecostes","Páscoa","Tabernáculos","Purim"],"Atos 2:1-4"],
+  ["b",2,"Quem foi o primeiro mártir cristão, morto apedrejado?",["Estêvão","Tiago","Filipe","Paulo"],"Atos 7:59-60"],
+  ["b",3,"Quem acompanhou Paulo na primeira viagem missionária?",["Barnabé","Silas","Lucas","Timóteo"],"Atos 13:2"],
+  ["b",2,"A qual jovem discípulo Paulo escreveu duas cartas?",["Timóteo","Tito","Filemom","Apolo"],"1 e 2 Timóteo"],
+  ["b",2,"Qual destes NÃO faz parte do fruto do Espírito?",["Riqueza","Amor","Alegria","Paz"],"Gálatas 5:22-23"],
+  ["b",2,"Em qual carta está \"Tudo posso naquele que me fortalece\"?",["Filipenses","Romanos","Efésios","Hebreus"],"Filipenses 4:13"],
+  ["b",1,"Onde está \"Porque Deus amou o mundo de tal maneira…\"?",["João 3:16","Romanos 8:28","Salmos 23:1","Mateus 5:3"],"João 3:16"],
+  ["b",2,"Qual capítulo é conhecido como o \"capítulo do amor\"?",["1 Coríntios 13","João 3","Romanos 12","Gálatas 5"],"1 Coríntios 13"],
+  ["b",3,"Em que capítulo Paulo descreve a armadura de Deus?",["Efésios 6","Romanos 8","Hebreus 11","Colossenses 3"],"Efésios 6:10-18"],
+  ["b",3,"Qual capítulo é conhecido como a \"galeria dos heróis da fé\"?",["Hebreus 11","Romanos 5","Tiago 2","1 Pedro 1"],"Hebreus 11"],
+  ["b",2,"Qual anjo anunciou a Maria que ela seria mãe de Jesus?",["Gabriel","Miguel","Rafael","Uriel"],"Lucas 1:26-31"],
+  ["b",1,"O que os magos do Oriente seguiram até encontrar Jesus?",["Uma estrela","Um anjo","Uma nuvem","Um pastor"],"Mateus 2:2"],
+  ["b",1,"Quais presentes os magos deram a Jesus?",["Ouro, incenso e mirra","Ouro, prata e bronze","Pão, vinho e azeite","Mirra, linho e perfume"],"Mateus 2:11"],
+  ["b",2,"Qual rei mandou matar os meninos de Belém?",["Herodes","Pilatos","Nabucodonosor","Faraó"],"Mateus 2:16"],
+  ["b",2,"Para onde José levou Maria e o menino Jesus para fugir de Herodes?",["Egito","Babilônia","Síria","Roma"],"Mateus 2:14"],
+  ["b",2,"Com que idade Jesus ficou no templo conversando com os mestres?",["12 anos","7 anos","15 anos","30 anos"],"Lucas 2:42-46"],
+  ["b",1,"Qual era a profissão de Pedro antes de seguir Jesus?",["Pescador","Carpinteiro","Cobrador de impostos","Pastor de ovelhas"],"Mateus 4:18"],
+  ["b",2,"Qual era a profissão de Mateus quando Jesus o chamou?",["Cobrador de impostos","Pescador","Médico","Fazedor de tendas"],"Mateus 9:9"],
+  ["b",2,"Qual discípulo era irmão de Pedro?",["André","João","Tiago","Filipe"],"Mateus 4:18"],
+  ["b",2,"Quais discípulos eram filhos de Zebedeu?",["Tiago e João","Pedro e André","Filipe e Natanael","Mateus e Tomé"],"Mateus 4:21"],
+  ["b",1,"Qual discípulo só acreditou na ressurreição depois de ver as marcas de Jesus?",["Tomé","Pedro","Judas","Mateus"],"João 20:24-28"],
+  ["b",3,"Quem foi escolhido para o lugar de Judas entre os doze?",["Matias","Barnabé","Paulo","Silas"],"Atos 1:26"],
+  ["b",2,"Por quantos anos Israel andou no deserto?",["40","7","70","12"],"Números 14:33"],
+  ["b",1,"Que alimento Deus mandava do céu para o povo no deserto?",["Maná","Codornizes assadas","Pão de cevada","Figos"],"Êxodo 16:31"],
+  ["b",1,"Qual mar Deus abriu para o povo sair do Egito?",["Mar Vermelho","Mar Morto","Mar da Galileia","Mar Mediterrâneo"],"Êxodo 14:21"],
+  ["b",2,"Quem era o irmão de Moisés que falava por ele diante do faraó?",["Arão","Josué","Calebe","Hur"],"Êxodo 4:14-16"],
+  ["b",1,"Quantas pragas Deus enviou sobre o Egito?",["10","7","12","3"],"Êxodo 7–12"],
+  ["b",2,"Qual foi a última praga do Egito?",["A morte dos primogênitos","Gafanhotos","Trevas","Rãs"],"Êxodo 12:29"],
+  ["b",2,"Em que a mulher de Ló se transformou ao olhar para trás?",["Uma estátua de sal","Uma pedra","Pó","Uma árvore"],"Gênesis 19:26"],
+  ["b",1,"Quais cidades foram destruídas com fogo e enxofre?",["Sodoma e Gomorra","Jericó e Ai","Tiro e Sidom","Nínive e Babel"],"Gênesis 19:24"],
+  ["b",1,"Em qual torre Deus confundiu a língua dos homens?",["Babel","Jericó","Sião","Davi"],"Gênesis 11:9"],
+  ["b",1,"Qual foi o sinal da aliança de Deus depois do dilúvio?",["O arco-íris","Uma pomba","Uma estrela","Um altar"],"Gênesis 9:13"],
+  ["b",2,"Quem é o homem que mais viveu segundo a Bíblia?",["Matusalém","Noé","Adão","Abraão"],"Gênesis 5:27 — 969 anos"],
+  ["b",3,"Quem andou com Deus e foi levado sem passar pela morte, em Gênesis?",["Enoque","Elias","Sete","Noé"],"Gênesis 5:24"],
+  ["b",2,"Quem era o irmão gêmeo de Jacó?",["Esaú","Ismael","Labão","Isaque"],"Gênesis 25:25-26"],
+  ["b",2,"Pelo que Esaú vendeu seu direito de primogenitura?",["Um prato de lentilhas","Trinta moedas","Um rebanho","Uma túnica"],"Gênesis 25:34"],
+  ["b",2,"Qual menino ouviu Deus chamá-lo à noite no templo?",["Samuel","Davi","José","Josias"],"1 Samuel 3:10"],
+  ["b",3,"Como se chamava a mãe de Samuel, que orou por um filho?",["Ana","Isabel","Raquel","Penina"],"1 Samuel 1:20"],
+  ["b",2,"Qual filho de Saul foi o melhor amigo de Davi?",["Jônatas","Abner","Isbosete","Mefibosete"],"1 Samuel 18:1"],
+  ["b",2,"Qual juiz venceu os midianitas com apenas 300 homens?",["Gideão","Sansão","Jefté","Baraque"],"Juízes 7:7"],
+  ["b",3,"A qual profeta é atribuído o livro de Lamentações?",["Jeremias","Isaías","Ezequiel","Daniel"],"Tradição ligada a Jeremias"],
+  ["b",3,"Qual profeta teve a visão do vale de ossos secos?",["Ezequiel","Daniel","Oseias","Amós"],"Ezequiel 37:1"],
+  ["b",2,"Qual profeta anunciou que uma virgem daria à luz um filho chamado Emanuel?",["Isaías","Jeremias","Malaquias","Miqueias"],"Isaías 7:14"],
+  ["b",3,"Qual rei da Babilônia sonhou com uma grande estátua?",["Nabucodonosor","Belsazar","Ciro","Dario"],"Daniel 2:1, 31"],
+  ["b",3,"No banquete de qual rei apareceu uma mão escrevendo na parede?",["Belsazar","Nabucodonosor","Assuero","Herodes"],"Daniel 5:1, 5"],
+  ["b",2,"Quem liderou a reconstrução dos muros de Jerusalém?",["Neemias","Esdras","Zorobabel","Ageu"],"Neemias 2:17"],
+  ["b",2,"Quantas vezes Jesus disse a Pedro que devemos perdoar?",["Setenta vezes sete","Sete vezes","Três vezes","Doze vezes"],"Mateus 18:22"],
+  ["b",1,"Qual Jesus disse ser o maior mandamento?",["Amar a Deus de todo o coração, alma e entendimento","Guardar o sábado","Não matar","Dar o dízimo"],"Mateus 22:37-38"],
+  ["b",1,"Como é chamado o ensino de Jesus que começa com as bem-aventuranças?",["Sermão do Monte","Sermão profético","Discurso do cenáculo","Parábola do semeador"],"Mateus 5–7"],
+  ["b",1,"Qual oração Jesus ensinou aos discípulos?",["Pai Nosso","Salmo 23","Ave Maria","Oração de Jabez"],"Mateus 6:9-13"],
+  ["b",2,"Em qual Evangelho Jesus diz \"Eu sou o caminho, a verdade e a vida\"?",["João","Mateus","Marcos","Lucas"],"João 14:6"],
+  ["b",3,"Em qual ilha João recebeu as visões do Apocalipse?",["Patmos","Chipre","Creta","Malta"],"Apocalipse 1:9"],
+  ["b",2,"Quantas igrejas recebem cartas no início do Apocalipse?",["7","12","3","10"],"Apocalipse 1:11"],
+  ["b",3,"Qual casal mentiu sobre o valor da venda de um terreno?",["Ananias e Safira","Áquila e Priscila","Zacarias e Isabel","Abraão e Sara"],"Atos 5:1-10"],
+  ["b",3,"Em qual cidade Paulo e Silas cantavam na prisão quando houve um terremoto?",["Filipos","Corinto","Éfeso","Atenas"],"Atos 16:12, 25-26"],
+  ["b",3,"Com que trabalho Paulo se sustentava em algumas viagens?",["Fazendo tendas","Pescando","Cobrando impostos","Curtindo couro"],"Atos 18:3"],
+  ["b",3,"Lídia, convertida em Filipos, vendia o quê?",["Púrpura","Perfumes","Cerâmica","Azeite"],"Atos 16:14"],
+  ["b",3,"Quem ressuscitou Tabita (Dorcas) em Jope?",["Pedro","Paulo","João","Filipe"],"Atos 9:40"],
+  ["b",2,"Qual livro vem logo depois de Atos?",["Romanos","Gálatas","1 Coríntios","Tiago"],"Ordem do Novo Testamento"],
+  ["b",1,"Como se chamava a mãe de Jesus?",["Maria","Isabel","Marta","Ana"],"Lucas 1:30-31"],
+  ["b",2,"Quem disse \"Eis aqui a serva do Senhor\"?",["Maria","Isabel","Ana","Rute"],"Lucas 1:38"],
+  ["b",2,"Qual pássaro voltou à arca com uma folha de oliveira?",["Pomba","Corvo","Águia","Pardal"],"Gênesis 8:11"],
+  ["b",1,"Em quantos dias Deus criou o mundo, descansando no seguinte?",["6","7","3","40"],"Gênesis 1–2:2"],
+  ["f",1,"Quantas Copas do Mundo o Brasil já ganhou?",["5","4","3","6"],"1958, 1962, 1970, 1994 e 2002"],
+  ["f",2,"Em qual destes anos o Brasil NÃO foi campeão do mundo?",["1998","1958","1970","1994"],"Em 1998 o Brasil perdeu a final para a França"],
+  ["f",2,"Qual país sediou a primeira Copa do Mundo, em 1930?",["Uruguai","Brasil","Itália","França"],"Copa de 1930"],
+  ["f",2,"Qual seleção foi a primeira campeã mundial?",["Uruguai","Brasil","Argentina","Itália"],"Copa de 1930"],
+  ["f",1,"Quantos jogadores cada time tem em campo no futebol de campo?",["11","10","9","12"],"Regra 3 das Leis do Jogo"],
+  ["f",1,"Quanto tempo dura uma partida oficial, sem contar acréscimos?",["90 minutos","80 minutos","100 minutos","120 minutos"],"Dois tempos de 45 minutos"],
+  ["f",1,"Quem é conhecido como o \"Rei do Futebol\"?",["Pelé","Garrincha","Maradona","Zico"],"Edson Arantes do Nascimento"],
+  ["f",2,"Quantas Copas do Mundo Pelé ganhou como jogador?",["3","2","4","1"],"1958, 1962 e 1970"],
+  ["f",1,"Em que Copa o Brasil perdeu de 7 a 1 para a Alemanha?",["2014","2010","2018","2006"],"Semifinal no Mineirão"],
+  ["f",2,"Para quem o Brasil perdeu a final da Copa de 1950, no Maracanã?",["Uruguai","Argentina","Itália","Suécia"],"O \"Maracanazo\""],
+  ["f",1,"Qual seleção foi campeã da Copa do Mundo de 2022?",["Argentina","França","Croácia","Brasil"],"Final contra a França"],
+  ["f",1,"Em qual país foi disputada a Copa de 2022?",["Catar","Rússia","Emirados Árabes","Arábia Saudita"],"Primeira Copa no Oriente Médio"],
+  ["f",2,"Quem foi o artilheiro do Brasil na Copa de 2002, com 8 gols?",["Ronaldo","Rivaldo","Ronaldinho","Romário"],"Ronaldo Fenômeno"],
+  ["f",3,"Quem é o maior artilheiro da história das Copas do Mundo?",["Miroslav Klose","Ronaldo","Pelé","Lionel Messi"],"Klose marcou 16 gols"],
+  ["f",1,"Em que ano o Brasil conquistou o tetracampeonato?",["1994","1990","1998","2002"],"Copa dos Estados Unidos"],
+  ["f",2,"Onde foi disputada a Copa do penta, em 2002?",["Coreia do Sul e Japão","Estados Unidos","Alemanha","França"],"Primeira Copa com duas sedes"],
+  ["f",2,"Contra quem o Brasil venceu a final de 2002?",["Alemanha","Itália","Argentina","França"],"Brasil 2 x 0 Alemanha"],
+  ["f",2,"Como foi decidida a final da Copa de 1994 contra a Itália?",["Nos pênaltis","Com gol na prorrogação","No tempo normal","Com gol de ouro"],"0 x 0 e vitória brasileira nos pênaltis"],
+  ["f",3,"Qual capitão ergueu a taça do tri em 1970?",["Carlos Alberto Torres","Pelé","Gérson","Rivellino"],"Carlos Alberto também marcou na final"],
+  ["f",1,"Qual cartão expulsa o jogador de campo?",["Vermelho","Amarelo","Azul","Branco"],"Regra 12"],
+  ["f",1,"O que acontece com o jogador que recebe dois cartões amarelos no mesmo jogo?",["É expulso","Paga multa","Sai por 10 minutos","Nada"],"Segundo amarelo vira vermelho"],
+  ["f",2,"Quantas substituições cada time pode fazer hoje em jogos oficiais?",["5","3","4","7"],"Regra em vigor desde 2022"],
+  ["f",2,"A que distância do gol fica a marca do pênalti?",["11 metros","9 metros","12 metros","16,5 metros"],"Regra 1"],
+  ["f",3,"Qual a altura oficial do travessão em relação ao chão?",["2,44 metros","2,20 metros","2,50 metros","2,10 metros"],"Regra 1"],
+  ["f",3,"Qual a largura oficial do gol, de uma trave à outra?",["7,32 metros","6 metros","8 metros","7,50 metros"],"Regra 1"],
+  ["f",1,"Qual seleção tem mais títulos de Copa do Mundo?",["Brasil","Alemanha","Itália","Argentina"],"5 títulos"],
+  ["f",2,"Quantas Copas do Mundo a Itália já ganhou?",["4","3","2","5"],"1934, 1938, 1982 e 2006"],
+  ["f",2,"Quais países sediaram a Copa do Mundo de 2026?",["Estados Unidos, Canadá e México","Espanha e Portugal","Brasil e Argentina","Marrocos e Egito"],"Primeira Copa com 48 seleções"],
+  ["f",2,"Em quais anos o Brasil sediou a Copa do Mundo?",["1950 e 2014","1950 e 1994","1970 e 2014","2002 e 2014"],"Duas Copas no Brasil"],
+  ["f",3,"Qual clube tem mais títulos da Copa Libertadores?",["Independiente","Boca Juniors","Peñarol","River Plate"],"7 títulos"],
+  ["f",1,"A Libertadores reúne clubes de qual continente?",["América do Sul","Europa","América do Norte","África"],"Torneio da Conmebol"],
+  ["f",1,"Lionel Messi defende qual seleção?",["Argentina","Espanha","Uruguai","Portugal"],"Capitão no título de 2022"],
+  ["f",1,"Cristiano Ronaldo é de qual país?",["Portugal","Espanha","Brasil","Itália"],"Nasceu na Ilha da Madeira"],
+  ["f",2,"Quem é o recordista de Bolas de Ouro?",["Lionel Messi","Cristiano Ronaldo","Michel Platini","Johan Cruyff"],"Messi tem 8"],
+  ["f",1,"Qual jogador ficou conhecido como \"Fenômeno\"?",["Ronaldo Nazário","Romário","Ronaldinho","Adriano"],"Bicampeão mundial (1994 e 2002)"],
+  ["f",2,"Romário foi eleito o melhor jogador de qual Copa?",["1994","1990","1998","2002"],"Copa do tetra"],
+  ["f",2,"Qual craque brasileiro era chamado de \"Anjo das Pernas Tortas\"?",["Garrincha","Didi","Vavá","Zagallo"],"Bicampeão em 1958 e 1962"],
+  ["f",1,"Zico é o maior ídolo de qual clube?",["Flamengo","Vasco","Fluminense","Botafogo"],"O Galinho de Quintino"],
+  ["f",2,"Quanto dura a prorrogação em jogos eliminatórios?",["Dois tempos de 15 minutos","Um tempo de 10 minutos","Dois tempos de 10 minutos","30 minutos sem intervalo"],"Regra 7"],
+  ["f",1,"Quem pode pegar a bola com as mãos dentro da própria área?",["O goleiro","O capitão","O zagueiro","Ninguém"],"Regra 12"],
+  ["f",1,"O que é um \"hat-trick\"?",["Três gols do mesmo jogador num jogo","Um drible por baixo das pernas","Um gol de bicicleta","Três assistências seguidas"],"Termo vindo do críquete"],
+  ["f",3,"Quantas são as Leis do Jogo do futebol?",["17","11","21","15"],"Definidas pela IFAB"],
+  ["f",1,"Qual entidade organiza a Copa do Mundo?",["FIFA","Conmebol","Uefa","CBF"],"Fundada em 1904"],
+  ["f",3,"Em que estádio Pelé marcou seu milésimo gol, em 1969?",["Maracanã","Pacaembu","Vila Belmiro","Morumbi"],"De pênalti, contra o Vasco"],
+  ["f",2,"Qual seleção é chamada de \"Albiceleste\"?",["Argentina","Uruguai","Itália","Grécia"],"Por causa da camisa branca e celeste"],
+  ["f",1,"\"Canarinho\" é o apelido de qual seleção?",["Brasil","Colômbia","Suécia","Equador"],"Por causa da camisa amarela"],
+  ["f",3,"Em que ano Ronaldinho Gaúcho ganhou a Bola de Ouro?",["2005","2004","2006","2007"],"Pelo Barcelona"],
+  ["f",3,"Quem foi o último brasileiro a ganhar a Bola de Ouro (até 2025)?",["Kaká","Ronaldinho","Neymar","Ronaldo"],"Kaká, em 2007"]
+].map(([t,n,p,o,r], i) => ({ id:"q"+String(i+1).padStart(3,"0"), t, n, p, o, r, banco:true }));
+
+/* ---------- Quiz: uma rodada de 10 perguntas por semana, ranking da temporada ---------- */
+const QUIZ_SEG = 15;                  // segundos por pergunta
+const QUIZ_QTD = { b:7, f:3 };        // 7 de Bíblia e 3 de futebol por rodada
+// número do dia e semente fixa: todo mundo recebe as mesmas perguntas na mesma ordem
+const sementeDe = txt => { let h = 2166136261; for (const ch of String(txt)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
+const sorteador = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+  let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const embaralharCom = (l, seed) => { const r = sorteador(sementeDe(seed)), a = [...l];
+  for (let i = a.length-1; i > 0; i--) { const k = Math.floor(r()*(i+1)); [a[i],a[k]] = [a[k],a[i]]; }
+  return a; };
+// semana do quiz: de segunda a domingo; a chave é a data da segunda-feira
+function semanaQuiz(data = new Date()){
+  const d = new Date(data.getFullYear(), data.getMonth(), data.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+const temporadaDe = semana => semana.slice(0,4);
+const rotuloSemana = sem => { const [a,m,d] = sem.split("-").map(Number); const fim = new Date(a, m-1, d+6);
+  return `${String(d).padStart(2,"0")}/${String(m).padStart(2,"0")} a ${String(fim.getDate()).padStart(2,"0")}/${String(fim.getMonth()+1).padStart(2,"0")}`; };
+
+const todasPerguntas = () => [...QUIZ_BANCO,
+  ...estado.quizPerguntas.filter(q => q && q.p && Array.isArray(q.o) && q.o.length === 4)
+    .map(q => ({ ...q, t: q.t === "f" ? "f" : "b" }))
+    .sort((a,b) => (a.em||0) - (b.em||0))];
+const perguntaDe = id => todasPerguntas().find(q => q.id === id);
+
+// as 10 da semana: o banco fixo é embaralhado uma vez por temporada e cada semana pega a sua fatia;
+// as perguntas cadastradas pelo admin entram no fim da fila
+function perguntasDaSemana(sem){
+  const temp = temporadaDe(sem);
+  const [a,m,d] = sem.split("-").map(Number);
+  const nSemana = Math.floor((new Date(a,m-1,d) - new Date(a,0,1)) / (7*86400000));
+  const escolhidas = [];
+  ["b","f"].forEach(t => {
+    const fixas = embaralharCom(QUIZ_BANCO.filter(q => q.t === t), temp+t);
+    const extras = todasPerguntas().filter(q => !q.banco && q.t === t);
+    const fila = [...fixas, ...extras];
+    for (let k = 0; k < QUIZ_QTD[t] && k < fila.length; k++) escolhidas.push(fila[(nSemana*QUIZ_QTD[t] + k) % fila.length].id);
+  });
+  return embaralharCom(escolhidas, sem);
+}
+// opções na mesma ordem para todos; guarda o índice original (0 = certa)
+const opcoesDe = (q, sem) => embaralharCom(q.o.map((txt, i) => ({ txt, i })), sem + q.id);
+
+const idRodadaQuiz = (sem, atleta) => `${sem}__${atleta}`;
+const minhaRodadaQuiz = (sem, atleta) => estado.quizRodadas.find(r => r.id === idRodadaQuiz(sem, atleta));
+const pontosDaResposta = (certa, ms) => certa ? 10 + Math.max(0, Math.round(5 * (1 - ms / (QUIZ_SEG*1000)))) : 0;
+
+function rankingQuiz(temp){
+  const por = {};
+  estado.quizRodadas.filter(r => r.temporada === temp && r.de).forEach(r => {
+    const x = por[r.de] || (por[r.de] = { id:r.de, pontos:0, semanas:0, acertos:0, respondidas:0 });
+    x.pontos += Number(r.pontos)||0; x.semanas += 1;
+    x.acertos += Number(r.acertos)||0; x.respondidas += (r.respostas||[]).length;
+  });
+  return Object.values(por).sort((a,b) => b.pontos - a.pontos || b.acertos - a.acertos || nomeDe(a.id).localeCompare(nomeDe(b.id),"pt-BR"));
+}
+
+async function salvarRodadaQuiz(r){
+  const i = estado.quizRodadas.findIndex(x => x.id === r.id);
+  if (i >= 0) estado.quizRodadas[i] = r; else estado.quizRodadas.push(r);
+  if (fb) {
+    const { id, ...dados } = r;
+    try { await fb.fs.setDoc(fb.fs.doc(fb.db,"quizRodadas",id), dados); }
+    catch (e) { console.warn(e); avisar("Não consegui salvar no banco. Fale com o organizador (regras do Firestore)."); }
+  }
+}
+
+/* estado da rodada em andamento (só neste aparelho) */
+const quizAo = { rodada:null, inicio:0, timer:null, resposta:null };
+
+async function comecarQuiz(){
+  const quem = avaliadorQuiz(); if (!quem) return fb ? formEntrar() : avisar("Escolha seu nome lá em cima primeiro.");
+  const sem = semanaQuiz();
+  let r = minhaRodadaQuiz(sem, quem);
+  if (r && r.fim) return avisar("Você já jogou a rodada desta semana.");
+  if (!r) {
+    r = { id: idRodadaQuiz(sem, quem), semana: sem, temporada: temporadaDe(sem), de: quem,
+          perguntas: perguntasDaSemana(sem), respostas: [], pontos: 0, acertos: 0, inicio: Date.now(), fim: null };
+    await salvarRodadaQuiz(r);
+  }
+  quizAo.rodada = r;
+  mostrarPerguntaQuiz();
+}
+
+function mostrarPerguntaQuiz(){
+  const r = quizAo.rodada, el = document.getElementById("tela-quiz");
+  if (!r || !el) return;
+  const i = r.respostas.length;
+  if (i >= r.perguntas.length) return terminarQuiz();
+  const q = perguntaDe(r.perguntas[i]);
+  if (!q) { r.respostas.push({ q:r.perguntas[i], escolha:null, ms:0, pts:0 }); return mostrarPerguntaQuiz(); }
+  quizAo.resposta = null; quizAo.inicio = Date.now();
+  el.innerHTML = `<div class="cartao quiz-jogo">
+    <div class="quiz-topo"><span>Pergunta <b>${i+1}</b> de ${r.perguntas.length}</span>
+      <span class="selo neutro">${q.t === "f" ? "⚽ Futebol" : "📖 Bíblia"}</span><span><b>${r.pontos}</b> pts</span></div>
+    <div class="quiz-barra"><i id="quizBarra"></i></div>
+    <div class="quiz-pergunta">${escapar(q.p)}</div>
+    <div class="quiz-opcoes">${opcoesDe(q, r.semana).map(op =>
+      `<button data-quiz-op="${op.i}">${escapar(op.txt)}</button>`).join("")}</div>
+    <div id="quizRetorno"></div>
+  </div>`;
+  window.scrollTo({ top:0, behavior:"instant" });
+  clearInterval(quizAo.timer);
+  quizAo.timer = setInterval(() => {
+    const resto = Math.max(0, 1 - (Date.now() - quizAo.inicio) / (QUIZ_SEG*1000));
+    const b = document.getElementById("quizBarra");
+    if (b) { b.style.width = (resto*100) + "%"; b.classList.toggle("fim", resto < .3); }
+    if (resto <= 0) responderQuiz(null);
+  }, 100);
+}
+
+async function responderQuiz(escolha){
+  const r = quizAo.rodada; if (!r || quizAo.resposta) return;
+  clearInterval(quizAo.timer);
+  const ms = Math.min(Date.now() - quizAo.inicio, QUIZ_SEG*1000);
+  const q = perguntaDe(r.perguntas[r.respostas.length]);
+  const certa = escolha === 0;
+  const pts = pontosDaResposta(certa, ms);
+  quizAo.resposta = { escolha, pts };
+  r.respostas = [...r.respostas, { q:q.id, escolha, ms, pts }];
+  r.pontos += pts; if (certa) r.acertos += 1;
+  if (r.respostas.length >= r.perguntas.length) r.fim = Date.now();
+  // pinta os botões: verde na certa, vermelho na escolhida errada
+  document.querySelectorAll("[data-quiz-op]").forEach(b => {
+    const i = Number(b.dataset.quizOp); b.disabled = true;
+    if (i === 0) b.classList.add("certa"); else if (i === escolha) b.classList.add("errada");
+  });
+  const ultima = !!r.fim;
+  document.getElementById("quizRetorno").innerHTML = `<div class="aviso ${certa?"":"grave"}" style="margin-top:12px">
+      ${certa ? `✅ <b>Acertou!</b> +${pts} pontos` : escolha === null ? "⏰ <b>Tempo esgotado.</b>" : "❌ <b>Não foi dessa vez.</b>"}
+      <div class="sub" style="margin-top:4px">Resposta: <b>${escapar(q.o[0])}</b>${q.r ? ` · ${escapar(q.r)}` : ""}</div></div>
+    <button class="btn-main" style="width:100%;margin-top:12px" data-acao="quiz-proxima">${ultima ? "Ver resultado" : "Próxima →"}</button>`;
+  await salvarRodadaQuiz(r);
+}
+
+function terminarQuiz(){
+  clearInterval(quizAo.timer);
+  quizAo.rodada = null; quizAo.resposta = null;
+  telaQuiz();
+}
+
+const avaliadorQuiz = () => estado.vinculo || (!fb ? estado.eu : null);
+
+function textoQuiz(){
+  const quem = avaliadorQuiz(); const r = quem && minhaRodadaQuiz(semanaQuiz(), quem);
+  if (!r) return "";
+  const pos = rankingQuiz(r.temporada).findIndex(x => x.id === quem) + 1;
+  return [`*📖⚽ QUIZ ${nomeGrupo()}*`, `Semana ${rotuloSemana(r.semana)}`, "",
+    `Fiz *${r.pontos} pontos* e acertei *${r.acertos} de ${r.perguntas.length}*.`,
+    pos ? `Estou em ${pos}º no ranking de ${r.temporada}.` : "", "", "E você? Bora jogar! 🙌",
+    /^https?:/.test(location.href) ? location.href.split("#")[0] : ""].filter((x,i,a) => x !== "" || a[i-1] !== "").join("\n");
+}
+
+function cartaoRodadaQuiz(){
+  const quem = avaliadorQuiz(), sem = semanaQuiz();
+  const cab = `<div class="titulo">Rodada da semana · ${rotuloSemana(sem)}</div>`;
+  if (!quem) return `<div class="cartao">${cab}
+    <div class="sub" style="margin-bottom:10px">10 perguntas (7 de Bíblia e 3 de futebol), ${QUIZ_SEG} segundos cada. Uma rodada por semana.</div>
+    ${fb ? `<button class="btn-main" style="width:100%" data-acao="entrar">🔐 Entrar com minha senha para jogar</button>`
+         : `<div class="aviso">Escolha seu nome lá em cima para jogar.</div>`}</div>`;
+  const r = minhaRodadaQuiz(sem, quem);
+  if (!r || !r.fim) return `<div class="cartao">${cab}
+    <div class="quiz-regras">
+      <div><b>10</b><span>perguntas</span></div><div><b>${QUIZ_SEG}s</b><span>cada</span></div><div><b>150</b><span>pontos no máximo</span></div></div>
+    <div class="sub" style="margin:10px 0 12px">7 de Bíblia e 3 de futebol. Acerto vale 10 pontos, e quem responde rápido ganha até 5 de bônus.
+      Todo mundo recebe as mesmas perguntas. Não conte as respostas para os outros! 😉</div>
+    <button class="btn-main" style="width:100%" data-acao="quiz-comecar">${r ? `Continuar (pergunta ${r.respostas.length+1})` : "▶️ Começar a rodada"}</button></div>`;
+  return `<div class="cartao">${cab}
+    <div class="quiz-resultado"><b>${r.pontos}</b><span>pontos · ${r.acertos} de ${r.perguntas.length} certas</span></div>
+    <button class="btn-zap" style="width:100%;margin:12px 0" data-compartilhar-texto="quiz">📤 Mandar no grupo</button>
+    <details class="quiz-revisao"><summary>Ver respostas e referências</summary>
+      ${r.respostas.map((x,i) => { const q = perguntaDe(x.q); if (!q) return "";
+        return `<div class="item"><div class="item-corpo">
+          <div class="nome">${i+1}. ${escapar(q.p)}</div>
+          <div class="sub">${x.escolha === 0 ? "✅" : "❌"} ${escapar(q.o[0])}${q.r ? ` · ${escapar(q.r)}` : ""}</div></div>
+          <b class="quiz-pts">${x.pts}</b></div>`; }).join("")}
+    </details>
+    <div class="sub" style="margin-top:10px">A próxima rodada abre na segunda-feira.</div></div>`;
+}
+
+function cartaoRankingQuiz(){
+  const temp = temporadaDe(semanaQuiz());
+  const lista = rankingQuiz(temp), quem = avaliadorQuiz();
+  const anterior = rankingQuiz(String(Number(temp)-1))[0];
+  const medalha = i => ["🥇","🥈","🥉"][i] || `${i+1}º`;
+  return `<div class="cartao">
+    <div class="titulo">Ranking da temporada ${temp}</div>
+    ${anterior ? `<div class="aviso" style="margin-bottom:8px">🏆 Campeão de ${Number(temp)-1}: <b>${escapar(nomeDe(anterior.id))}</b> · ${anterior.pontos} pts</div>` : ""}
+    ${estado.quizErro ? `<div class="aviso grave">O banco não deixou ler o ranking. Confira as regras do Firestore (coleção <b>quizRodadas</b>).</div>` : ""}
+    ${lista.length ? lista.map((x,i) => `<div class="item ${x.id===quem?"quiz-eu":""}">
+        <div class="quiz-pos">${medalha(i)}</div>
+        ${retratoDe(atletaDe(x.id))}
+        <div class="item-corpo"><div class="nome">${escapar(nomeDe(x.id))}</div>
+          <div class="sub">${plural(x.semanas,"semana","semanas")} · ${x.respondidas ? Math.round(100*x.acertos/x.respondidas) : 0}% de acerto</div></div>
+        <b class="quiz-pts">${x.pontos}</b></div>`).join("")
+      : `<div class="vazio"><b>Ninguém jogou ainda</b>Seja o primeiro da temporada!</div>`}
+  </div>`;
+}
+
+function cartaoPerguntasAdmin(){
+  const minhas = estado.quizPerguntas.slice().sort((a,b) => (b.em||0) - (a.em||0));
+  const nb = todasPerguntas().filter(q => q.t === "b").length, nf = todasPerguntas().filter(q => q.t === "f").length;
+  return `<details class="cartao quiz-admin">
+    <summary><span class="titulo" style="margin:0">🔒 Perguntas do quiz</span>
+      <span class="sub">${nb} de Bíblia · ${nf} de futebol · ${minhas.length} cadastradas por você</span></summary>
+    <button class="btn-main" style="width:100%;margin:12px 0" data-acao="quiz-nova">➕ Cadastrar pergunta</button>
+    ${minhas.map(q => `<div class="item"><div class="item-corpo">
+        <div class="nome">${q.t==="f"?"⚽":"📖"} ${escapar(q.p)}</div>
+        <div class="sub">✅ ${escapar(q.o[0])}${q.r?` · ${escapar(q.r)}`:""}</div></div>
+        <button class="btn-sec" data-quiz-apagar="${q.id}">Apagar</button></div>`).join("")}
+  </details>`;
+}
+
+function formPerguntaQuiz(){
+  abrirModal("Nova pergunta", `
+    <div class="dupla"><div class="campo"><label>Tema</label><select id="qz_t"><option value="b">📖 Bíblia</option><option value="f">⚽ Futebol</option></select></div>
+      <div class="campo"><label>Dificuldade</label><select id="qz_n"><option value="1">Fácil</option><option value="2" selected>Média</option><option value="3">Difícil</option></select></div></div>
+    <div class="campo"><label>Pergunta</label><input id="qz_p" placeholder="Ex.: Quem construiu a arca?"></div>
+    <div class="campo"><label>Resposta certa</label><input id="qz_o0"></div>
+    <div class="campo"><label>Opções erradas</label><input id="qz_o1" placeholder="errada 1" style="margin-bottom:6px">
+      <input id="qz_o2" placeholder="errada 2" style="margin-bottom:6px"><input id="qz_o3" placeholder="errada 3"></div>
+    <div class="campo"><label>Referência (opcional)</label><input id="qz_r" placeholder="Ex.: Gênesis 6:14"></div>
+    <div class="sub" style="margin-bottom:12px">As opções aparecem embaralhadas para os atletas.</div>
+    <button class="btn-main" id="qz_salvar" style="width:100%">Salvar pergunta</button>`);
+  document.getElementById("qz_salvar").onclick = async () => {
+    const v = id => document.getElementById(id).value.trim();
+    const o = [v("qz_o0"), v("qz_o1"), v("qz_o2"), v("qz_o3")];
+    if (!v("qz_p") || o.some(x => !x)) return avisar("Preencha a pergunta e as quatro opções.");
+    if (new Set(o.map(x => x.toLowerCase())).size < 4) return avisar("As quatro opções precisam ser diferentes.");
+    const dados = { t: v("qz_t"), n: Number(v("qz_n")), p: v("qz_p"), o, r: v("qz_r"), em: Date.now() };
+    const id = await gravar("quizPerguntas", dados);
+    if (!fb && !estado.quizPerguntas.some(x => x.id === id)) estado.quizPerguntas.push({ id, ...dados });
+    fecharModal(); desenhar(); avisar("Pergunta cadastrada.");
+  };
+}
+
+function telaQuiz(){
+  const el = document.getElementById("tela-quiz");
+  if (!el || quizAo.rodada) return;            // rodada em andamento: não redesenha por cima
+  el.innerHTML = `<div class="quiz-capa"><div class="quiz-capa-ico">📖⚽</div>
+      <b>Quiz ${escapar((estado.config.nomeGrupo || "Discípulos United").trim())}</b>
+      <span>Bíblia e futebol, uma rodada por semana</span></div>`
+    + cartaoRodadaQuiz() + cartaoRankingQuiz() + (estado.admin ? cartaoPerguntasAdmin() : "");
+}
+
 /* ---------- montar os times: sorteio com um goleiro para cada lado, ou na mão ---------- */
 const embaralhar = l => { const a = [...l];
   for (let i = a.length-1; i > 0; i--) { const k = Math.floor(Math.random()*(i+1)); [a[i],a[k]] = [a[k],a[i]]; }
@@ -2638,7 +3121,7 @@ function desenhar(){
   document.querySelector("#btnAdmin span").textContent = estado.admin ? "Admin ativo" : "Admin";
   document.querySelector("#btnAdmin").firstChild.textContent = estado.admin ? "🔓 " : "🔒 ";
 
-  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaTimes(); telaUniforme(); telaValores(); telaEstatuto();
+  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaTimes(); telaQuiz(); telaUniforme(); telaValores(); telaEstatuto();
 }
 
 /* ---------- instalar no celular ---------- */
@@ -3290,6 +3773,9 @@ function irPara(nome){
   estado.tela = nome;
   document.querySelectorAll(".aba").forEach(x => x.classList.toggle("on", x.dataset.tela === nome));
   document.querySelectorAll(".tela").forEach(t => t.classList.toggle("on", t.id === "tela-"+nome));
+  // no celular a barra rola de lado: traz a aba escolhida para o meio
+  const aba = document.querySelector(".aba.on"), barra = aba && aba.parentElement;
+  if (barra) barra.scrollTo({ left: aba.offsetLeft - (barra.clientWidth - aba.offsetWidth)/2, behavior:"smooth" });
   window.scrollTo({ top:0, behavior:"instant" });
 }
 document.querySelectorAll(".aba").forEach(b => b.onclick = () => {
@@ -3324,7 +3810,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-extrato],[data-lupa],[data-apagar-peca]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-quiz-op],[data-quiz-apagar],[data-extrato],[data-lupa],[data-apagar-peca]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -3367,6 +3853,7 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "editar-identidade") formDocumento("identidade","Visão, princípios e valores",IDENTIDADE_MODELO);
   else if (d.compartilharTexto === "identidade") await compartilharTexto(textoIdentidade());
   else if (d.compartilharTexto === "times")      await compartilharTexto(textoTimes());
+  else if (d.compartilharTexto === "quiz")       await compartilharTexto(textoQuiz());
   else if (d.compartilharTexto === "mensal")     await compartilharTexto(textoMensalidades(d.mes));
   else if (d.compartilharTexto === "frequencia") await compartilharTexto(textoFrequencia());
   else if (d.ordem) { estado.ordemAtletas = d.ordem; desenhar(); }
@@ -3410,6 +3897,11 @@ document.body.addEventListener("click", async e => {
     await salvarEscalacao(j, { vermelho:{}, colete:{} }); desenhar(); avisar("Escalação limpa.");
   }
   else if (d.acao === "sortear-times") await sortearTimes();
+  else if (d.quizOp !== undefined) await responderQuiz(Number(d.quizOp));
+  else if (d.acao === "quiz-comecar") await comecarQuiz();
+  else if (d.acao === "quiz-proxima") mostrarPerguntaQuiz();
+  else if (d.acao === "quiz-nova") formPerguntaQuiz();
+  else if (d.quizApagar) { if (confirm("Apagar esta pergunta?")) { await apagar("quizPerguntas", d.quizApagar); desenhar(); } }
   else if (d.acao === "girar")            girarRoleta();
   else if (d.acao === "sortear-resto")    await sortearResto();
   else if (d.acao === "refazer-sorteio")  await refazerSorteio();

@@ -100,6 +100,29 @@ service cloud.firestore {
       allow write: if ehAdmin();
     }
 
+    // ---------- quiz ----------
+    // perguntas extras: todos que entraram leem, só o admin cadastra
+    match /quizPerguntas/{id} {
+      allow read: if fezLogin() || ehAdmin();
+      allow write: if ehAdmin();
+    }
+    // rodadas: um documento por atleta por semana (<segunda-feira>__<idDoAtleta>).
+    // Todos leem (é o ranking); cada um grava só a própria, e depois de terminada não muda mais.
+    function atletaDoAparelho() {
+      return get(/databases/$(database)/documents/vinculos/$(request.auth.uid)).data.atletaId;
+    }
+    match /quizRodadas/{id} {
+      allow read: if fezLogin() || ehAdmin();
+      allow create: if fezLogin()
+        && request.resource.data.de == atletaDoAparelho()
+        && id == request.resource.data.semana + '__' + atletaDoAparelho();
+      allow update: if fezLogin()
+        && resource.data.de == atletaDoAparelho()
+        && request.resource.data.de == resource.data.de
+        && resource.data.fim == null;
+      allow delete: if ehAdmin();
+    }
+
     // qualquer coisa fora do previsto fica trancada
     match /{document=**} {
       allow read, write: if false;
