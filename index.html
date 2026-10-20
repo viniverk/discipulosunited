@@ -75,8 +75,7 @@ a{color:var(--quadra)}
   padding:6px 12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px
 }
 .chave.on{background:var(--canarinho);color:var(--tinta)}
-@media (max-width:400px){ .chave span{display:none} .chave{padding:8px 10px} .marca{font-size:20px} .brasao{width:48px}
-  .aba{font-size:9.5px;letter-spacing:.2px;padding:8px 2px 0} .aba i{font-size:15px} .aba em{padding-bottom:7px} }
+@media (max-width:400px){ .chave span{display:none} .chave{padding:8px 10px} .marca{font-size:20px} .brasao{width:48px} }
 .eu{margin-top:12px;position:relative;z-index:1}
 .eu label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.75;margin-bottom:5px;font-weight:600}
 .meu-link{margin-top:9px;display:flex;align-items:center;gap:8px;position:relative;z-index:1}
@@ -94,7 +93,7 @@ a{color:var(--quadra)}
 .abas{
   position:sticky;top:0;z-index:50;
   background:var(--cal);border-bottom:1px solid var(--borda);
-  display:grid;grid-auto-flow:column;grid-auto-columns:minmax(64px,1fr);overflow-x:auto;scrollbar-width:none;
+  display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
   box-shadow:0 2px 10px rgba(16,24,38,.05);
 }
 .aba{
@@ -105,8 +104,9 @@ a{color:var(--quadra)}
 .aba.on{color:var(--quadra);border-bottom-color:var(--quadra)}
 .aba i{display:block;font-size:19px;font-style:normal;margin-bottom:1px}
 .aba em{display:block;font-style:normal;padding-bottom:8px}
-.abas::-webkit-scrollbar{display:none}
-.aba em{white-space:nowrap}
+.aba em{white-space:nowrap;overflow:hidden}
+/* celular: as 9 abas cabem lado a lado (precisa vir depois das regras acima) */
+@media (max-width:520px){ .aba{font-size:7.8px;letter-spacing:0;padding:8px 0 0} .aba i{font-size:16px} .aba em{padding-bottom:7px} }
 
 .tela{padding:16px;max-width:760px;margin:0 auto;display:none}
 .tela.on{display:block}
@@ -3773,9 +3773,6 @@ function irPara(nome){
   estado.tela = nome;
   document.querySelectorAll(".aba").forEach(x => x.classList.toggle("on", x.dataset.tela === nome));
   document.querySelectorAll(".tela").forEach(t => t.classList.toggle("on", t.id === "tela-"+nome));
-  // no celular a barra rola de lado: traz a aba escolhida para o meio
-  const aba = document.querySelector(".aba.on"), barra = aba && aba.parentElement;
-  if (barra) barra.scrollTo({ left: aba.offsetLeft - (barra.clientWidth - aba.offsetWidth)/2, behavior:"smooth" });
   window.scrollTo({ top:0, behavior:"instant" });
 }
 document.querySelectorAll(".aba").forEach(b => b.onclick = () => {
