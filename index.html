@@ -357,21 +357,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .escolha-time button.on.neutro{box-shadow:0 0 0 2px var(--cinza) inset}
 
 .times-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.estrelas{display:flex;gap:1px;flex-shrink:0}
-.estrelas button{background:none;border:none;font-size:25px;line-height:1;color:var(--borda);padding:3px 2px;cursor:pointer}
-.estrelas button.on{color:#C9A227}
-.banco-rot .forca{display:block;text-transform:none;letter-spacing:0;font-weight:600;margin-top:2px}
 #tela-times .banco.vermelho .ficha,#tela-times .banco.colete .ficha{flex:1 1 100%;font-size:12.5px;padding:6px 8px;text-align:left}
-#tela-times .banco .ficha small{display:inline;margin-left:6px}
-.equilibrio{font-size:13.5px;margin:10px 0 12px;padding:9px 11px;border-radius:9px;background:var(--linha);
-  display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.equilibrio .selo{margin-left:auto}
-.notas-elenco summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px}
-.notas-elenco summary::-webkit-details-marker{display:none}
-.notas-elenco summary::after{content:"ver notas ▾";font-size:12px;color:var(--cinza);margin-top:2px}
-.notas-elenco[open] summary::after{content:"esconder ▴"}
-.nota-final{font-size:15px;color:#A8841F;white-space:nowrap}
-.nota-final.sem{color:var(--cinza);font-weight:500}
 .time{background:var(--cal);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden}
 .time-topo{padding:10px 12px;font-family:var(--display);font-size:15px;letter-spacing:.8px;
   text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:6px}
@@ -552,7 +538,7 @@ body.tema-placar .barrinha{background:#2A2E35}
   <button class="aba" data-tela="agenda"><i>📅</i><em>Agenda</em></button>
   <button class="aba" data-tela="atletas"><i>👟</i><em>Atletas</em></button>
   <button class="aba" data-tela="caixa"><i>💰</i><em>Caixa</em></button>
-  <button class="aba" data-tela="times"><i>⚖️</i><em>Times</em></button>
+  <button class="aba" data-tela="times"><i>🎲</i><em>Times</em></button>
   <button class="aba" data-tela="uniforme"><i>👕</i><em>Uniforme</em></button>
   <button class="aba" data-tela="valores"><i>✝️</i><em>Valores</em></button>
   <button class="aba" data-tela="estatuto"><i>📜</i><em>Estatuto</em></button>
@@ -601,7 +587,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-19";
+const VERSAO = "2026-10-20";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -610,8 +596,7 @@ const estado = {
     modeloDesde:"2026-09-08", custoMensal:450, valorMensalista:50, valorConvidado:10, rodadaCobranca:2, exigirLogin:false, tema:"escudo" },
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
   instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null,
-  vinculo: null, cfgOk: false, vincOk: false, ordemAtletas: "nome", modoTimes: "roleta",
-  avaliacoes: [], avalErro: false
+  vinculo: null, cfgOk: false, vincOk: false, ordemAtletas: "nome", modoTimes: "roleta"
 };
 
 /* ---------- camada de dados ---------- */
@@ -2242,87 +2227,26 @@ function listaManual(jogo){
   </div>`;
 }
 
-/* ---------- avaliações: depois da rodada, cada um dá estrelas para quem jogou ---------- */
-const NOTA_PADRAO = 3;                                   // quem ainda não foi avaliado conta como 3
-const docAvaliacao = (jogoId, de) => `${jogoId}__${de}`;
-// quem está avaliando: o atleta que entrou com a senha (na demonstração, o nome escolhido no topo)
-const avaliador = () => estado.vinculo || (!fb ? estado.eu : null);
-const fmtNota = n => n.toFixed(1).replace(".", ",");
-let ouvinteAval = null, chaveAval = null;
-// admin lê todas as avaliações; atleta só as que ele mesmo deu
-function assinarAvaliacoes(){
-  const quem = avaliador();
-  const chave = estado.admin ? "admin" : (quem || "");
-  if (chave === chaveAval) return;
-  chaveAval = chave;
-  if (ouvinteAval) { ouvinteAval(); ouvinteAval = null; }
-  if (!fb) return;                                       // demonstração: fica tudo na memória
-  estado.avaliacoes = []; estado.avalErro = false;
-  if (!chave) return;
-  const { fs, db } = fb;
-  const alvo = estado.admin ? fs.collection(db,"avaliacoes")
-    : fs.query(fs.collection(db,"avaliacoes"), fs.where("de","==",quem));
-  ouvinteAval = fs.onSnapshot(alvo, s => {
-    estado.avaliacoes = s.docs.map(d => ({ id:d.id, ...d.data() }));
-    estado.avalErro = false;
-    telaTimes();
-  }, e => { console.warn("avaliacoes:", e.message); estado.avaliacoes = []; estado.avalErro = true; telaTimes(); });
-}
-// quem entrou em campo: dentro das vagas e sem furo
-const jogaramNa = j => confirmados(j).slice(0, Number(j.vagas)||14).filter(id => !((j.presencas||{})[id]||{}).faltou);
-// a última rodada que esse atleta jogou, desde que tenha sido nas últimas duas semanas
-function rodadaParaAvaliar(quem){
-  if (!quem) return null;
-  const limite = new Date(Date.now() - 14*86400000).toISOString().slice(0,10);
-  return jogosPassados().filter(j => j.data >= limite && jogaramNa(j).includes(quem))
-    .sort((a,b) => b.data.localeCompare(a.data))[0] || null;
-}
-// nível = média das rodadas; cada rodada vale a média das estrelas que ele recebeu nela
-function niveis(){
-  const porAlvo = {};
-  estado.avaliacoes.forEach(av => Object.entries(av.notas || {}).forEach(([alvo, n]) => {
-    n = Number(n);
-    if (!(n >= 1 && n <= 5) || alvo === av.de) return;
-    const porJogo = porAlvo[alvo] || (porAlvo[alvo] = {});
-    (porJogo[av.jogo] || (porJogo[av.jogo] = [])).push(n);
-  }));
-  const r = {};
-  Object.entries(porAlvo).forEach(([alvo, jogos]) => {
-    const listas = Object.values(jogos);
-    const medias = listas.map(l => l.reduce((s,x) => s+x, 0) / l.length);
-    r[alvo] = { media: medias.reduce((s,x) => s+x, 0) / medias.length,
-                rodadas: medias.length, votos: listas.reduce((s,l) => s + l.length, 0) };
-  });
-  return r;
-}
-const nivelDe = (tab, id) => tab[id] ? tab[id].media : NOTA_PADRAO;
-const somaNivel = (tab, ids) => ids.reduce((s,id) => s + nivelDe(tab,id), 0);
-const mediaNivel = (tab, ids) => ids.length ? somaNivel(tab, ids) / ids.length : 0;
+/* ---------- montar os times: sorteio com um goleiro para cada lado, ou na mão ---------- */
 const embaralhar = l => { const a = [...l];
   for (let i = a.length-1; i > 0; i--) { const k = Math.floor(Math.random()*(i+1)); [a[i],a[k]] = [a[k],a[i]]; }
   return a; };
 
-// distribui quem está sem time mantendo quem já foi colocado; testa vários sorteios e fica com um dos mais parelhos
-function dividirEquilibrado(livres, v0, c0, tab){
-  const tentativas = [];
-  for (let t = 0; t < 500; t++) {
-    const v = [...v0], c = [...c0];
-    let pote = embaralhar(livres);
-    // time sem goleiro pega um goleiro do pote antes de todo mundo
-    embaralhar([v, c]).forEach(time => {
-      if (time.some(ehGoleiro)) return;
-      const g = pote.find(ehGoleiro);
-      if (g) { time.push(g); pote = pote.filter(x => x !== g); }
-    });
-    pote.forEach(id => (v.length < c.length || (v.length === c.length && Math.random() < .5) ? v : c).push(id));
-    tentativas.push({ v, c, dif: Math.abs(somaNivel(tab,v) - somaNivel(tab,c)) });
-  }
-  tentativas.sort((a,b) => a.dif - b.dif);
-  const bons = tentativas.filter(x => x.dif <= tentativas[0].dif + 0.25).slice(0, 25);
-  return bons[Math.floor(Math.random()*bons.length)];
+// distribui quem está sem time mantendo quem já foi colocado na mão
+function dividirSorteando(livres, v0, c0){
+  const v = [...v0], c = [...c0];
+  let pote = embaralhar(livres);
+  // time sem goleiro pega um goleiro do pote antes de todo mundo
+  embaralhar([v, c]).forEach(time => {
+    if (time.some(ehGoleiro)) return;
+    const g = pote.find(ehGoleiro);
+    if (g) { time.push(g); pote = pote.filter(x => x !== g); }
+  });
+  pote.forEach(id => (v.length < c.length || (v.length === c.length && Math.random() < .5) ? v : c).push(id));
+  return { v, c };
 }
 
-async function sortearEquilibrado(){
+async function sortearTimes(){
   const jogo = jogoDoSorteio(); if (!jogo) return;
   const gente = confirmados(jogo).slice(0, Number(jogo.vagas)||14);
   if (gente.length < 2) return avisar("Precisa de pelo menos 2 confirmados.");
@@ -2333,117 +2257,39 @@ async function sortearEquilibrado(){
     if (!confirm("Todo mundo já tem time. Sortear tudo de novo?")) return;
     v = []; c = []; livres = gente;
   }
-  const r = dividirEquilibrado(livres, v, c, niveis());
+  const r = dividirSorteando(livres, v, c);
   jogo.times = { vermelho: r.v, colete: r.c, em: Date.now() };
   await gravar("jogos", { times: jogo.times, escalacao: null }, jogo.id);
   estado.escolhido = null;
   desenhar();
-  avisar("Times sorteados pelo nível.");
-}
-
-async function darNota(jogoId, alvo, n){
-  const quem = avaliador();
-  if (!quem) return fb ? formEntrar() : avisar("Escolha seu nome lá em cima primeiro.");
-  if (alvo === quem) return;
-  const id = docAvaliacao(jogoId, quem);
-  const atual = estado.avaliacoes.find(a => a.id === id);
-  const notas = { ...(atual?.notas || {}) };
-  if (notas[alvo] === n) delete notas[alvo]; else notas[alvo] = n;   // tocar de novo na mesma estrela apaga
-  const dados = { jogo: jogoId, de: quem, notas, em: Date.now() };
-  if (atual) Object.assign(atual, dados); else estado.avaliacoes.push({ id, ...dados });
-  telaTimes();
-  if (fb) {
-    try { await fb.fs.setDoc(fb.fs.doc(fb.db,"avaliacoes",id), dados); }
-    catch (e) { console.warn(e); avisar("Não consegui salvar a nota. Fale com o organizador."); }
-  }
-}
-
-function cartaoAvaliar(){
-  const quem = avaliador();
-  const explica = `<div class="sub" style="margin-bottom:10px">Depois de cada jogo, quem jogou dá de 1 a 5 estrelas para os
-    companheiros. As notas são secretas e servem só para equilibrar os times.</div>`;
-  if (!quem) return `<div class="cartao"><div class="titulo">Avaliar a rodada</div>${explica}
-    ${fb ? `<button class="btn-sec" style="width:100%" data-acao="entrar">🔐 Entrar com minha senha para avaliar</button>`
-         : `<div class="aviso">Escolha seu nome lá em cima para avaliar.</div>`}</div>`;
-  const j = rodadaParaAvaliar(quem);
-  if (!j) return `<div class="cartao"><div class="titulo">Avaliar a rodada</div>${explica}
-    <div class="vazio"><b>Nada para avaliar agora</b>Depois que você jogar uma rodada, os companheiros aparecem aqui.</div></div>`;
-  const outros = jogaramNa(j).filter(id => id !== quem)
-    .sort((a,b) => nomeDe(a).localeCompare(nomeDe(b),"pt-BR"));
-  const notas = estado.avaliacoes.find(a => a.id === docAvaliacao(j.id, quem))?.notas || {};
-  const feitos = outros.filter(id => notas[id]).length;
-  const { num, mes } = dataLonga(j.data);
-  return `<div class="cartao">
-    <div class="titulo">Avaliar a rodada de ${num} ${mes}</div>${explica}
-    <div class="aviso" style="margin-bottom:6px">${feitos === outros.length && outros.length
-      ? "✅ Você avaliou todo mundo. Dá para mudar quando quiser."
-      : `Você avaliou <b>${feitos} de ${outros.length}</b>.`}</div>
-    ${outros.map(id => `<div class="item">
-        ${retratoDe(atletaDe(id))}
-        <div class="item-corpo"><div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}</div></div>
-        <div class="estrelas">${[1,2,3,4,5].map(n => `<button class="${(notas[id]||0) >= n ? "on" : ""}"
-          data-nota="${n}" data-alvo="${id}" data-jogo="${j.id}" aria-label="${n} estrela${n>1?"s":""}">★</button>`).join("")}</div>
-      </div>`).join("")}
-  </div>`;
-}
-
-function cartaoNotasElenco(){
-  const tab = niveis();
-  const ativos = estado.atletas.filter(a => situacaoDe(a) !== "inativo")
-    .sort((a,b) => (nivelDe(tab,b.id) - nivelDe(tab,a.id)) || a.nome.localeCompare(b.nome,"pt-BR"));
-  const avaliados = ativos.filter(a => tab[a.id]).length;
-  return `<details class="cartao notas-elenco">
-    <summary><span class="titulo" style="margin:0">🔒 Notas do elenco</span>
-      <span class="sub">só você vê · ${avaliados} de ${ativos.length} avaliados</span></summary>
-    ${estado.avalErro ? `<div class="aviso grave" style="margin-top:10px">O banco não deixou ler as avaliações.
-      Confira as regras do Firestore para a coleção <b>avaliacoes</b>.</div>` : ""}
-    <div style="margin-top:8px">${ativos.map(a => {
-      const t = tab[a.id];
-      return `<div class="item">
-        <div class="item-corpo"><div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}</div>
-          <div class="sub">${t ? `${plural(t.rodadas,"rodada","rodadas")} · ${plural(t.votos,"voto","votos")}`
-                               : `sem avaliação · conta como ${NOTA_PADRAO}`}</div></div>
-        <b class="nota-final ${t?"":"sem"}">${fmtNota(nivelDe(tab,a.id))} ★</b>
-      </div>`;
-    }).join("")}</div>
-  </details>`;
+  avisar("Times sorteados.");
 }
 
 function cartaoMontarTimes(jogo){
-  const tab = niveis();
   const gente = confirmados(jogo).slice(0, Number(jogo.vagas)||14);
   if (!gente.length) return `<div class="cartao"><div class="vazio"><b>Lista vazia</b>
     Ninguém confirmou ainda nesta rodada.</div></div>`;
   const v = jogo.times?.vermelho || [], c = jogo.times?.colete || [];
   const livres = semTime(jogo);
   const ficha = (id, time) => `<div class="ficha ${time} ${estado.escolhido===id?"escolhida":""}" data-arrastavel="${id}">
-      ${ehGoleiro(id)?"🧤 ":""}${escapar(primeiroNome(id))}<small>${tab[id] ? fmtNota(tab[id].media)+" ★" : "sem nota"}</small></div>`;
+      ${ehGoleiro(id)?"🧤 ":""}${escapar(primeiroNome(id))}</div>`;
   const zona = (chave, rotulo, ids, vazio) => `<div class="banco ${chave}" data-banco="${chave}">
-      <div class="banco-rot">${rotulo} · ${ids.length}${chave !== "livre" && ids.length
-        ? `<span class="forca">média ${fmtNota(mediaNivel(tab, ids))}</span>` : ""}</div>
+      <div class="banco-rot">${rotulo} · ${ids.length}</div>
       <div class="banco-fichas">${ids.length ? ids.map(id => ficha(id, chave)).join("") : `<span class="sub">${vazio}</span>`}</div></div>`;
-  const rotSortear = !livres.length ? "⚖️ Sortear de novo"
-    : (v.length || c.length) ? `⚖️ Completar equilibrado (${livres.length})` : "⚖️ Sortear equilibrado";
-  let balanco = "";
-  if (v.length && c.length) {
-    const dif = Math.abs(somaNivel(tab,v) - somaNivel(tab,c));
-    const [txt, cor] = dif <= 1 ? ["parelho", "pago"] : dif <= 2.5 ? ["quase parelho", "neutro"] : ["desequilibrado", "deve"];
-    balanco = `<div class="equilibrio">Força somada: 🔴 <b>${fmtNota(somaNivel(tab,v))}</b> × 🟡 <b>${fmtNota(somaNivel(tab,c))}</b>
-      <span class="selo ${cor}">${txt}</span></div>`;
-  }
+  const rotSortear = !livres.length ? "🎲 Sortear de novo"
+    : (v.length || c.length) ? `🎲 Sortear o resto (${livres.length})` : "🎲 Sortear os times";
   return `<div class="cartao">
     <div class="titulo">Montar os times</div>
-    <button class="btn-main" style="width:100%;margin-bottom:10px" data-acao="sortear-equilibrado">${rotSortear}</button>
+    <button class="btn-main" style="width:100%;margin-bottom:10px" data-acao="sortear-times">${rotSortear}</button>
     ${estado.escolhido ? `<div class="aviso escolhido-barra"><b>${escapar(nomeDe(estado.escolhido))}</b> escolhido — toque no time de destino.
         <button class="btn-sec" style="margin-left:6px" data-acao="desmarcar">Cancelar</button></div>`
       : `<div class="sub" style="margin-bottom:10px">Arraste o nome para um time, ou toque no nome e depois no time.
-          Se alguém já estiver num time, o sorteio mantém e só distribui o resto.</div>`}
+          Se alguém já estiver num time, o sorteio mantém e só distribui o resto. Cada time recebe um goleiro.</div>`}
     ${livres.length ? zona("livre", "⚪ Sem time", livres, "") : ""}
     <div class="banco-dupla">
       ${zona("vermelho", "🔴 Vermelho", v, "arraste para cá")}
       ${zona("colete", "🟡 Colete", c, "arraste para cá")}
     </div>
-    ${balanco}
     <div class="btn-linha">
       ${v.length || c.length ? `<button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar no grupo</button>
       <button class="btn-sec" data-acao="zerar-times">Limpar</button>` : ""}
@@ -2457,22 +2303,18 @@ function telaTimes(){
   const jogo = jogoDoSorteio();
   if (!jogo) {
     el.innerHTML = `<div class="cartao"><div class="vazio"><b>Nenhuma rodada</b>
-      Marque um jogo na agenda para montar os times.</div></div>` + cartaoAvaliar() + (estado.admin ? cartaoNotasElenco() : "");
+      Marque um jogo na agenda para montar os times.</div></div>`;
     return;
   }
   const { num, mes } = dataLonga(jogo.data);
   const topo = `<div class="aviso">Times da rodada de <b>${num} ${mes}</b>${jogo.local?" · "+escapar(jogo.local):""}.</div>`;
-  if (estado.admin) {
-    el.innerHTML = topo + cartaoMontarTimes(jogo) + cartaoAvaliar() + cartaoNotasElenco();
-    return;
-  }
+  if (estado.admin) { el.innerHTML = topo + cartaoMontarTimes(jogo); return; }
   const v = jogo.times?.vermelho || [], c = jogo.times?.colete || [];
   el.innerHTML = topo + (v.length || c.length
     ? `<div class="times-grade">${cartaoTime("vermelho","Vermelho",v)}${cartaoTime("colete","Colete",c)}</div>
        <div class="btn-linha" style="margin:0 0 14px">
          <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar os times no grupo</button></div>`
-    : `<div class="cartao"><div class="vazio"><b>Times ainda não montados</b>O organizador monta perto da hora do jogo.</div></div>`)
-    + cartaoAvaliar();
+    : `<div class="cartao"><div class="vazio"><b>Times ainda não montados</b>O organizador monta perto da hora do jogo.</div></div>`);
 }
 
 function girarRoleta(){
@@ -2796,7 +2638,6 @@ function desenhar(){
   document.querySelector("#btnAdmin span").textContent = estado.admin ? "Admin ativo" : "Admin";
   document.querySelector("#btnAdmin").firstChild.textContent = estado.admin ? "🔓 " : "🔒 ";
 
-  assinarAvaliacoes();
   telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaTimes(); telaUniforme(); telaValores(); telaEstatuto();
 }
 
@@ -3483,7 +3324,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-nota],[data-extrato],[data-lupa],[data-apagar-peca]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-extrato],[data-lupa],[data-apagar-peca]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -3568,8 +3409,7 @@ document.body.addEventListener("click", async e => {
     if (!confirm("Tirar todo mundo do campo?")) return;
     await salvarEscalacao(j, { vermelho:{}, colete:{} }); desenhar(); avisar("Escalação limpa.");
   }
-  else if (d.nota) await darNota(d.jogo, d.alvo, Number(d.nota));
-  else if (d.acao === "sortear-equilibrado") await sortearEquilibrado();
+  else if (d.acao === "sortear-times") await sortearTimes();
   else if (d.acao === "girar")            girarRoleta();
   else if (d.acao === "sortear-resto")    await sortearResto();
   else if (d.acao === "refazer-sorteio")  await refazerSorteio();

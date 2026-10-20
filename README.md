@@ -58,13 +58,6 @@ service cloud.firestore {
 
 Para uma pelada de amigos isso costuma bastar. Se um dia incomodar, o caminho é trocar o login anônimo por login com Google e liberar escrita só para UIDs de uma lista — dá umas 30 linhas a mais no app.
 
-### Avaliações dos atletas (aba Times)
-
-As estrelas que cada atleta dá ficam na coleção `avaliacoes`, um documento por atleta por rodada (`<idDoJogo>__<idDoAtleta>`).
-A regra já está no `firestore.rules` deste repositório: o atleta lê e grava só as notas que ele mesmo deu, e só quem
-está na coleção `admins` lê todas. Depois de atualizar o arquivo, copie o conteúdo inteiro para
-**Firestore → Regras** e publique. Sem isso, a última regra (`match /{document=**}`) bloqueia os votos.
-
 ## 4. Publicar no GitHub Pages
 
 1. Crie um repositório público, por exemplo `fut-dos-filhos`.

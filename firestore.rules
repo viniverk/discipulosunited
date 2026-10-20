@@ -100,20 +100,6 @@ service cloud.firestore {
       allow write: if ehAdmin();
     }
 
-    // ---------- avaliações por estrelas (aba Times) ----------
-    // Um documento por atleta por rodada: <idDoJogo>__<idDoAtleta>.
-    // O atleta lê e grava só as notas que ele mesmo deu; só o admin vê todas.
-    function meuAtleta() {
-      return get(/databases/$(database)/documents/vinculos/$(request.auth.uid)).data.atletaId;
-    }
-    match /avaliacoes/{id} {
-      allow read: if ehAdmin() || (fezLogin() && resource.data.de == meuAtleta());
-      allow create, update: if fezLogin()
-        && request.resource.data.de == meuAtleta()
-        && id == request.resource.data.jogo + '__' + meuAtleta();
-      allow delete: if ehAdmin();
-    }
-
     // qualquer coisa fora do previsto fica trancada
     match /{document=**} {
       allow read, write: if false;
