@@ -113,6 +113,13 @@ body.menu-aberto .menu-fundo{display:block}
   text-align:left;border-left:4px solid transparent;color:inherit;background:none}
 .menu-item i{font-style:normal;font-size:22px;width:30px;text-align:center}
 .menu-item.on{background:var(--linha);border-left-color:var(--quadra);color:var(--quadra)}
+.menu-itens.reordenando .menu-item{border-left-color:var(--borda);background:var(--cal);user-select:none}
+.menu-nome{flex:1}
+.menu-alca{font-size:24px;line-height:1;padding:6px 10px;margin:-6px -8px -6px 0;border-radius:8px;color:var(--cinza);
+  cursor:grab;touch-action:none}
+.menu-item.arrastando{background:#FBF6E8;box-shadow:0 6px 18px rgba(0,0,0,.18);position:relative;z-index:2;color:#14140F}
+.menu-reordenar{margin:12px 16px 0;padding:11px;border-radius:10px;background:var(--linha);font-weight:600;font-size:14.5px;color:inherit}
+.menu-dica{padding:8px 18px 0}
 /* computador: o menu fica sempre aberto à esquerda */
 @media (min-width:900px){
   body{padding-left:250px}
@@ -662,7 +669,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-20e";
+const VERSAO = "2026-10-20f";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3161,6 +3168,7 @@ function desenhar(){
   document.querySelector("#btnAdmin span").textContent = estado.admin ? "Admin ativo" : "Admin";
   document.querySelector("#btnAdmin").firstChild.textContent = estado.admin ? "🔓 " : "🔒 ";
 
+  if (window.__menuPronto) desenharMenu();
   telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaTimes(); telaQuiz(); telaUniforme(); telaValores(); telaEstatuto();
 }
 
@@ -3813,17 +3821,73 @@ function irPara(nome){
   estado.tela = nome;
   document.querySelectorAll(".aba").forEach(x => x.classList.toggle("on", x.dataset.tela === nome));
   document.querySelectorAll(".tela").forEach(t => t.classList.toggle("on", t.id === "tela-"+nome));
-  document.querySelectorAll(".menu-item").forEach(x => x.classList.toggle("on", x.dataset.ir === nome));
+  if (window.__menuPronto) desenharMenu();
   window.scrollTo({ top:0, behavior:"instant" });
 }
 /* menu lateral: mesmos destinos das abas, com botões grandes */
-document.getElementById("menuItens").innerHTML = [...document.querySelectorAll(".aba")].map(a =>
-  `<button class="menu-item ${a.classList.contains("on")?"on":""}" data-ir="${a.dataset.tela}"><i>${a.querySelector("i").textContent}</i>${a.querySelector("em").textContent}</button>`).join("");
+// itens do menu: os destinos vêm das abas escondidas; a ordem fica em config.ordemMenu (vale para todos)
+const ITENS_MENU = [...document.querySelectorAll(".aba")].map(a =>
+  ({ id: a.dataset.tela, ico: a.querySelector("i").textContent, nome: a.querySelector("em").textContent }));
+let reordenando = false, assinaturaMenu = "";
+function ordemDoMenu(){
+  const salva = Array.isArray(estado.config.ordemMenu) ? estado.config.ordemMenu : [];
+  const ids = ITENS_MENU.map(x => x.id);
+  return [...salva.filter(id => ids.includes(id)), ...ids.filter(id => !salva.includes(id))];   // seção nova entra no fim
+}
+function desenharMenu(){
+  const ordem = ordemDoMenu();
+  const assin = ordem.join(",") + "|" + reordenando + "|" + estado.admin + "|" + estado.tela;
+  if (assin === assinaturaMenu) return;
+  assinaturaMenu = assin;
+  if (!estado.admin) reordenando = false;
+  const caixa = document.getElementById("menuItens");
+  caixa.classList.toggle("reordenando", reordenando);
+  caixa.innerHTML = ordem.map(id => { const x = ITENS_MENU.find(i => i.id === id);
+      return reordenando
+        ? `<div class="menu-item" data-ordem-item="${id}"><i>${x.ico}</i><span class="menu-nome">${escapar(x.nome)}</span><span class="menu-alca" data-alca aria-label="Arrastar">⠿</span></div>`
+        : `<button class="menu-item ${estado.tela===id?"on":""}" data-ir="${id}"><i>${x.ico}</i>${escapar(x.nome)}</button>`; }).join("")
+    + (estado.admin ? `<button class="menu-reordenar" data-acao-menu="reordenar">${reordenando ? "✅ Pronto" : "↕️ Mudar a ordem"}</button>` : "")
+    + (reordenando ? `<div class="sub menu-dica">Segure o ⠿ e arraste para cima ou para baixo. A ordem vale para todo mundo.</div>` : "");
+}
+// arrastar pela alça ⠿ (toque e mouse)
+let arrastoMenu = null;
+document.addEventListener("pointerdown", e => {
+  const alca = e.target.closest("[data-alca]"); if (!alca) return;
+  const item = alca.closest("[data-ordem-item]");
+  e.preventDefault();
+  arrastoMenu = { item, y0: e.clientY };
+  item.classList.add("arrastando");
+  alca.setPointerCapture && alca.setPointerCapture(e.pointerId);
+});
+document.addEventListener("pointermove", e => {
+  if (!arrastoMenu) return;
+  e.preventDefault();
+  const { item } = arrastoMenu, caixa = item.parentElement;
+  const outros = [...caixa.querySelectorAll("[data-ordem-item]")].filter(x => x !== item);
+  const depois = outros.find(x => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height/2; });
+  if (depois) { if (item.nextElementSibling !== depois) caixa.insertBefore(item, depois); }
+  else { const ultimo = outros[outros.length-1]; if (ultimo && ultimo.nextElementSibling !== item) ultimo.after(item); }
+}, { passive:false });
+document.addEventListener("pointerup", async () => {
+  if (!arrastoMenu) return;
+  const { item } = arrastoMenu; arrastoMenu = null;
+  item.classList.remove("arrastando");
+  const nova = [...document.querySelectorAll("#menuItens [data-ordem-item]")].map(x => x.dataset.ordemItem);
+  if (nova.join(",") === ordemDoMenu().join(",")) return;
+  await gravarConfig({ ordemMenu: nova });
+  assinaturaMenu = ""; desenharMenu();
+});
+window.__menuPronto = true;
+desenharMenu();
 const abrirMenu  = () => document.body.classList.add("menu-aberto");
 const fecharMenu = () => document.body.classList.remove("menu-aberto");
 document.addEventListener("click", e => {
   if (e.target.closest("[data-abrir-menu]")) { abrirMenu(); return; }
-  if (e.target.closest("[data-fechar-menu]")) { fecharMenu(); return; }
+  if (e.target.closest("[data-fechar-menu]")) { fecharMenu(); reordenando = false; assinaturaMenu = ""; desenharMenu(); return; }
+  if (e.target.closest("[data-acao-menu='reordenar']")) {
+    if (reordenando) avisar("Ordem do menu salva.");
+    reordenando = !reordenando; assinaturaMenu = ""; desenharMenu(); return;
+  }
   const item = e.target.closest("[data-ir]");
   if (item) {
     if (item.dataset.ir === "jogo") estado.jogoAberto = null;
