@@ -61,27 +61,9 @@ Para uma pelada de amigos isso costuma bastar. Se um dia incomodar, o caminho é
 ### Avaliações dos atletas (aba Times)
 
 As estrelas que cada atleta dá ficam na coleção `avaliacoes`, um documento por atleta por rodada (`<idDoJogo>__<idDoAtleta>`).
-O app só mostra as notas para o admin, mas quem protege de verdade é a regra. Cole este bloco **dentro** de
-`match /databases/{database}/documents { ... }`, acima de qualquer `match /{document=**}`, e troque
-`UID_DO_ADMIN` pela identificação do seu aparelho (fica em **Caixa → Ajustes da pelada**, botão *Copiar*):
-
-```
-match /avaliacoes/{id} {
-  function vinculo() { return /databases/$(database)/documents/vinculos/$(request.auth.uid); }
-  function meuAtleta() { return get(vinculo()).data.atletaId; }
-  function ehAdmin() { return request.auth != null && request.auth.uid in ['UID_DO_ADMIN']; }
-  // o atleta lê só o que ele mesmo deu; o admin lê tudo
-  allow read: if ehAdmin() || (request.auth != null && exists(vinculo()) && resource.data.de == meuAtleta());
-  // cada um grava só a própria avaliação, no documento com o próprio nome
-  allow create, update: if request.auth != null && exists(vinculo())
-    && request.resource.data.de == meuAtleta()
-    && id == request.resource.data.jogo + '__' + meuAtleta();
-  allow delete: if ehAdmin();
-}
-```
-
-Com a regra simples do começo (`allow read, write: if request.auth != null`) a aba funciona do mesmo jeito,
-mas as notas ficam legíveis para quem souber abrir o DevTools.
+A regra já está no `firestore.rules` deste repositório: o atleta lê e grava só as notas que ele mesmo deu, e só quem
+está na coleção `admins` lê todas. Depois de atualizar o arquivo, copie o conteúdo inteiro para
+**Firestore → Regras** e publique. Sem isso, a última regra (`match /{document=**}`) bloqueia os votos.
 
 ## 4. Publicar no GitHub Pages
 
