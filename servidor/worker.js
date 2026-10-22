@@ -97,7 +97,7 @@ async function criarPagamento(req, env, appUrl) {
   if (!resp.ok) {
     const msg = (sessao.error && sessao.error.message) || "erro desconhecido";
     console.error("Stripe recusou:", msg);
-    if (tipo === "pix" && /pix/i.test(msg)) throw new Erro("O Pix ainda não está ativo na conta do Stripe. Use o cartão por enquanto.");
+    if (tipo === "pix" && /pix/i.test(msg)) throw new Erro("O Pix ainda não está ativo na conta do Stripe. Use o cartão por enquanto. (Stripe: " + msg + ")");
     throw new Erro("O Stripe não aceitou a cobrança: " + msg, 502);
   }
   await fs.set(`pagamentosStripe/${sessao.id}`, { atletaId, meses: aPagar, tipo, valor: arred(unit * aPagar.length), status: "aberto", em: Date.now() });
