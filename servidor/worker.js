@@ -5,6 +5,8 @@
      STRIPE_SECRET_KEY      sk_live_...            (ou sk_test_... para testar)
      STRIPE_WEBHOOK_SECRET  whsec_...
      FIREBASE_SA            o JSON inteiro da conta de serviço do Firebase
+     MP_ACCESS_TOKEN        (opcional) APP_USR-... do Mercado Pago — com ele, o Pix sai pelo Mercado Pago
+   POST /webhook-mp → o Mercado Pago avisa; o servidor confere o pagamento na API dele antes de marcar
    Variáveis opcionais: APP_URL (padrão: https://viniverk.github.io/discipulosunited/) */
 
 const APP_URL_PADRAO = "https://viniverk.github.io/discipulosunited/";
@@ -27,6 +29,7 @@ export default {
       if (pathname === "/" && req.method === "GET") return new Response("Servidor de pagamento do Discípulos United: ok");
       if (pathname === "/pagar" && req.method === "POST") return json(await criarPagamento(req, env, appUrl));
       if (pathname === "/webhook" && req.method === "POST") return await webhook(req, env);
+      if (pathname === "/webhook-mp" && req.method === "POST") return await webhookMP(req, env);
       return new Response("não encontrado", { status: 404 });
     } catch (e) {
       if (e instanceof Erro) return json({ erro: e.message }, e.status);
@@ -76,6 +79,8 @@ async function criarPagamento(req, env, appUrl) {
   const unit = valorDaCobranca(cfg.valorMensalista ?? 50, tipo, cfg.cartaoPct ?? 3.99, cfg.cartaoFixo ?? 0.39);
   const grupo = cfg.nomeGrupo || "Discípulos United";
   const meta = { atletaId, meses: aPagar.join(","), tipo };
+  if (tipo === "pix" && env.MP_ACCESS_TOKEN)
+    return await pixMercadoPago(env, fs, { atletaId, nome: atleta.nome || "", meses: aPagar, unit, grupo, origem: new URL(req.url).origin });
 
   const params = {
     mode: "payment", locale: "pt-BR", "payment_method_types[0]": tipo,
@@ -139,10 +144,70 @@ async function marcarPago(fs, s, eventoId) {
   const md = s.metadata || {};
   const atletaId = md.atletaId, meses = String(md.meses || "").split(",").filter(Boolean);
   if (!atletaId || !meses.length) { console.warn("Sessão sem metadados", s.id); return; }
-  const agora = Date.now(), valor = arred((s.amount_total || 0) / 100 / meses.length);
+  await marcarMeses(fs, atletaId, meses, { pagamento: s.id, forma: md.tipo || "", valor: arred((s.amount_total || 0) / 100 / meses.length) });
+  await fs.set(`pagamentosStripe/${s.id}`, { status: "pago", pagoEm: Date.now(), evento: eventoId }, true);
+}
+async function marcarMeses(fs, atletaId, meses, online) {
+  const agora = Date.now();
   for (const m of meses)
-    await fs.set(`mensalidades/${m}`, { pagos: { [atletaId]: agora }, online: { [atletaId]: { pagamento: s.id, forma: md.tipo || "", valor } } }, true);
-  await fs.set(`pagamentosStripe/${s.id}`, { status: "pago", pagoEm: agora, evento: eventoId }, true);
+    await fs.set(`mensalidades/${m}`, { pagos: { [atletaId]: agora }, online: { [atletaId]: online } }, true);
+}
+
+/* ---------- Pix pelo Mercado Pago ---------- */
+// cria a cobrança Pix e devolve o QR code para o app mostrar
+async function pixMercadoPago(env, fs, { atletaId, nome, meses, unit, grupo, origem }) {
+  const total = arred(unit * meses.length);
+  const expira = new Date(Date.now() + 60 * 60e3 - 3 * 3600e3).toISOString().replace("Z", "-03:00");   // 1 hora, no horário de Brasília
+  const resp = await fetch("https://api.mercadopago.com/v1/payments", { method: "POST",
+    headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}`, "Content-Type": "application/json", "X-Idempotency-Key": crypto.randomUUID() },
+    body: JSON.stringify({
+      transaction_amount: total, payment_method_id: "pix",
+      description: `Mensalidade ${grupo} — ${meses.map(nomeMes).join(", ")}`,
+      external_reference: `mensalidade|${atletaId}|${meses.join(",")}`,
+      notification_url: `${origem}/webhook-mp`,
+      date_of_expiration: expira,
+      payer: { email: emailPagador(atletaId), first_name: (nome.split(" ")[0] || "Atleta").slice(0, 40) }
+    }) });
+  const pg = await resp.json().catch(() => ({}));
+  if (!resp.ok || !pg.id) {
+    console.error("Mercado Pago recusou:", JSON.stringify(pg));
+    throw new Erro("O Mercado Pago não aceitou a cobrança: " + (pg.message || pg.error || resp.status), 502);
+  }
+  const td = (pg.point_of_interaction && pg.point_of_interaction.transaction_data) || {};
+  await fs.set(`pagamentosMP/${pg.id}`, { atletaId, meses, tipo: "pix", valor: total, status: pg.status || "pending", em: Date.now() });
+  return { pix: true, id: String(pg.id), meses, valor: total, qr: td.qr_code_base64 || "", copiaCola: td.qr_code || "", link: td.ticket_url || "" };
+}
+// o Mercado Pago exige um e-mail do pagador; usamos um endereço fixo por atleta (não recebe nada)
+const emailPagador = id => String(id).normalize("NFD").replace(/[^A-Za-z0-9]/g, "").toLowerCase().slice(0, 40) + "@pagamentos.discipulosunited.com.br";
+
+// aviso do Mercado Pago: só traz o id; o status é conferido direto na API dele (aviso falso não marca nada)
+async function webhookMP(req, env) {
+  const url = new URL(req.url);
+  const corpo = await req.json().catch(() => ({}));
+  const tipo = corpo.type || corpo.topic || url.searchParams.get("type") || url.searchParams.get("topic") || "";
+  const id = String((corpo.data && corpo.data.id) || url.searchParams.get("data.id") || url.searchParams.get("id") || "");
+  if (!/payment/.test(tipo) || !/^\d+$/.test(id) || !env.MP_ACCESS_TOKEN) return new Response("ok");
+  const r = await fetch(`https://api.mercadopago.com/v1/payments/${id}`, { headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}` } });
+  if (r.status === 404) return new Response("ok (pagamento desconhecido)");
+  if (!r.ok) { console.error("Mercado Pago: erro ao consultar", id, r.status); return new Response("erro ao consultar", { status: 500 }); }
+  const pg = await r.json();
+  const fs = await firestore(env);
+  const ref = String(pg.external_reference || "").split("|");
+  if (pg.status !== "approved" || ref[0] !== "mensalidade" || !ref[1] || !ref[2]) {
+    if (ref[0] === "mensalidade") await fs.set(`pagamentosMP/${id}`, { status: pg.status || "?" }, true);
+    return new Response("ok");
+  }
+  // cada pagamento aprovado é processado uma vez só
+  if (!(await fs.criarSeNaoExiste(`eventosMP/${id}`, { em: Date.now() }))) return new Response("ok (repetido)");
+  const meses = ref[2].split(",").filter(Boolean);
+  try {
+    await marcarMeses(fs, ref[1], meses, { pagamento: `mp_${id}`, forma: "pix", valor: arred((pg.transaction_amount || 0) / meses.length) });
+    await fs.set(`pagamentosMP/${id}`, { status: "pago", pagoEm: Date.now() }, true);
+  } catch (e) {
+    await fs.apagar(`eventosMP/${id}`).catch(() => {});
+    throw e;
+  }
+  return new Response("ok");
 }
 async function assinaturaStripeOk(bruto, cabecalho, segredo, agoraSeg = Math.floor(Date.now() / 1000)) {
   if (!cabecalho || !segredo) return false;

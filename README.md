@@ -91,6 +91,18 @@ por dia, sem cartão). O Firebase continua no plano grátis.
 6. **Teste**: entre com a senha de um atleta fixo, abra **Minha página** e pague um mês. Ao voltar do Stripe, em
    segundos o mês aparece como pago.
 
+### Pix pelo Mercado Pago (recomendado)
+
+Se o Pix do Stripe não estiver liberado, o Pix pode sair pelo **Mercado Pago** — o cartão continua no Stripe.
+O QR code aparece dentro do app e, quando o banco confirma, o Mercado Pago avisa o servidor (`/webhook-mp`); o servidor
+**confere o pagamento direto na API do Mercado Pago** antes de marcar os meses, então um aviso falso não marca nada.
+
+1. Na conta do Mercado Pago (pode ser pessoa física), cadastre uma **chave Pix**.
+2. Em <https://www.mercadopago.com.br/developers/panel/app>, crie uma aplicação ("Pagamentos online", Checkout
+   Transparente/API) e copie o **Access Token de produção** (`APP_USR-...`).
+3. No Cloudflare, adicione o Segredo `MP_ACCESS_TOKEN` = `APP_USR-...`. Pronto: com ele presente, o Pix passa a sair
+   pelo Mercado Pago. Não precisa cadastrar webhook no painel do Mercado Pago — cada cobrança já leva o endereço do aviso.
+
 ### Bom saber
 
 - O atleta precisa **entrar com a senha** — é assim que o servidor sabe de quem é o pagamento.

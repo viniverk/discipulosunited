@@ -699,7 +699,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-22b";
+const VERSAO = "2026-10-22c";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -1001,7 +1001,7 @@ async function irParaPagamento(tipo){
   if (!srv) return avisar("Servidor de pagamento ainda não configurado. Fale com o organizador.");
   const botoes = document.querySelectorAll("[data-pagar-tipo]");
   botoes.forEach(b => { b.disabled = true; });
-  avisar("Abrindo o pagamento seguro do Stripe…");
+  avisar(tipo === "pix" ? "Gerando o Pix…" : "Abrindo o pagamento seguro do Stripe…");
   try {
     const token = await fb.auth.currentUser.getIdToken();
     const resp = await fetch(srv + "/pagar", { method:"POST",
@@ -1009,12 +1009,31 @@ async function irParaPagamento(tipo){
     const r = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(r.erro || "Não consegui abrir o pagamento.");
     try { sessionStorage.setItem("du-pagando", JSON.stringify({ id: estado.eu, meses: r.meses })); } catch(_) {}
-    location.href = r.url;                       // página do Stripe; ao terminar, volta para o app
+    if (r.pix) { botoes.forEach(b => { b.disabled = false; }); mostrarPix(r); return; }   // Pix (Mercado Pago): QR aqui mesmo
+    location.href = r.url;                       // cartão: página do Stripe; ao terminar, volta para o app
   } catch (e) {
     botoes.forEach(b => { b.disabled = false; });
     avisar(e?.message || "Não consegui abrir o pagamento.");
   }
 }
+
+// QR code do Pix dentro do app; a confirmação chega sozinha quando o banco aprovar
+function mostrarPix(r){
+  estado.aguardandoPagamento = true;
+  abrirModal("Pagar com Pix", `<div class="pag-pix">
+      <div class="aviso">${plural(r.meses.length,"mês","meses")}: <b>${r.meses.map(rotuloMes).join(", ")}</b> · <b>${dinheiro(r.valor)}</b></div>
+      ${r.qr ? `<img src="data:image/png;base64,${r.qr}" alt="QR code Pix">` : ""}
+      <div class="sub">Abra o app do seu banco, escolha Pix e escaneie, ou use o Pix copia e cola:</div>
+      <textarea readonly>${escapar(r.copiaCola)}</textarea>
+      <button class="btn-ouro" style="width:100%" data-copiar-pix="${escapar(r.copiaCola)}">📋 Copiar código Pix</button>
+      <div class="aviso" id="pg_status">⏳ Aguardando o pagamento… assim que o banco confirmar, aparece aqui sozinho. O código vale por 1 hora.</div>
+    </div>`);
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-copiar-pix]"); if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copiarPix); avisar("Código Pix copiado. Cole no app do banco."); }
+  catch(_) { avisar("Não consegui copiar — selecione o código e copie."); }
+});
 
 // ao voltar do Stripe: avisa e confere sozinho quando o webhook marcar os meses
 function lerVoltaDoPagamento(){
@@ -1031,6 +1050,8 @@ function conferirPagamento(){
   if (p.meses.every(m => mensalidadePaga(m, p.id))) {
     estado.aguardandoPagamento = false;
     try { sessionStorage.removeItem("du-pagando"); } catch(_) {}
+    const st = document.getElementById("pg_status");
+    if (st) st.outerHTML = `<div class="aviso pago-ok">✅ <b>Pagamento confirmado!</b> Obrigado!</div>`;
     avisar(`✅ Pagamento confirmado: ${p.meses.map(rotuloMes).join(", ")}.`);
   }
 }
@@ -1087,10 +1108,10 @@ function telaEu(){
           <span>${escapar(rotuloMes(m))}</span>${emAtraso(id,m) ? `<small>em atraso</small>` : m === mesAtual() ? `<small>mês atual</small>` : ""}</label>`).join("")}</div>
       <div class="eu-total" id="euTotal"></div>
       <div class="pag-formas">
-        <button class="pag-forma" data-pagar-tipo="pix"><b>Pix</b><span id="euPix"></span><small>${dinheiro(vm)} por mês</small></button>
+        <button class="pag-forma" data-pagar-tipo="pix"><b>Pix</b><span id="euPix"></span><small>${dinheiro(vm)} por mês · QR na hora</small></button>
         <button class="pag-forma" data-pagar-tipo="card"><b>Cartão</b><span id="euCartao"></span><small>${dinheiro(vc)} por mês · com taxa</small></button>
       </div>
-      <div class="sub" style="margin-top:10px">O pagamento abre na página segura do Stripe. Quando o banco confirmar, os meses ficam pagos aqui sozinhos.</div>
+      <div class="sub" style="margin-top:10px">No Pix o QR code aparece aqui mesmo; no cartão abre a página segura do Stripe. Quando o banco confirmar, os meses ficam pagos sozinhos.</div>
     </div>`;
 
   el.innerHTML = topo + pagar + `<div class="cartao"><div class="titulo">Minhas mensalidades</div>
