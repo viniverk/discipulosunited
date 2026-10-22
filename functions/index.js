@@ -1,46 +1,30 @@
-/* Discípulos United — pagamento da mensalidade pelo Asaas
-   - criarCobranca: o atleta logado pede uma cobrança (Pix ou cartão) de um mês
-   - webhookAsaas:  o Asaas avisa que foi pago e a mensalidade fica marcada no app */
+/* Discípulos United — pagamento da mensalidade pelo Stripe
+   - criarPagamento: o atleta logado escolhe os meses e a forma (Pix ou cartão) e recebe o link do Stripe Checkout
+   - webhookStripe:  o Stripe avisa que foi pago e os meses ficam marcados no app */
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret, defineString } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
-const { valorDaCobranca, refDe, lerRef, EVENTOS_PAGO, cpfValido, soDigitos } = require("./regras");
+const Stripe = require("stripe");
+const { valorDaCobranca, centavos, limparMeses, nomeMes } = require("./regras");
 
 admin.initializeApp();
 const db = admin.firestore();
 
-const ASAAS_API_KEY = defineSecret("ASAAS_API_KEY");
-const ASAAS_WEBHOOK_TOKEN = defineSecret("ASAAS_WEBHOOK_TOKEN");
-// produção: https://api.asaas.com/v3 · testes: https://api-sandbox.asaas.com/v3
-const ASAAS_URL = defineString("ASAAS_URL", { default: "https://api.asaas.com/v3" });
+const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");          // sk_live_... (ou sk_test_... para testar)
+const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");  // whsec_...
+const APP_URL = defineString("APP_URL", { default: "https://viniverk.github.io/discipulosunited/" });
 const REGIAO = "southamerica-east1";
+const stripeDe = () => new Stripe(STRIPE_SECRET_KEY.value());
 
-async function asaas(caminho, opcoes = {}) {
-  const resp = await fetch(ASAAS_URL.value() + caminho, {
-    ...opcoes,
-    headers: { "Content-Type": "application/json", "User-Agent": "discipulos-united/1.0",
-               access_token: ASAAS_API_KEY.value(), ...(opcoes.headers || {}) }
-  });
-  const corpo = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    logger.error("Asaas recusou", caminho, resp.status, corpo);
-    const msg = corpo?.errors?.[0]?.description || `Asaas respondeu ${resp.status}`;
-    throw new HttpsError("failed-precondition", msg);
-  }
-  return corpo;
-}
-
-const hojeSP = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
-const somarDias = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-
-exports.criarCobranca = onCall({ region: REGIAO, secrets: [ASAAS_API_KEY] }, async (req) => {
+exports.criarPagamento = onCall({ region: REGIAO, secrets: [STRIPE_SECRET_KEY] }, async (req) => {
   if (!req.auth) throw new HttpsError("unauthenticated", "Entre no app com sua senha.");
-  const { mes, tipo, cpf } = req.data || {};
-  if (!/^\d{4}-\d{2}$/.test(String(mes))) throw new HttpsError("invalid-argument", "Mês inválido.");
-  if (!["PIX", "CREDIT_CARD"].includes(tipo)) throw new HttpsError("invalid-argument", "Forma de pagamento inválida.");
+  const tipo = req.data?.tipo === "card" ? "card" : req.data?.tipo === "pix" ? "pix" : null;
+  const meses = limparMeses(req.data?.meses);
+  if (!tipo) throw new HttpsError("invalid-argument", "Escolha Pix ou cartão.");
+  if (!meses.length) throw new HttpsError("invalid-argument", "Escolha pelo menos um mês.");
 
-  // quem está pagando: o atleta vinculado a este aparelho (login com senha)
+  // quem paga: o atleta vinculado a este aparelho (login com senha)
   const vinc = await db.doc(`vinculos/${req.auth.uid}`).get();
   const atletaId = vinc.exists ? vinc.get("atletaId") : null;
   if (!atletaId) throw new HttpsError("permission-denied", "Entre no app com sua senha para pagar.");
@@ -48,77 +32,79 @@ exports.criarCobranca = onCall({ region: REGIAO, secrets: [ASAAS_API_KEY] }, asy
   if (!atleta.exists) throw new HttpsError("not-found", "Atleta não encontrado.");
   const situacao = atleta.get("situacao") || (atleta.get("ativo") === false ? "inativo" : "fixo");
   if (situacao !== "fixo") throw new HttpsError("failed-precondition", "Só atleta fixo paga mensalidade.");
+  const desde = atleta.get("mensalDesde") || "";
 
-  const mens = await db.doc(`mensalidades/${mes}`).get();
-  if (mens.exists && (mens.get("pagos") || {})[atletaId]) throw new HttpsError("already-exists", "Esse mês já está pago.");
+  // tira meses já pagos ou anteriores ao início como mensalista
+  const docs = await Promise.all(meses.map(m => db.doc(`mensalidades/${m}`).get()));
+  const aPagar = meses.filter((m, i) => !(docs[i].exists && (docs[i].get("pagos") || {})[atletaId]) && (!desde || m >= desde));
+  if (!aPagar.length) throw new HttpsError("already-exists", "Esses meses já estão pagos.");
 
   const cfg = (await db.doc("config/geral").get()).data() || {};
   if (!cfg.pagOnline) throw new HttpsError("failed-precondition", "Pagamento online desligado nos ajustes.");
-  const valor = valorDaCobranca(cfg.valorMensalista ?? 50, tipo, cfg.cartaoPct, cfg.cartaoFixo);
+  const unit = valorDaCobranca(cfg.valorMensalista ?? 50, tipo, cfg.cartaoPct ?? 3.99, cfg.cartaoFixo ?? 0.39);
+  const grupo = cfg.nomeGrupo || "Discípulos United";
 
-  // reaproveita a cobrança em aberto do mesmo mês e forma, para não gerar duas
-  const abertas = await db.collection("cobrancas")
-    .where("atletaId", "==", atletaId).where("mes", "==", mes).where("tipo", "==", tipo)
-    .where("status", "==", "PENDING").limit(1).get();
-  let cobranca = abertas.empty ? null : { id: abertas.docs[0].id, ...abertas.docs[0].data() };
-  if (cobranca && Math.abs(cobranca.valor - valor) > 0.009) cobranca = null;   // valor mudou: faz outra
+  const params = {
+    mode: "payment",
+    payment_method_types: [tipo],
+    line_items: aPagar.map(m => ({ quantity: 1, price_data: { currency: "brl", unit_amount: centavos(unit),
+      product_data: { name: `Mensalidade ${nomeMes(m)}`, description: `${grupo} — ${atleta.get("nome")}` } } })),
+    client_reference_id: atletaId,
+    metadata: { atletaId, meses: aPagar.join(","), tipo },
+    payment_intent_data: { metadata: { atletaId, meses: aPagar.join(","), tipo }, description: `Mensalidade ${grupo}` },
+    success_url: APP_URL.value() + "#pago=ok",
+    cancel_url: APP_URL.value() + "#pago=cancelado",
+    locale: "pt-BR"
+  };
+  if (tipo === "pix") params.payment_method_options = { pix: { expires_after_seconds: 3600 } };
 
-  if (!cobranca) {
-    // cliente no Asaas: guardamos só o id; o CPF fica apenas no Asaas
-    const cli = await db.doc(`asaasClientes/${atletaId}`).get();
-    let customer = cli.exists ? cli.get("customer") : null;
-    if (!customer) {
-      if (!cpf) return { precisaCpf: true };
-      if (!cpfValido(cpf)) throw new HttpsError("invalid-argument", "CPF inválido.");
-      const novo = await asaas("/customers", { method: "POST", body: JSON.stringify({
-        name: atleta.get("nome"), cpfCnpj: soDigitos(cpf), externalReference: atletaId,
-        notificationDisabled: true }) });
-      customer = novo.id;
-      await db.doc(`asaasClientes/${atletaId}`).set({ customer, em: Date.now() });
-    }
-    const pg = await asaas("/payments", { method: "POST", body: JSON.stringify({
-      customer, billingType: tipo, value: valor, dueDate: somarDias(hojeSP(), 3),
-      description: `Mensalidade ${mes} — ${cfg.nomeGrupo || "Discípulos United"}`,
-      externalReference: refDe(mes, atletaId) }) });
-    cobranca = { id: pg.id, atletaId, mes, tipo, valor, status: "PENDING", invoiceUrl: pg.invoiceUrl || "", em: Date.now() };
-    await db.doc(`cobrancas/${pg.id}`).set(cobranca);
+  let sessao;
+  try { sessao = await stripeDe().checkout.sessions.create(params); }
+  catch (e) {
+    logger.error("Stripe recusou", e?.message);
+    if (tipo === "pix" && /pix/i.test(e?.message || ""))
+      throw new HttpsError("failed-precondition", "O Pix ainda não está ativo na conta do Stripe. Use o cartão por enquanto.");
+    throw new HttpsError("internal", "O Stripe não aceitou a cobrança: " + (e?.message || "erro desconhecido"));
   }
-
-  const resposta = { id: cobranca.id, valor: cobranca.valor, tipo, invoiceUrl: cobranca.invoiceUrl };
-  if (tipo === "PIX") {
-    const qr = await asaas(`/payments/${cobranca.id}/pixQrCode`);
-    resposta.qr = qr.encodedImage; resposta.copiaCola = qr.payload;
-  }
-  return resposta;
+  await db.doc(`pagamentosStripe/${sessao.id}`).set({ atletaId, meses: aPagar, tipo, valor: unit * aPagar.length,
+    status: "aberto", em: Date.now() });
+  return { url: sessao.url, meses: aPagar, valor: unit * aPagar.length };
 });
 
-exports.webhookAsaas = onRequest({ region: REGIAO, secrets: [ASAAS_WEBHOOK_TOKEN] }, async (req, res) => {
-  if (req.method !== "POST") return res.status(405).send("use POST");
-  if (req.get("asaas-access-token") !== ASAAS_WEBHOOK_TOKEN.value()) return res.status(401).send("token inválido");
-  const ev = req.body || {};
-  const pg = ev.payment || {};
+// marca os meses como pagos (mesmo formato que o admin usa na mão)
+async function marcarPago(sessao, eventoId) {
+  const atletaId = sessao.metadata?.atletaId, meses = (sessao.metadata?.meses || "").split(",").filter(Boolean);
+  if (!atletaId || !meses.length) { logger.warn("Sessão sem metadados", sessao.id); return; }
+  const agora = Date.now();
+  const lote = db.batch();
+  meses.forEach(m => lote.set(db.doc(`mensalidades/${m}`), {
+    pagos: { [atletaId]: agora },
+    online: { [atletaId]: { pagamento: sessao.id, forma: sessao.metadata?.tipo || "", valor: (sessao.amount_total || 0) / 100 / meses.length } }
+  }, { merge: true }));
+  lote.set(db.doc(`pagamentosStripe/${sessao.id}`), { status: "pago", pagoEm: agora, evento: eventoId }, { merge: true });
+  await lote.commit();
+  logger.info("Mensalidades pagas", atletaId, meses);
+}
+
+exports.webhookStripe = onRequest({ region: REGIAO, secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] }, async (req, res) => {
+  let evento;
+  try { evento = stripeDe().webhooks.constructEvent(req.rawBody, req.get("stripe-signature"), STRIPE_WEBHOOK_SECRET.value()); }
+  catch (e) { logger.warn("Assinatura inválida", e?.message); return res.status(400).send("assinatura inválida"); }
   try {
-    // o Asaas pode mandar o mesmo evento mais de uma vez: cada id de evento é processado uma vez só
-    if (ev.id) {
-      const marca = db.doc(`eventosAsaas/${ev.id}`);
-      const ja = await marca.get();
-      if (ja.exists) return res.status(200).send("ok (repetido)");
-      await marca.set({ event: ev.event || "", payment: pg.id || "", em: Date.now() });
+    // o Stripe pode reenviar o mesmo evento: cada id é processado uma vez só
+    const marca = db.doc(`eventosStripe/${evento.id}`);
+    if ((await marca.get()).exists) return res.status(200).send("ok (repetido)");
+    const s = evento.data.object;
+    if ((evento.type === "checkout.session.completed" && s.payment_status === "paid")
+        || evento.type === "checkout.session.async_payment_succeeded") {
+      await marcarPago(s, evento.id);
+    } else if (["checkout.session.expired", "checkout.session.async_payment_failed"].includes(evento.type)) {
+      await db.doc(`pagamentosStripe/${s.id}`).set({ status: evento.type.endsWith("expired") ? "expirado" : "falhou" }, { merge: true });
     }
-    const ref = lerRef(pg.externalReference);
-    if (ref && EVENTOS_PAGO.has(ev.event)) {
-      await db.doc(`mensalidades/${ref.mes}`).set({
-        pagos: { [ref.atletaId]: Date.now() },
-        online: { [ref.atletaId]: { pagamento: pg.id || "", forma: pg.billingType || "", valor: pg.value || 0 } }
-      }, { merge: true });
-      if (pg.id) await db.doc(`cobrancas/${pg.id}`).set({ status: "PAGO", pagoEm: Date.now(), evento: ev.event }, { merge: true });
-      logger.info("Mensalidade paga", ref, ev.event);
-    } else if (pg.id && ["PAYMENT_DELETED", "PAYMENT_REFUNDED", "PAYMENT_OVERDUE"].includes(ev.event)) {
-      await db.doc(`cobrancas/${pg.id}`).set({ status: ev.event.replace("PAYMENT_", "") }, { merge: true });
-    }
+    await marca.set({ tipo: evento.type, em: Date.now() });
     return res.status(200).send("ok");
   } catch (e) {
     logger.error("Falha no webhook", e);
-    return res.status(500).send("erro");   // o Asaas tenta de novo
+    return res.status(500).send("erro");   // o Stripe tenta de novo
   }
 });

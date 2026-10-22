@@ -408,6 +408,24 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .pag-pix img{width:min(240px,70vw);align-self:center;border-radius:10px;background:#fff;padding:8px}
 .pag-pix textarea{width:100%;min-height:70px;font-size:12px;border-radius:9px;border:1px solid var(--borda);padding:8px;word-break:break-all}
 .aviso.pago-ok{background:#E5F5EC;border-left-color:#1E8E4F}
+.eu-topo{text-align:center}
+.eu-topo .retrato.grande{width:76px;height:76px;font-size:26px;margin:0 auto 8px;display:flex}
+.eu-nome b{display:block;font-family:var(--display);font-size:24px;font-weight:400;letter-spacing:.4px;text-transform:uppercase}
+.eu-nome span{color:var(--cinza);font-size:13.5px}
+.eu-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.eu-kpis div{background:var(--linha);border-radius:10px;padding:10px 4px;display:flex;flex-direction:column}
+.eu-kpis b{font-family:var(--display);font-size:20px;font-weight:400}
+.eu-kpis b.neg{color:var(--deve)}
+.eu-kpis span{font-size:11.5px;color:var(--cinza)}
+.eu-meses{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.eu-mes{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:8px;padding:10px;border:1.5px solid var(--borda);
+  border-radius:10px;cursor:pointer;font-size:13.5px;font-weight:600;line-height:1.25}
+.eu-mes input{width:18px;height:18px;margin:0}
+.eu-mes small{grid-column:2;font-weight:500;color:var(--cinza);font-size:11.5px}
+.eu-mes.atraso{border-color:var(--deve)}
+.eu-mes.atraso small{color:var(--deve)}
+.eu-mes:has(input:checked){border-color:var(--canarinho);background:#FBF6E8;color:#14140F}
+.eu-total{font-size:13.5px;color:var(--cinza);margin-bottom:10px;text-align:center}
 .quiz-capa{background:var(--tinta);color:#fff;border-radius:var(--raio);padding:20px;margin-bottom:14px;text-align:center;
   display:flex;flex-direction:column;gap:4px}
 .quiz-capa-ico{font-size:30px}
@@ -619,6 +637,7 @@ body.tema-placar .barrinha{background:#2A2E35}
 
 <nav class="abas">
   <button class="aba on" data-tela="jogo"><i>📋</i><em>A lista</em></button>
+  <button class="aba" data-tela="eu"><i>👤</i><em>Minha página</em></button>
   <button class="aba" data-tela="agenda"><i>📅</i><em>Agenda</em></button>
   <button class="aba" data-tela="atletas"><i>👟</i><em>Atletas</em></button>
   <button class="aba" data-tela="caixa"><i>💰</i><em>Caixa</em></button>
@@ -637,6 +656,7 @@ body.tema-placar .barrinha{background:#2A2E35}
 
 <main>
   <section class="tela on" id="tela-jogo"></section>
+  <section class="tela" id="tela-eu"></section>
   <section class="tela" id="tela-agenda"></section>
   <section class="tela" id="tela-atletas"></section>
   <section class="tela" id="tela-caixa"></section>
@@ -679,7 +699,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-21";
+const VERSAO = "2026-10-22";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -757,7 +777,9 @@ async function iniciar(){
     semear(); estado.cfgOk = estado.vincOk = true;
   }
   lerEndereco();
+  lerVoltaDoPagamento();
   desenhar();
+  if (estado.tela !== "jogo") irPara(estado.tela);
 }
 function erroFirebase(e){
   console.error(e);
@@ -958,82 +980,131 @@ async function marcarMensalidade(m, id, pago){
   if (fb) await fb.fs.setDoc(fb.fs.doc(fb.db,"mensalidades",m), { pagos, online }, { merge:false });
 }
 
-/* ---------- pagamento online da mensalidade (Asaas, via Cloud Functions) ---------- */
-// meses que o atleta pode pagar agora: os em aberto e, para adiantar, o mês atual e o próximo
+/* ---------- pagamento online da mensalidade (Stripe, via Cloud Functions) ---------- */
+const MESES_A_FRENTE = 12;          // quantos meses dá para adiantar
+// meses que o atleta pode pagar: os em aberto e os próximos (a partir de quando virou mensalista)
 function mesesParaPagar(id){
   if (!ehFixo(id)) return [];
   const abertos = mesesComCobranca().filter(m => deveMensalNoMes(id, m) && !mensalidadePaga(m, id));
-  const adiantar = [mesAtual(), mesMais(mesAtual(), 1)].filter(m => jaMensalista(id, m) && !mensalidadePaga(m, id));
-  return [...new Set([...abertos, ...adiantar])].sort();
+  const frente = [];
+  for (let k = 0; k < MESES_A_FRENTE; k++) frente.push(mesMais(mesAtual(), k));
+  return [...new Set([...abertos, ...frente.filter(m => jaMensalista(id, m) && !mensalidadePaga(m, id))])].sort();
 }
-const valorCartao = () => { const v = cfgN("valorMensalista",50), pct = cfgN("cartaoPct",0)/100, fixo = cfgN("cartaoFixo",0);
+const emAtraso = (id, m) => mesesComCobranca().includes(m) && deveMensalNoMes(id, m) && !mensalidadePaga(m, id) && m < mesAtual();
+const valorCartao = () => { const v = cfgN("valorMensalista",50), pct = cfgN("cartaoPct",3.99)/100, fixo = cfgN("cartaoFixo",0.39);
   return Math.round((v + fixo) / (1 - pct) * 100) / 100; };
 const pagamentoOnlineAtivo = () => !!estado.config.pagOnline;
 
-async function chamarCobranca(dados){
-  if (!fb || !fb.chamar) throw new Error("O pagamento online só funciona no site publicado.");
-  try { return (await fb.chamar("criarCobranca")(dados)).data; }
-  catch (e) { throw new Error(e?.message || "Não consegui falar com o servidor de pagamento."); }
+async function irParaPagamento(tipo){
+  const meses = [...document.querySelectorAll("[data-mes-pagar]:checked")].map(x => x.value);
+  if (!meses.length) return avisar("Marque pelo menos um mês.");
+  if (!fb || !fb.chamar) return avisar("O pagamento online só funciona no site publicado.");
+  const botoes = document.querySelectorAll("[data-pagar-tipo]");
+  botoes.forEach(b => { b.disabled = true; });
+  avisar("Abrindo o pagamento seguro do Stripe…");
+  try {
+    const r = (await fb.chamar("criarPagamento")({ meses, tipo })).data;
+    try { sessionStorage.setItem("du-pagando", JSON.stringify({ id: estado.eu, meses: r.meses })); } catch(_) {}
+    location.href = r.url;                       // página do Stripe; ao terminar, volta para o app
+  } catch (e) {
+    botoes.forEach(b => { b.disabled = false; });
+    avisar(e?.message || "Não consegui abrir o pagamento.");
+  }
 }
 
-function formPagar(){
-  const quem = estado.eu;
-  if (!estado.vinculo) return formEntrar();
-  const meses = mesesParaPagar(quem);
-  if (!meses.length) return avisar("Nenhuma mensalidade em aberto. Tudo em dia! 🙌");
-  const vm = cfgN("valorMensalista",50), vc = valorCartao();
-  abrirModal("Pagar mensalidade", `
-    <div class="campo"><label>Mês</label><select id="pg_mes">
-      ${meses.map(m => `<option value="${m}">${escapar(rotuloMes(m))}${mesesComCobranca().includes(m) && m < mesAtual() ? " · em atraso" : ""}</option>`).join("")}</select></div>
-    <div class="pag-formas">
-      <button class="pag-forma" data-pag-tipo="PIX"><b>Pix</b><span>${dinheiro(vm)}</span><small>cai na hora</small></button>
-      <button class="pag-forma" data-pag-tipo="CREDIT_CARD"><b>Cartão</b><span>${dinheiro(vc)}</span><small>${vc > vm ? "inclui a taxa do cartão" : "crédito"}</small></button>
-    </div>
-    <div id="pg_area"></div>`);
-  document.querySelectorAll("[data-pag-tipo]").forEach(b => b.onclick = () => gerarCobranca(b.dataset.pagTipo));
+// ao voltar do Stripe: avisa e confere sozinho quando o webhook marcar os meses
+function lerVoltaDoPagamento(){
+  const h = location.hash || "";
+  if (!/pago=/.test(h)) return;
+  history.replaceState(null, "", location.pathname + location.search);
+  if (/pago=ok/.test(h)) { estado.aguardandoPagamento = true; avisar("Pagamento enviado! Confirmando com o banco…"); }
+  else { try { sessionStorage.removeItem("du-pagando"); } catch(_) {} avisar("Pagamento cancelado."); }
+  estado.tela = "eu";
+}
+function conferirPagamento(){
+  let p = null; try { p = JSON.parse(sessionStorage.getItem("du-pagando") || "null"); } catch(_) {}
+  if (!p || !estado.aguardandoPagamento) return;
+  if (p.meses.every(m => mensalidadePaga(m, p.id))) {
+    estado.aguardandoPagamento = false;
+    try { sessionStorage.removeItem("du-pagando"); } catch(_) {}
+    avisar(`✅ Pagamento confirmado: ${p.meses.map(rotuloMes).join(", ")}.`);
+  }
 }
 
-async function gerarCobranca(tipo, cpf){
-  const mes = document.getElementById("pg_mes").value;
-  const area = document.getElementById("pg_area");
-  area.innerHTML = `<div class="aviso" style="margin-top:12px">Gerando a cobrança…</div>`;
-  let r;
-  try { r = await chamarCobranca({ mes, tipo, cpf }); }
-  catch (e) { area.innerHTML = `<div class="aviso grave" style="margin-top:12px">${escapar(e.message)}</div>`; return; }
-  if (r.precisaCpf) {
-    area.innerHTML = `<div class="aviso" style="margin-top:12px">Na primeira vez o banco pede o seu <b>CPF</b> para emitir a cobrança.
-        Ele vai só para o Asaas e não fica salvo no app.</div>
-      <div class="campo" style="margin-top:10px"><label>CPF</label><input id="pg_cpf" inputmode="numeric" placeholder="000.000.000-00"></div>
-      <button class="btn-main" style="width:100%" id="pg_cpf_ok">Continuar</button>`;
-    document.getElementById("pg_cpf_ok").onclick = () => gerarCobranca(tipo, document.getElementById("pg_cpf").value);
+/* ---------- TELA — MINHA PÁGINA ---------- */
+function telaEu(){
+  const el = document.getElementById("tela-eu"); if (!el) return;
+  const id = estado.vinculo || (!fb ? estado.eu : null);
+  if (!id) {
+    el.innerHTML = `<div class="cartao"><div class="vazio"><b>Minha página</b>
+      Entre com a sua senha para ver suas mensalidades e pagar pelo app.</div>
+      ${fb ? `<button class="btn-main" style="width:100%" data-acao="entrar">🔐 Entrar com minha senha</button>`
+           : `<div class="aviso">Escolha seu nome lá em cima.</div>`}</div>`;
     return;
   }
-  estado.pagando = { mes, id: estado.eu };
-  if (tipo === "PIX") {
-    area.innerHTML = `<div class="pag-pix">
-        <img src="data:image/png;base64,${r.qr}" alt="QR code Pix">
-        <div class="sub">Abra o app do banco e escaneie, ou copie o código:</div>
-        <textarea readonly id="pg_cc">${escapar(r.copiaCola)}</textarea>
-        <button class="btn-ouro" style="width:100%" data-copiar="${escapar(r.copiaCola)}">📋 Copiar código Pix</button>
-        <div class="aviso" id="pg_status" style="margin-top:12px">⏳ Aguardando o pagamento de <b>${dinheiro(r.valor)}</b>…
-          Assim que o banco confirmar, a mensalidade fica marcada como paga aqui sozinha.</div></div>`;
-  } else {
-    area.innerHTML = `<div class="aviso" style="margin-top:12px">O pagamento com cartão abre na página segura do Asaas.
-        Valor: <b>${dinheiro(r.valor)}</b>.</div>
-      <a class="btn-main" style="display:block;text-align:center;margin-top:10px" href="${escapar(r.invoiceUrl)}" target="_blank" rel="noopener">💳 Pagar com cartão</a>
-      <div class="aviso" id="pg_status" style="margin-top:12px">Depois de pagar, volte aqui: a mensalidade fica marcada como paga sozinha.</div>`;
-  }
-}
+  const a = atletaDe(id) || {};
+  const sa = saldoAtleta(id), f = frequencia(id);
+  const sit = situacaoDe(a);
+  const topo = `<div class="cartao eu-topo">
+      ${retratoDe(a, "grande")}
+      <div class="eu-nome"><b>${escapar(a.nome || "")}</b>
+        <span>${sit === "fixo" ? "Fixo · mensalista" : sit === "convidado" ? "Convidado" : "Inativo"}${a.goleiro ? " · 🧤 goleiro" : ""}</span></div>
+      <div class="eu-kpis">
+        <div><b class="${sa.aberto > 0.005 ? "neg" : ""}">${sa.aberto > 0.005 ? dinheiro(sa.aberto) : "Em dia"}</b><span>${sa.aberto > 0.005 ? "em aberto" : "situação"}</span></div>
+        <div><b>${f.presencas}</b><span>${plural(f.presencas,"rodada","rodadas").replace(/^\d+ /,"")} jogadas</span></div>
+        <div><b>${f.pct}%</b><span>frequência</span></div>
+      </div>
+      <button class="btn-sec" style="width:100%;margin-top:12px" data-extrato="${id}">📄 Ver meu extrato</button>
+    </div>`;
 
-// chamada a cada redesenho: se o mês que está sendo pago virou "pago", comemora
-function conferirPagamento(){
-  const p = estado.pagando; if (!p) return;
-  if (!mensalidadePaga(p.mes, p.id)) return;
-  estado.pagando = null;
-  const st = document.getElementById("pg_status");
-  if (st) st.outerHTML = `<div class="aviso pago-ok" style="margin-top:12px">✅ <b>Pagamento confirmado!</b> ${escapar(rotuloMes(p.mes))} está pago. Obrigado!</div>`;
-  avisar("Mensalidade paga! ✅");
+  if (sit !== "fixo") { el.innerHTML = topo + `<div class="cartao"><div class="sub">Mensalidade é só para atletas fixos.
+      ${sa.aberto > 0.005 ? "Suas diárias em aberto você acerta com o organizador pelo Pix da tela A Lista." : ""}</div></div>`; return; }
+
+  const vm = cfgN("valorMensalista",50), vc = valorCartao();
+  const podePagar = mesesParaPagar(id);
+  // histórico: últimos meses cobrados + os próximos, com a situação de cada um
+  const vistos = new Set([...mesesComCobranca().filter(m => deveMensalNoMes(id, m)).slice(-6), ...podePagar.slice(0, 3),
+    ...estado.mensalidades.filter(x => (x.pagos||{})[id]).map(x => x.id)]);
+  const linhas = [...vistos].sort().reverse().slice(0, 14);
+  const selo = m => mensalidadePaga(m, id)
+      ? `<span class="selo pago">pago${((mensalidadeDoMes(m)||{}).online||{})[id] ? " · app" : ""}</span>`
+      : emAtraso(id, m) ? `<span class="selo deve">em atraso</span>`
+      : mesesComCobranca().includes(m) ? `<span class="selo deve">em aberto</span>` : `<span class="selo neutro">a vencer</span>`;
+
+  const pagar = !pagamentoOnlineAtivo() ? `<div class="cartao"><div class="titulo">Pagar mensalidade</div>
+      <div class="sub">O pagamento pelo app ainda não está ligado. Pague pelo Pix da tela A Lista e avise o organizador.</div></div>`
+    : !podePagar.length ? `<div class="cartao"><div class="titulo">Pagar mensalidade</div><div class="aviso pago-ok">✅ Tudo pago pelos próximos ${MESES_A_FRENTE} meses!</div></div>`
+    : `<div class="cartao">
+      <div class="titulo">Pagar mensalidade</div>
+      ${estado.aguardandoPagamento ? `<div class="aviso" style="margin-bottom:10px">⏳ Confirmando seu pagamento com o banco… a página atualiza sozinha.</div>` : ""}
+      <div class="sub" style="margin-bottom:8px">Marque os meses que quer pagar. Dá para adiantar até ${MESES_A_FRENTE} meses.</div>
+      <div class="eu-meses">${podePagar.map(m => `<label class="eu-mes ${emAtraso(id,m)?"atraso":""}">
+          <input type="checkbox" data-mes-pagar value="${m}" ${(emAtraso(id,m) || mesesComCobranca().includes(m) || m === mesAtual()) ? "checked" : ""}>
+          <span>${escapar(rotuloMes(m))}</span>${emAtraso(id,m) ? `<small>em atraso</small>` : m === mesAtual() ? `<small>mês atual</small>` : ""}</label>`).join("")}</div>
+      <div class="eu-total" id="euTotal"></div>
+      <div class="pag-formas">
+        <button class="pag-forma" data-pagar-tipo="pix"><b>Pix</b><span id="euPix"></span><small>${dinheiro(vm)} por mês</small></button>
+        <button class="pag-forma" data-pagar-tipo="card"><b>Cartão</b><span id="euCartao"></span><small>${dinheiro(vc)} por mês · com taxa</small></button>
+      </div>
+      <div class="sub" style="margin-top:10px">O pagamento abre na página segura do Stripe. Quando o banco confirmar, os meses ficam pagos aqui sozinhos.</div>
+    </div>`;
+
+  el.innerHTML = topo + pagar + `<div class="cartao"><div class="titulo">Minhas mensalidades</div>
+      ${linhas.length ? linhas.map(m => `<div class="item"><div class="item-corpo"><div class="nome">${escapar(rotuloMes(m))}</div></div>${selo(m)}</div>`).join("")
+                      : `<div class="sub">Nenhuma mensalidade ainda.</div>`}</div>`;
+  // nada marcado (atleta em dia)? sugere o próximo mês em aberto
+  const caixas = el.querySelectorAll("[data-mes-pagar]");
+  if (caixas.length && !el.querySelector("[data-mes-pagar]:checked")) caixas[0].checked = true;
+  atualizarTotalEu();
 }
+function atualizarTotalEu(){
+  const n = document.querySelectorAll("[data-mes-pagar]:checked").length;
+  const t = document.getElementById("euTotal"); if (!t) return;
+  t.innerHTML = n ? `${plural(n,"mês","meses")} selecionado${n>1?"s":""}` : "Nenhum mês selecionado";
+  document.getElementById("euPix").textContent = dinheiro(n * cfgN("valorMensalista",50));
+  document.getElementById("euCartao").textContent = dinheiro(Math.round(n * valorCartao() * 100) / 100);
+}
+document.addEventListener("change", e => { if (e.target.matches("[data-mes-pagar]")) atualizarTotalEu(); });
 
 // quanto este atleta deve por participar desta rodada
 function valorNaRodada(j, id){
@@ -1691,7 +1762,7 @@ function telaJogo(){
                                  "você deve "+dinheiro(sa.aberto), "pend"]
           :                     [`${dinheiro(sa.pago)} pagos`, "você está em dia", "ok"];
           const pagar = pagamentoOnlineAtivo() && mesesParaPagar(estado.eu).length
-            ? `<button class="btn-ouro capa-pagar" data-acao="pagar-online">💳 ${sa.aberto > 0.005 ? "Pagar" : "Adiantar"} mensalidade</button>` : "";
+            ? `<button class="btn-ouro capa-pagar" data-ir="eu">💳 ${sa.aberto > 0.005 ? "Pagar" : "Adiantar"} mensalidade</button>` : "";
           return `<div class="capa-eu"><span>${rodadas} · ${detalhe}</span><b class="${cor}">${veredito}</b></div>${pagar}`;
         })() : ""}
       </div>
@@ -3263,7 +3334,7 @@ function desenhar(){
 
   if (window.__menuPronto) desenharMenu();
   conferirPagamento();
-  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaTimes(); telaQuiz(); telaUniforme(); telaValores(); telaEstatuto();
+  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaTimes(); telaQuiz(); telaEu(); telaUniforme(); telaValores(); telaEstatuto();
 }
 
 /* ---------- instalar no celular ---------- */
@@ -3813,13 +3884,13 @@ function formAjustes(){
         ${[1,2,3,4].map(n => `<option value="${n}" ${cfgN("rodadaCobranca",2)===n?"selected":""}>${n}ª rodada do mês</option>`).join("")}</select></div></div>
     <div class="campo"><label>Link do grupo no WhatsApp</label><input id="f_grupo" value="${escapar(c.linkGrupo||"")}" placeholder="https://chat.whatsapp.com/...">
       <div class="sub" style="margin-top:5px">Opcional. Só liga o botão "Abrir grupo" na tela da lista. Fica salvo no Firestore, não no código do site.</div></div>
-    <div class="titulo" style="margin-top:18px">Pagamento online (Asaas)</div>
+    <div class="titulo" style="margin-top:18px">Pagamento online (Stripe)</div>
     <label class="check"><input type="checkbox" id="f_pagOnline" ${c.pagOnline?"checked":""}>
       <span><b>Atletas pagam a mensalidade pelo app</b>
-        <span class="sub">Mostra o botão "Pagar mensalidade" (Pix ou cartão). Só ligue depois de publicar o servidor — veja o README.</span></span></label>
-    <div class="dupla"><div class="campo"><label>Taxa do cartão (%)</label><input type="number" step="0.01" id="f_cartaoPct" value="${cfgN("cartaoPct",0)}"></div>
-      <div class="campo"><label>Taxa fixa do cartão (R$)</label><input type="number" step="0.01" id="f_cartaoFixo" value="${cfgN("cartaoFixo",0)}"></div></div>
-    <div class="sub" style="margin:-4px 0 14px">Copie as taxas do seu painel do Asaas. No cartão o atleta paga a taxa; no Pix o time absorve.</div>
+        <span class="sub">Libera o pagamento (Pix ou cartão) na aba Minha página. Só ligue depois de publicar o servidor — veja o README.</span></span></label>
+    <div class="dupla"><div class="campo"><label>Taxa do cartão (%)</label><input type="number" step="0.01" id="f_cartaoPct" value="${cfgN("cartaoPct",3.99)}"></div>
+      <div class="campo"><label>Taxa fixa do cartão (R$)</label><input type="number" step="0.01" id="f_cartaoFixo" value="${cfgN("cartaoFixo",0.39)}"></div></div>
+    <div class="sub" style="margin:-4px 0 14px">Taxa padrão do Stripe para cartão nacional: 3,99% + R$ 0,39. No cartão o atleta paga a taxa; no Pix o time absorve.</div>
     <div class="titulo" style="margin-top:18px">Acesso dos atletas</div>
     <label class="check"><input type="checkbox" id="f_login" ${c.exigirLogin?"checked":""}>
       <span><b>Exigir senha dos atletas</b>
@@ -4035,7 +4106,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-quiz-op],[data-quiz-apagar],[data-extrato],[data-lupa],[data-apagar-peca]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-extrato],[data-lupa],[data-apagar-peca]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -4122,7 +4193,7 @@ document.body.addEventListener("click", async e => {
     await salvarEscalacao(j, { vermelho:{}, colete:{} }); desenhar(); avisar("Escalação limpa.");
   }
   else if (d.acao === "sortear-times") await sortearTimes();
-  else if (d.acao === "pagar-online") formPagar();
+  else if (d.pagarTipo) await irParaPagamento(d.pagarTipo);
   else if (d.quizOp !== undefined) await responderQuiz(Number(d.quizOp));
   else if (d.acao === "quiz-comecar") await comecarQuiz();
   else if (d.acao === "quiz-proxima") mostrarPerguntaQuiz();

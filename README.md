@@ -58,53 +58,60 @@ service cloud.firestore {
 
 Para uma pelada de amigos isso costuma bastar. Se um dia incomodar, o caminho é trocar o login anônimo por login com Google e liberar escrita só para UIDs de uma lista — dá umas 30 linhas a mais no app.
 
-## Pagamento online da mensalidade (Asaas)
+## Pagamento online da mensalidade (Stripe)
 
-O atleta toca em **💳 Pagar mensalidade**, escolhe Pix ou cartão e paga. O Asaas avisa o servidor (webhook) e o mês
-fica marcado como pago no app sozinho. No **Pix** o atleta paga o valor da mensalidade e o time absorve a taxa; no
-**cartão** a taxa é somada ao valor (configure em Caixa → Ajustes → Pagamento online).
+Na aba **👤 Minha página** o atleta (entrando com a senha) vê as mensalidades dele, marca um ou vários meses — inclusive
+**adiantados**, até 12 — e paga com **Pix** ou **cartão** na página segura do Stripe. O Stripe avisa o servidor (webhook)
+e os meses ficam pagos no app sozinhos. No Pix o time absorve a taxa (1,19%); no cartão a taxa (3,99% + R$ 0,39) é somada
+ao valor do atleta — ajuste em Caixa → Ajustes → Pagamento online.
 
-O servidor fica na pasta `functions/` (Cloud Functions do Firebase, região São Paulo). A chave do Asaas fica guardada
-no Secret Manager do Google — nunca no site.
+O servidor fica na pasta `functions/` (Cloud Functions do Firebase, região São Paulo). As chaves do Stripe ficam no
+Secret Manager do Google — nunca no site.
 
 ### Passo a passo (uma vez só)
 
-1. **Asaas**: crie a conta (pode ser no seu CPF), cadastre uma **chave Pix** dentro do Asaas e gere a **chave de API**
-   em *Integrações → Chave de API*. Guarde essa chave.
-2. **Firebase no plano Blaze**: no console do Firebase, projeto `futfilhos` → *Uso e faturamento* → mude para **Blaze**.
-   Crie um alerta de orçamento baixo (ex.: R$ 10) para ficar tranquilo; o uso do time cabe na cota grátis.
-3. **Publicar o servidor** pelo navegador, sem instalar nada:
-   abra <https://console.cloud.google.com>, escolha o projeto `futfilhos` e clique no ícone **Cloud Shell** (`>_`). Rode:
+1. **Stripe**: crie a conta em <https://dashboard.stripe.com> como **Pessoa Física** (CPF; deixe o CNPJ vazio). Como
+   site, use o link do app. Em *Configurações → Métodos de pagamento*, ative **Pix** (se aparecer) e confira que
+   **Cartões** está ativo. Em *Desenvolvedores → Chaves de API*, copie a **chave secreta** (`sk_live_...`).
+2. **Firebase no plano Blaze**: console do Firebase → projeto `futfilhos` → *Uso e faturamento* → **Blaze**. Crie um
+   alerta de orçamento baixo (ex.: R$ 10); o uso do time cabe na cota grátis.
+3. **Publicar o servidor** pelo navegador: abra <https://console.cloud.google.com>, escolha o projeto `futfilhos` e
+   clique no ícone **Cloud Shell** (`>_`). Rode:
 
    ```
    git clone https://github.com/viniverk/discipulosunited && cd discipulosunited
    (cd functions && npm install)
    npx firebase-tools login --no-localhost
-   npx firebase-tools functions:secrets:set ASAAS_API_KEY
-   openssl rand -hex 24
-   npx firebase-tools functions:secrets:set ASAAS_WEBHOOK_TOKEN
+   npx firebase-tools functions:secrets:set STRIPE_SECRET_KEY
+   npx firebase-tools functions:secrets:set STRIPE_WEBHOOK_SECRET
    npx firebase-tools deploy --only functions
    ```
 
-   - No primeiro `secrets:set`, cole a chave de API do Asaas.
-   - O `openssl rand -hex 24` imprime um código aleatório: copie e cole no segundo `secrets:set`. **Guarde esse código** (passo 4).
-   - Se o deploy perguntar o valor de `ASAAS_URL`, aperte Enter (produção). Para testar no sandbox do Asaas use `https://api-sandbox.asaas.com/v3`.
+   - No primeiro `secrets:set`, cole a chave `sk_live_...`.
+   - No segundo, por enquanto digite `trocar` (o valor certo vem no passo 4).
+   - Se o deploy perguntar o valor de `APP_URL`, aperte Enter.
    - Se pedir para ativar APIs (Cloud Build, Artifact Registry, Secret Manager), responda **sim**.
-   - No fim aparece a URL do `webhookAsaas` — algo como `https://southamerica-east1-futfilhos.cloudfunctions.net/webhookAsaas`.
-4. **Webhook no Asaas**: *Integrações → Webhooks → Adicionar*. URL = a do passo anterior; **Token de autenticação** = o
-   código do `openssl`; versão da API v3; marque os eventos de **cobranças** (pelo menos *Cobrança recebida* e
-   *Cobrança confirmada*).
-5. **No app**: Caixa → Ajustes → **Pagamento online** → ligue a opção e preencha a taxa do cartão (% e R$) do seu painel do Asaas.
-6. **Teste**: entre no app com a senha de um atleta fixo e pague uma mensalidade de verdade com Pix. Em segundos ela
-   aparece como paga em Caixa → Mensalidades.
+   - No fim aparece a URL do `webhookStripe` — algo como `https://southamerica-east1-futfilhos.cloudfunctions.net/webhookStripe`.
+4. **Webhook no Stripe**: *Desenvolvedores → Webhooks → Adicionar destino*. URL = a do passo anterior. Eventos:
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`
+   e `checkout.session.expired`. Depois de criar, copie o **segredo de assinatura** (`whsec_...`) e, no Cloud Shell:
+
+   ```
+   npx firebase-tools functions:secrets:set STRIPE_WEBHOOK_SECRET
+   npx firebase-tools deploy --only functions
+   ```
+5. **No app**: Caixa → Ajustes → **Pagamento online** → ligue a opção (as taxas do cartão já vêm preenchidas).
+6. **Teste**: entre com a senha de um atleta fixo, abra **Minha página** e pague um mês. Ao voltar do Stripe, em
+   segundos o mês aparece como pago.
 
 ### Bom saber
 
 - O atleta precisa **entrar com a senha** — é assim que o servidor sabe de quem é o pagamento.
-- Na primeira vez o Asaas pede o **CPF** do atleta para emitir a cobrança. O CPF vai só para o Asaas; o app guarda apenas o código do cliente.
-- Pagamento por cartão conta como pago na confirmação; o dinheiro do cartão cai no Asaas cerca de 32 dias depois.
+- Se o Pix ainda não estiver liberado na sua conta do Stripe, o app avisa e o atleta pode usar o cartão. Quando o
+  Stripe liberar, o Pix passa a funcionar sem mexer no código.
+- O dinheiro cai na sua conta bancária pelo Stripe (Pix em até 2 dias úteis).
 - O admin continua podendo marcar ou desmarcar mensalidade na mão, como antes.
-- Para mudar algo no servidor depois, repita só `git pull` e `npx firebase-tools deploy --only functions` no Cloud Shell.
+- Para atualizar o servidor depois: no Cloud Shell, `cd discipulosunited && git pull && npx firebase-tools deploy --only functions`.
 
 ## 4. Publicar no GitHub Pages
 
