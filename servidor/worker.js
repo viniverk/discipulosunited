@@ -8,6 +8,7 @@
    Variáveis opcionais: APP_URL (padrão: https://viniverk.github.io/discipulosunited/) */
 
 const APP_URL_PADRAO = "https://viniverk.github.io/discipulosunited/";
+const STRIPE_VERSAO = "2025-03-31.basil";
 const MESES_NOMES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 
 class Erro extends Error { constructor(msg, status = 400) { super(msg); this.status = status; } }
@@ -88,7 +89,9 @@ async function criarPagamento(req, env, appUrl) {
   if (tipo === "pix") params["payment_method_options[pix][expires_after_seconds]"] = "3600";
 
   const resp = await fetch("https://api.stripe.com/v1/checkout/sessions", { method: "POST",
-    headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" },
+    // versão fixa da API: a 2026-09-30 tirou o payment_method_types do Checkout, e é ele que separa Pix de cartão
+    headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded",
+               "Stripe-Version": STRIPE_VERSAO },
     body: new URLSearchParams(params) });
   const sessao = await resp.json();
   if (!resp.ok) {
