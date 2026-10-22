@@ -699,7 +699,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-22";
+const VERSAO = "2026-10-22b";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -723,14 +723,12 @@ async function iniciar(){
         import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
         import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js")
       ]);
-      // functions só é carregado quando necessário (pagamento online)
-      const fnMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js").catch(() => null);
       const application = app.initializeApp(firebaseConfig);
       const db = fs.getFirestore(application);
       const autent = auth.getAuth(application);
       try { await auth.signInAnonymously(autent); } catch(e){ console.warn("Login anônimo indisponível:", e.message); }
       fb = { fs, db, uid: autent.currentUser ? autent.currentUser.uid : null };
-      if (fnMod) { const f = fnMod.getFunctions(application, "southamerica-east1"); fb.chamar = nome => fnMod.httpsCallable(f, nome); }
+      fb.auth = autent;   // o token do aparelho vai junto no pedido de pagamento
       // o Firebase guarda esse uid no aparelho: entrou uma vez, continua entrado
       if (fb.uid) fs.onSnapshot(fs.doc(db,"vinculos",fb.uid), d => {
         estado.vinculo = d.exists() ? d.data().atletaId : null;
@@ -998,12 +996,18 @@ const pagamentoOnlineAtivo = () => !!estado.config.pagOnline;
 async function irParaPagamento(tipo){
   const meses = [...document.querySelectorAll("[data-mes-pagar]:checked")].map(x => x.value);
   if (!meses.length) return avisar("Marque pelo menos um mês.");
-  if (!fb || !fb.chamar) return avisar("O pagamento online só funciona no site publicado.");
+  const srv = (estado.config.servidorPagamento || "").trim().replace(/\/+$/, "");
+  if (!fb || !fb.auth || !fb.auth.currentUser) return avisar("O pagamento online só funciona no site publicado.");
+  if (!srv) return avisar("Servidor de pagamento ainda não configurado. Fale com o organizador.");
   const botoes = document.querySelectorAll("[data-pagar-tipo]");
   botoes.forEach(b => { b.disabled = true; });
   avisar("Abrindo o pagamento seguro do Stripe…");
   try {
-    const r = (await fb.chamar("criarPagamento")({ meses, tipo })).data;
+    const token = await fb.auth.currentUser.getIdToken();
+    const resp = await fetch(srv + "/pagar", { method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer " + token }, body: JSON.stringify({ meses, tipo }) });
+    const r = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(r.erro || "Não consegui abrir o pagamento.");
     try { sessionStorage.setItem("du-pagando", JSON.stringify({ id: estado.eu, meses: r.meses })); } catch(_) {}
     location.href = r.url;                       // página do Stripe; ao terminar, volta para o app
   } catch (e) {
@@ -3888,6 +3892,8 @@ function formAjustes(){
     <label class="check"><input type="checkbox" id="f_pagOnline" ${c.pagOnline?"checked":""}>
       <span><b>Atletas pagam a mensalidade pelo app</b>
         <span class="sub">Libera o pagamento (Pix ou cartão) na aba Minha página. Só ligue depois de publicar o servidor — veja o README.</span></span></label>
+    <div class="campo"><label>Endereço do servidor de pagamento</label><input id="f_srvPag" value="${escapar(c.servidorPagamento||"")}" placeholder="https://discipulos-pagamento.SEU-NOME.workers.dev">
+      <div class="sub" style="margin-top:5px">O endereço do Worker no Cloudflare — veja o README.</div></div>
     <div class="dupla"><div class="campo"><label>Taxa do cartão (%)</label><input type="number" step="0.01" id="f_cartaoPct" value="${cfgN("cartaoPct",3.99)}"></div>
       <div class="campo"><label>Taxa fixa do cartão (R$)</label><input type="number" step="0.01" id="f_cartaoFixo" value="${cfgN("cartaoFixo",0.39)}"></div></div>
     <div class="sub" style="margin:-4px 0 14px">Taxa padrão do Stripe para cartão nacional: 3,99% + R$ 0,39. No cartão o atleta paga a taxa; no Pix o time absorve.</div>
@@ -3983,6 +3989,7 @@ function formAjustes(){
       rodadaCobranca:Number(document.getElementById("f_rodcob").value)||2,
       exigirLogin:document.getElementById("f_login").checked,
       pagOnline:document.getElementById("f_pagOnline").checked,
+      servidorPagamento:document.getElementById("f_srvPag").value.trim(),
       cartaoPct:Number(document.getElementById("f_cartaoPct").value)||0,
       cartaoFixo:Number(document.getElementById("f_cartaoFixo").value)||0,
       pin:document.getElementById("f_pin").value.trim() || "1234"

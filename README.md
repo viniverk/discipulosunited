@@ -58,60 +58,47 @@ service cloud.firestore {
 
 Para uma pelada de amigos isso costuma bastar. Se um dia incomodar, o caminho é trocar o login anônimo por login com Google e liberar escrita só para UIDs de uma lista — dá umas 30 linhas a mais no app.
 
-## Pagamento online da mensalidade (Stripe)
+## Pagamento online da mensalidade (Stripe + Cloudflare, tudo grátis)
 
-Na aba **👤 Minha página** o atleta (entrando com a senha) vê as mensalidades dele, marca um ou vários meses — inclusive
-**adiantados**, até 12 — e paga com **Pix** ou **cartão** na página segura do Stripe. O Stripe avisa o servidor (webhook)
-e os meses ficam pagos no app sozinhos. No Pix o time absorve a taxa (1,19%); no cartão a taxa (3,99% + R$ 0,39) é somada
-ao valor do atleta — ajuste em Caixa → Ajustes → Pagamento online.
+Na aba **👤 Minha página** o atleta (entrando com a senha) marca um ou vários meses — inclusive **adiantados**, até 12 —
+e paga com **Pix** ou **cartão** na página segura do Stripe. O Stripe avisa o servidor (webhook) e os meses ficam pagos
+no app sozinhos. No Pix o time absorve a taxa (1,19%); no cartão a taxa (3,99% + R$ 0,39) é somada ao valor do atleta.
 
-O servidor fica na pasta `functions/` (Cloud Functions do Firebase, região São Paulo). As chaves do Stripe ficam no
-Secret Manager do Google — nunca no site.
+O servidor é um arquivo só, `servidor/worker.js`, que roda no **Cloudflare Workers** (plano grátis: 100 mil chamadas
+por dia, sem cartão). O Firebase continua no plano grátis.
 
 ### Passo a passo (uma vez só)
 
 1. **Stripe**: crie a conta em <https://dashboard.stripe.com> como **Pessoa Física** (CPF; deixe o CNPJ vazio). Como
    site, use o link do app. Em *Configurações → Métodos de pagamento*, ative **Pix** (se aparecer) e confira que
-   **Cartões** está ativo. Em *Desenvolvedores → Chaves de API*, copie a **chave secreta** (`sk_live_...`).
-2. **Firebase no plano Blaze**: console do Firebase → projeto `futfilhos` → *Uso e faturamento* → **Blaze**. Crie um
-   alerta de orçamento baixo (ex.: R$ 10); o uso do time cabe na cota grátis.
-3. **Publicar o servidor** pelo navegador: abra <https://console.cloud.google.com>, escolha o projeto `futfilhos` e
-   clique no ícone **Cloud Shell** (`>_`). Rode:
-
-   ```
-   git clone https://github.com/viniverk/discipulosunited && cd discipulosunited
-   (cd functions && npm install)
-   npx firebase-tools login --no-localhost
-   npx firebase-tools functions:secrets:set STRIPE_SECRET_KEY
-   npx firebase-tools functions:secrets:set STRIPE_WEBHOOK_SECRET
-   npx firebase-tools deploy --only functions
-   ```
-
-   - No primeiro `secrets:set`, cole a chave `sk_live_...`.
-   - No segundo, por enquanto digite `trocar` (o valor certo vem no passo 4).
-   - Se o deploy perguntar o valor de `APP_URL`, aperte Enter.
-   - Se pedir para ativar APIs (Cloud Build, Artifact Registry, Secret Manager), responda **sim**.
-   - No fim aparece a URL do `webhookStripe` — algo como `https://southamerica-east1-futfilhos.cloudfunctions.net/webhookStripe`.
-4. **Webhook no Stripe**: *Desenvolvedores → Webhooks → Adicionar destino*. URL = a do passo anterior. Eventos:
-   `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`
-   e `checkout.session.expired`. Depois de criar, copie o **segredo de assinatura** (`whsec_...`) e, no Cloud Shell:
-
-   ```
-   npx firebase-tools functions:secrets:set STRIPE_WEBHOOK_SECRET
-   npx firebase-tools deploy --only functions
-   ```
-5. **No app**: Caixa → Ajustes → **Pagamento online** → ligue a opção (as taxas do cartão já vêm preenchidas).
+   **Cartões** está ativo. Em *Desenvolvedores → Chaves de API*, deixe aberta a **chave secreta** (`sk_live_...`).
+2. **Chave do Firebase para o servidor**: console do Firebase → ⚙️ *Configurações do projeto* → aba **Contas de serviço**
+   → **Gerar nova chave privada**. Baixa um arquivo `.json`. **Não mande esse arquivo para ninguém** — ele dá acesso
+   total ao banco. Ele só vai ser colado no Cloudflare.
+3. **Cloudflare**: crie a conta grátis em <https://dash.cloudflare.com>. Vá em **Workers e Pages → Criar → Worker**
+   (comece pelo "Hello World"), dê o nome `discipulos-pagamento` e clique em **Implantar**. Depois:
+   - **Editar código**: apague tudo, cole o conteúdo inteiro de `servidor/worker.js` e clique em **Implantar**.
+   - **Configurações → Variáveis e segredos → Adicionar**, sempre do tipo **Segredo**:
+     - `STRIPE_SECRET_KEY` = a chave `sk_live_...`
+     - `FIREBASE_SA` = o conteúdo inteiro do arquivo `.json` do passo 2 (abra no Bloco de Notas, copie tudo e cole)
+   - Anote o endereço do Worker, algo como `https://discipulos-pagamento.SEU-NOME.workers.dev`. Abrindo esse
+     endereço no navegador deve aparecer "Servidor de pagamento do Discípulos United: ok".
+4. **Webhook no Stripe**: *Desenvolvedores → Webhooks → Adicionar destino*. URL = o endereço do Worker + `/webhook`.
+   Eventos: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+   `checkout.session.async_payment_failed` e `checkout.session.expired`. Copie o **segredo de assinatura** (`whsec_...`)
+   e adicione no Cloudflare mais um Segredo: `STRIPE_WEBHOOK_SECRET` = `whsec_...`.
+5. **No app**: Caixa → Ajustes → **Pagamento online** → cole o endereço do Worker e ligue a opção.
 6. **Teste**: entre com a senha de um atleta fixo, abra **Minha página** e pague um mês. Ao voltar do Stripe, em
    segundos o mês aparece como pago.
 
 ### Bom saber
 
 - O atleta precisa **entrar com a senha** — é assim que o servidor sabe de quem é o pagamento.
-- Se o Pix ainda não estiver liberado na sua conta do Stripe, o app avisa e o atleta pode usar o cartão. Quando o
-  Stripe liberar, o Pix passa a funcionar sem mexer no código.
-- O dinheiro cai na sua conta bancária pelo Stripe (Pix em até 2 dias úteis).
+- Se o Pix ainda não estiver liberado no Stripe, o app avisa e o atleta usa o cartão. Quando o Stripe liberar, o Pix
+  passa a funcionar sem mexer no código.
 - O admin continua podendo marcar ou desmarcar mensalidade na mão, como antes.
-- Para atualizar o servidor depois: no Cloud Shell, `cd discipulosunited && git pull && npx firebase-tools deploy --only functions`.
+- Se `servidor/worker.js` mudar no GitHub, repita só o "Editar código → colar → Implantar" no Cloudflare.
+- Para testar sem dinheiro de verdade, use as chaves de **teste** do Stripe (`sk_test_...` e o webhook do modo teste).
 
 ## 4. Publicar no GitHub Pages
 
