@@ -408,6 +408,8 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .pag-pix img{width:min(240px,70vw);align-self:center;border-radius:10px;background:#fff;padding:8px}
 .pag-pix textarea{width:100%;min-height:70px;font-size:12px;border-radius:9px;border:1px solid var(--borda);padding:8px;word-break:break-all}
 .aviso.pago-ok{background:#E5F5EC;border-left-color:#1E8E4F}
+#mens_lista .item{gap:6px}
+.selo.on-isento{box-shadow:0 0 0 1.5px var(--cinza) inset}
 .eu-topo{text-align:center}
 .eu-topo .retrato.grande{width:76px;height:76px;font-size:26px;margin:0 auto 8px;display:flex}
 .eu-nome b{display:block;font-family:var(--display);font-size:24px;font-weight:400;letter-spacing:.4px;text-transform:uppercase}
@@ -699,7 +701,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-22c";
+const VERSAO = "2026-10-26";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -937,6 +939,10 @@ const mesMais = (m, n) => {
 const mesesPagosDe = id => estado.mensalidades.filter(x => (x.pagos||{})[id]).map(x => x.id).sort();
 const mensalidadeDoMes = m => estado.mensalidades.find(x => x.id === m);
 const mensalidadePaga = (m,id) => !!(mensalidadeDoMes(m)?.pagos || {})[id];
+// isento no mês (DM, viagem, qualquer motivo): não deve nada naquele mês e continua coberto nas rodadas
+const isencaoDe = (m,id) => (mensalidadeDoMes(m)?.isentos || {})[id] || null;
+const mensalidadeIsenta = (m,id) => !!isencaoDe(m,id);
+const mensalidadeQuitada = (m,id) => mensalidadePaga(m,id) || mensalidadeIsenta(m,id);
 const ehFixo = id => situacaoDe(atletaDe(id)) === "fixo";
 // o que ele era antes de virar inativo — o preço da rodada passada não pode mudar
 // só porque hoje ele saiu do time
@@ -968,14 +974,36 @@ const deveMensalNoMes = (id, mes) => {
 };
 const mensalistasDoMes = m => estado.atletas.filter(a => deveMensalNoMes(a.id, m));
 
-async function marcarMensalidade(m, id, pago){
+async function gravarMensalidadeMes(m, mudar){
   const atual = mensalidadeDoMes(m) || { id:m, pagos:{} };
-  const pagos = { ...(atual.pagos || {}) };
-  const online = { ...(atual.online || {}) };
-  if (pago) pagos[id] = Date.now(); else { delete pagos[id]; delete online[id]; }
+  const doc = { pagos: { ...(atual.pagos || {}) }, online: { ...(atual.online || {}) }, isentos: { ...(atual.isentos || {}) } };
+  mudar(doc);
   const i = estado.mensalidades.findIndex(x => x.id === m);
-  if (i >= 0) estado.mensalidades[i] = { ...atual, pagos, online }; else estado.mensalidades.push({ id:m, pagos, online });
-  if (fb) await fb.fs.setDoc(fb.fs.doc(fb.db,"mensalidades",m), { pagos, online }, { merge:false });
+  if (i >= 0) estado.mensalidades[i] = { ...atual, ...doc }; else estado.mensalidades.push({ id:m, ...doc });
+  if (fb) await fb.fs.setDoc(fb.fs.doc(fb.db,"mensalidades",m), doc, { merge:false });
+}
+async function marcarMensalidade(m, id, pago){
+  await gravarMensalidadeMes(m, d => {
+    if (pago) { d.pagos[id] = Date.now(); delete d.isentos[id]; }
+    else { delete d.pagos[id]; delete d.online[id]; }
+  });
+}
+// motivo = texto (isenta) ou null (tira a isenção)
+async function marcarIsencao(m, id, motivo){
+  await gravarMensalidadeMes(m, d => {
+    if (motivo) { d.isentos[id] = { motivo: String(motivo).slice(0, 60), em: Date.now() }; delete d.pagos[id]; delete d.online[id]; }
+    else delete d.isentos[id];
+  });
+}
+function perguntarIsencao(m, id){
+  const atual = isencaoDe(m, id);
+  if (atual) {
+    if (!confirm(`Tirar a isenção de ${nomeDe(id)} em ${rotuloMes(m)} (${atual.motivo})? A mensalidade volta a ser cobrada.`)) return null;
+    return "";
+  }
+  const motivo = prompt(`Isentar ${nomeDe(id)} da mensalidade de ${rotuloMes(m)}.\nMotivo:`, "DM");
+  if (motivo === null) return null;
+  return motivo.trim() || "isento";
 }
 
 /* ---------- pagamento online da mensalidade (Stripe, via Cloud Functions) ---------- */
@@ -983,12 +1011,12 @@ const MESES_A_FRENTE = 12;          // quantos meses dá para adiantar
 // meses que o atleta pode pagar: os em aberto e os próximos (a partir de quando virou mensalista)
 function mesesParaPagar(id){
   if (!ehFixo(id)) return [];
-  const abertos = mesesComCobranca().filter(m => deveMensalNoMes(id, m) && !mensalidadePaga(m, id));
+  const abertos = mesesComCobranca().filter(m => deveMensalNoMes(id, m) && !mensalidadeQuitada(m, id));
   const frente = [];
   for (let k = 0; k < MESES_A_FRENTE; k++) frente.push(mesMais(mesAtual(), k));
-  return [...new Set([...abertos, ...frente.filter(m => jaMensalista(id, m) && !mensalidadePaga(m, id))])].sort();
+  return [...new Set([...abertos, ...frente.filter(m => jaMensalista(id, m) && !mensalidadeQuitada(m, id))])].sort();
 }
-const emAtraso = (id, m) => mesesComCobranca().includes(m) && deveMensalNoMes(id, m) && !mensalidadePaga(m, id) && m < mesAtual();
+const emAtraso = (id, m) => mesesComCobranca().includes(m) && deveMensalNoMes(id, m) && !mensalidadeQuitada(m, id) && m < mesAtual();
 const valorCartao = () => { const v = cfgN("valorMensalista",50), pct = cfgN("cartaoPct",3.99)/100, fixo = cfgN("cartaoFixo",0.39);
   return Math.round((v + fixo) / (1 - pct) * 100) / 100; };
 const pagamentoOnlineAtivo = () => !!estado.config.pagOnline;
@@ -1089,9 +1117,10 @@ function telaEu(){
   const podePagar = mesesParaPagar(id);
   // histórico: últimos meses cobrados + os próximos, com a situação de cada um
   const vistos = new Set([...mesesComCobranca().filter(m => deveMensalNoMes(id, m)).slice(-6), ...podePagar.slice(0, 3),
-    ...estado.mensalidades.filter(x => (x.pagos||{})[id]).map(x => x.id)]);
+    ...estado.mensalidades.filter(x => (x.pagos||{})[id] || (x.isentos||{})[id]).map(x => x.id)]);
   const linhas = [...vistos].sort().reverse().slice(0, 14);
-  const selo = m => mensalidadePaga(m, id)
+  const selo = m => mensalidadeIsenta(m, id) ? `<span class="selo neutro">isento · ${escapar(isencaoDe(m,id).motivo)}</span>`
+      : mensalidadePaga(m, id)
       ? `<span class="selo pago">pago${((mensalidadeDoMes(m)||{}).online||{})[id] ? " · app" : ""}</span>`
       : emAtraso(id, m) ? `<span class="selo deve">em atraso</span>`
       : mesesComCobranca().includes(m) ? `<span class="selo deve">em aberto</span>` : `<span class="selo neutro">a vencer</span>`;
@@ -1173,7 +1202,7 @@ function caixa(){
   let atrasadoMensal = 0, pendenteMensal = 0;
   mesesComCobranca().forEach(m => {
     const r = rodadaDeCobranca(m);
-    const abertos = mensalistasDoMes(m).filter(a => !mensalidadePaga(m, a.id)).length * vm;
+    const abertos = mensalistasDoMes(m).filter(a => !mensalidadeQuitada(m, a.id)).length * vm;
     if (r.data < hoje) atrasadoMensal += abertos; else pendenteMensal += abertos;
   });
   const atrasado = atrasadoRodadas + atrasadoMensal;
@@ -1206,6 +1235,7 @@ function saldoAtleta(id){
     const v = cfgN("valorMensalista",50);
     if (ehFixo(id)) mesesAdiantados = mesesPagosDe(id).filter(m => !cobraveis.includes(m)).length;
     mesesDele.forEach(m => {
+      if (mensalidadeIsenta(m, id)) return;          // isento: não deve nada nesse mês
       devido += v;
       if (mensalidadePaga(m, id)) { pago += v; return; }
       if (rodadaDeCobranca(m).data < hoje) atrasado += v; else pendente += v;
@@ -1517,7 +1547,7 @@ function textoDaLista(j){
     // fixo: o ⏳ vem do mesmo saldo que o selo da lista mostra, para os dois nunca divergirem
     if (temMensal && ehFixo(id)) {
       if (saldoAtleta(id).aberto > 0.005) return "🎫⏳";
-      return mensalidadePaga(mesJ, id) ? "🎫✅" : "🎫";
+      return mensalidadeIsenta(mesJ, id) ? "🎫🆓" : mensalidadePaga(mesJ, id) ? "🎫✅" : "🎫";
     }
     return "🎫";
   };
@@ -1564,7 +1594,7 @@ function textoDaLista(j){
 
   if (temMensal) {
     const fixosNaLista = dentro.filter(ehFixo);
-    const devendoMensal = fixosNaLista.filter(id => !mensalidadePaga(mesJ, id)).length;
+    const devendoMensal = fixosNaLista.filter(id => !mensalidadeQuitada(mesJ, id)).length;
     const conv = dentro.filter(id => !ehFixo(id) && !j.presencas[id].isento && !j.presencas[id].pago).length;
     if (fixosNaLista.length) {
       const base = `*Mensalidade de ${rotuloMes(mesJ)}* (${dinheiro(cfgN("valorMensalista",50))}): `
@@ -1602,7 +1632,8 @@ function textoMensalidades(m){
   const r = rodadaDeCobranca(m);
   const gente = mensalistasDoMes(m).sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
   const pagos = gente.filter(a => mensalidadePaga(m, a.id));
-  const abertos = gente.filter(a => !mensalidadePaga(m, a.id));
+  const isentos = gente.filter(a => mensalidadeIsenta(m, a.id));
+  const abertos = gente.filter(a => !mensalidadeQuitada(m, a.id));
 
   const L = [`*⚽ ${nomeGrupo()}*`, `*MENSALIDADE — ${rotuloMes(m).toUpperCase()}*`, `Valor: *${dinheiro(v)}* por fixo`];
   if (r) L.push(`Cobrada na rodada de ${dataCurta(r.data)}`);
@@ -1611,6 +1642,8 @@ function textoMensalidades(m){
   L.push(`*JÁ PAGARAM (${pagos.length})*`);
   if (pagos.length) pagos.forEach((a,i) => L.push(`${i+1}. ${a.nome} ✅`));
   else L.push("_ninguém ainda_");
+
+  if (isentos.length) { L.push(""); L.push(`*ISENTOS (${isentos.length})*`); isentos.forEach(a => L.push(`• ${a.nome} — ${isencaoDe(m,a.id).motivo}`)); }
 
   L.push("");
   L.push(`*EM ABERTO (${abertos.length})* — total *${dinheiro(abertos.length*v)}*`);
@@ -1950,6 +1983,8 @@ function telaCaixa(){
       const r = rodadaDeCobranca(m), v = cfgN("valorMensalista",50);
       const gente = mensalistasDoMes(m).sort((a,b) => a.nome.localeCompare(b.nome,"pt-BR"));
       const pagos = gente.filter(a => mensalidadePaga(m,a.id)).length;
+      const nIsentos = gente.filter(a => mensalidadeIsenta(m,a.id)).length;
+      const cobrados = gente.length - nIsentos;
       const situacao = r ? (meses.includes(m)
             ? `cobrada na rodada de ${dataCurta(r.data)}`
             : `cobrança na rodada de ${dataCurta(r.data)} — ainda não é dívida`)
@@ -1962,26 +1997,30 @@ function telaCaixa(){
           <div><b>${escapar(rotuloMes(m))}</b><span class="sub">${escapar(situacao)}</span></div>
           <button data-mes-passo="1" aria-label="Próximo mês">›</button>
         </div>
-        <div class="aviso" style="margin-top:12px">${plural(pagos,"pagou","pagaram")} de ${gente.length} ·
-          <b>${dinheiro(pagos*v)}</b> de ${dinheiro(gente.length*v)}
-          ${estado.admin?`<div class="sub">Toque no selo para marcar o mês. Toque no nome para acertar vários meses de uma vez.</div>`:""}</div>
+        <div class="aviso" style="margin-top:12px">${plural(pagos,"pagou","pagaram")} de ${cobrados} ·
+          <b>${dinheiro(pagos*v)}</b> de ${dinheiro(cobrados*v)}${nIsentos ? ` · ${plural(nIsentos,"isento","isentos")}` : ""}
+          ${estado.admin?`<div class="sub">Toque no selo para marcar o mês. Toque no nome para acertar vários meses ou isentar (DM, viagem…).</div>`:""}</div>
         ${gente.map(a => {
           const ok = mensalidadePaga(m,a.id);
+          const isen = isencaoDe(m,a.id);
           const frente = mesesPagosDe(a.id).filter(x => x > m);
           return `<div class="item">
             <div class="item-corpo" ${estado.admin?`data-mensal-atleta="${a.id}" style="cursor:pointer"`:""}>
               <div class="nome">${a.goleiro?"🧤 ":""}${escapar(a.nome)}</div>
               ${frente.length?`<div class="sub">adiantado até ${escapar(rotuloMes(frente[frente.length-1]))}</div>`:""}
             </div>
-            ${estado.admin
+            ${isen
+              ? (estado.admin ? `<button class="selo neutro" data-isento="${a.id}" data-mes="${m}">isento · ${escapar(isen.motivo)}</button>`
+                              : `<span class="selo neutro">isento · ${escapar(isen.motivo)}</span>`)
+              : estado.admin
               ? `<button class="selo ${ok?"pago":"deve"}" data-mensal="${a.id}" data-mes="${m}">${ok?"pago":"marcar pago"}</button>`
               : `<span class="selo ${ok?"pago":"deve"}">${ok?"pago":dinheiro(v)}</span>`}
           </div>`;
         }).join("")}
         ${(()=>{
-          const abertos = meses.filter(x => x !== m && mensalistasDoMes(x).some(a => !mensalidadePaga(x,a.id)));
+          const abertos = meses.filter(x => x !== m && mensalistasDoMes(x).some(a => !mensalidadeQuitada(x,a.id)));
           return abertos.length ? `<div class="sub" style="margin-top:10px">Também em aberto: ${abertos.map(x =>
-            `${escapar(rotuloMes(x))} (${mensalistasDoMes(x).filter(a=>!mensalidadePaga(x,a.id)).length})`).join(" · ")}</div>` : "";
+            `${escapar(rotuloMes(x))} (${mensalistasDoMes(x).filter(a=>!mensalidadeQuitada(x,a.id)).length})`).join(" · ")}</div>` : "";
         })()}
         ${c.mensalAdiantado>0.005?`<div class="sub" style="margin-top:6px">${dinheiro(c.mensalAdiantado)} já no caixa de meses que ainda não venceram.</div>`:""}
         <button class="btn-zap" style="width:100%;margin-top:12px" data-compartilhar-texto="mensal" data-mes="${m}">📤 Mandar a mensalidade no grupo</button>
@@ -3833,23 +3872,32 @@ function formMensalidadesAtleta(id){
 
   function pintar(){
     const pagos = meses.filter(m => mensalidadePaga(m,id));
-    const abertos = meses.filter(m => cobraveis.includes(m) && !mensalidadePaga(m,id));
+    const abertos = meses.filter(m => cobraveis.includes(m) && !mensalidadeQuitada(m,id));
     document.getElementById("mens_resumo").innerHTML =
       `<b>${plural(pagos.length,"mês pago","meses pagos")}</b> na tela · ${dinheiro(pagos.length*v)}` +
       (abertos.length ? `<div class="sub">${plural(abertos.length,"mês","meses")} em aberto: ${abertos.map(rotuloMes).join(", ")}</div>`
                       : `<div class="sub">Nada em aberto nesta faixa.</div>`);
     document.getElementById("mens_lista").innerHTML = meses.map(m => {
       const ok = mensalidadePaga(m,id);
+      const isen = isencaoDe(m,id);
       const devido = cobraveis.includes(m);
       return `<div class="item">
         <div class="item-corpo"><div class="nome">${escapar(rotuloMes(m))}</div>
-          <div class="sub">${devido ? "já é devido" : "ainda não venceu"}${m===mesAtual()?" · mês atual":""}</div></div>
-        <button class="selo ${ok?"pago":devido?"deve":"neutro"}" data-mens-mes="${m}">${ok?"pago":"marcar"}</button>
+          <div class="sub">${isen ? `isento · ${escapar(isen.motivo)}` : devido ? "já é devido" : "ainda não venceu"}${m===mesAtual()?" · mês atual":""}</div></div>
+        ${isen ? "" : `<button class="selo ${ok?"pago":devido?"deve":"neutro"}" data-mens-mes="${m}">${ok?"pago":"marcar"}</button>`}
+        <button class="selo ${isen?"neutro on-isento":"neutro"}" data-mens-isento="${m}" title="Isentar este mês">${isen?"isento ✕":"isentar"}</button>
       </div>`;
     }).join("");
   }
 
   document.getElementById("mens_lista").addEventListener("click", async e => {
+    const bi = e.target.closest("[data-mens-isento]");
+    if (bi) {
+      const m = bi.dataset.mensIsento, motivo = perguntarIsencao(m, id);
+      if (motivo === null) return;
+      await marcarIsencao(m, id, motivo || null);
+      pintar(); desenhar(); return;
+    }
     const b = e.target.closest("[data-mens-mes]"); if (!b) return;
     const m = b.dataset.mensMes;
     await marcarMensalidade(m, id, !mensalidadePaga(m,id));
@@ -4134,7 +4182,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-extrato],[data-lupa],[data-apagar-peca]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-isento],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-extrato],[data-lupa],[data-apagar-peca]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -4221,6 +4269,12 @@ document.body.addEventListener("click", async e => {
     await salvarEscalacao(j, { vermelho:{}, colete:{} }); desenhar(); avisar("Escalação limpa.");
   }
   else if (d.acao === "sortear-times") await sortearTimes();
+  else if (d.isento) {
+    const motivo = perguntarIsencao(d.mes, d.isento);
+    if (motivo === null) return;
+    await marcarIsencao(d.mes, d.isento, motivo || null); desenhar();
+    avisar(motivo ? `${nomeDe(d.isento)} isento em ${rotuloMes(d.mes)}.` : "Isenção retirada.");
+  }
   else if (d.pagarTipo) await irParaPagamento(d.pagarTipo);
   else if (d.quizOp !== undefined) await responderQuiz(Number(d.quizOp));
   else if (d.acao === "quiz-comecar") await comecarQuiz();

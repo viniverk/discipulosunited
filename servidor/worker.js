@@ -71,8 +71,10 @@ async function criarPagamento(req, env, appUrl) {
   const desde = atleta.mensalDesde || "";
 
   const docs = await Promise.all(meses.map(m => fs.get(`mensalidades/${m}`)));
-  const aPagar = meses.filter((m, i) => !((docs[i] && docs[i].pagos) || {})[atletaId] && (!desde || m >= desde));
-  if (!aPagar.length) throw new Erro("Esses meses já estão pagos.");
+  // tira meses já pagos, isentos (DM etc.) ou anteriores ao início como mensalista
+  const aPagar = meses.filter((m, i) => !((docs[i] && docs[i].pagos) || {})[atletaId]
+    && !((docs[i] && docs[i].isentos) || {})[atletaId] && (!desde || m >= desde));
+  if (!aPagar.length) throw new Erro("Esses meses já estão pagos ou isentos.");
 
   const cfg = (await fs.get("config/geral")) || {};
   if (!cfg.pagOnline) throw new Erro("Pagamento online desligado nos ajustes.");
