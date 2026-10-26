@@ -457,6 +457,12 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .quiz-admin summary::-webkit-details-marker{display:none}
 .quiz-pos{width:30px;text-align:center;font-weight:700;font-size:15px;flex-shrink:0}
 .quiz-pts{font-family:var(--display);font-size:19px;font-weight:400;flex-shrink:0}
+.quiz-premios{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.quiz-premios>div{display:flex;align-items:center;gap:8px;background:#FBF6E8;border-radius:10px;padding:10px;color:#14140F}
+.quiz-premios>div>b{font-size:24px}
+.quiz-premios span{display:flex;flex-direction:column;font-size:12px;color:#5A554B}
+.quiz-premios span b{font-size:14px;color:#14140F}
+.quiz-premio{display:inline-block;font-size:11px;font-weight:700;background:#FBF6E8;color:#7A5C10;border-radius:20px;padding:1px 7px;margin-right:6px}
 .item.quiz-eu{background:#FBF6E8;border-radius:10px;padding-left:6px;padding-right:6px}
 #tela-times .banco.vermelho .ficha,#tela-times .banco.colete .ficha{flex:1 1 100%;font-size:12.5px;padding:6px 8px;text-align:left}
 .time{background:var(--cal);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden}
@@ -701,7 +707,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-26b";
+const VERSAO = "2026-10-26c";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -2925,18 +2931,37 @@ function cartaoRankingQuiz(){
   const lista = rankingQuiz(temp), quem = avaliadorQuiz();
   const anterior = rankingQuiz(String(Number(temp)-1))[0];
   const medalha = i => ["🥇","🥈","🥉"][i] || `${i+1}º`;
+  const premio = i => i === 0 ? `<span class="quiz-premio">🏆 troféu</span>` : i < 3 ? `<span class="quiz-premio">🎁 prêmio surpresa</span>` : "";
   return `<div class="cartao">
     <div class="titulo">Ranking da temporada ${temp}</div>
+    <div class="quiz-premios">
+      <div><b>🏆</b><span><b>1º lugar</b>troféu do campeão</span></div>
+      <div><b>🎁</b><span><b>2º e 3º</b>prêmios surpresa</span></div>
+    </div>
+    <div class="sub" style="margin:-2px 0 10px">Os prêmios são entregues no fim da temporada, a soma de todas as semanas de ${temp}.</div>
     ${anterior ? `<div class="aviso" style="margin-bottom:8px">🏆 Campeão de ${Number(temp)-1}: <b>${escapar(nomeDe(anterior.id))}</b> · ${anterior.pontos} pts</div>` : ""}
     ${estado.quizErro ? `<div class="aviso grave">O banco não deixou ler o ranking. Confira as regras do Firestore (coleção <b>quizRodadas</b>).</div>` : ""}
     ${lista.length ? lista.map((x,i) => `<div class="item ${x.id===quem?"quiz-eu":""}">
         <div class="quiz-pos">${medalha(i)}</div>
         ${retratoDe(atletaDe(x.id))}
         <div class="item-corpo"><div class="nome">${escapar(nomeDe(x.id))}</div>
-          <div class="sub">${plural(x.semanas,"semana","semanas")} · ${x.respondidas ? Math.round(100*x.acertos/x.respondidas) : 0}% de acerto</div></div>
+          <div class="sub">${premio(i)}${plural(x.semanas,"semana","semanas")} · ${x.respondidas ? Math.round(100*x.acertos/x.respondidas) : 0}% de acerto</div></div>
         <b class="quiz-pts">${x.pontos}</b></div>`).join("")
       : `<div class="vazio"><b>Ninguém jogou ainda</b>Seja o primeiro da temporada!</div>`}
+    ${lista.length ? `<button class="btn-zap" style="width:100%;margin-top:12px" data-compartilhar-texto="ranking-quiz">📤 Mandar o ranking no grupo</button>` : ""}
   </div>`;
+}
+
+function textoRankingQuiz(){
+  const temp = temporadaDe(semanaQuiz()), lista = rankingQuiz(temp);
+  const medalha = i => ["🥇","🥈","🥉"][i] || `${i+1}º`;
+  const L = [`*📖⚽ QUIZ ${nomeGrupo()} — RANKING ${temp}*`, `Atualizado na semana ${rotuloSemana(semanaQuiz())}`, "",
+    "🏆 1º lugar: *troféu do campeão*", "🎁 2º e 3º: *prêmios surpresa*", ""];
+  lista.slice(0, 15).forEach((x, i) => L.push(`${medalha(i)} ${nomeDe(x.id)} — *${x.pontos} pts*${i === 0 ? " 🏆" : i < 3 ? " 🎁" : ""}`));
+  if (lista.length > 15) L.push(`… e mais ${lista.length - 15}`);
+  L.push("", "Rodada nova toda quarta-feira. Bora jogar! 🙌");
+  if (/^https?:/.test(location.href)) L.push(location.href.split("#")[0]);
+  return L.join("\n");
 }
 
 function cartaoPerguntasAdmin(){
@@ -4226,6 +4251,7 @@ document.body.addEventListener("click", async e => {
   else if (d.compartilharTexto === "identidade") await compartilharTexto(textoIdentidade());
   else if (d.compartilharTexto === "times")      await compartilharTexto(textoTimes());
   else if (d.compartilharTexto === "quiz")       await compartilharTexto(textoQuiz());
+  else if (d.compartilharTexto === "ranking-quiz") await compartilharTexto(textoRankingQuiz());
   else if (d.compartilharTexto === "mensal")     await compartilharTexto(textoMensalidades(d.mes));
   else if (d.compartilharTexto === "frequencia") await compartilharTexto(textoFrequencia());
   else if (d.ordem) { estado.ordemAtletas = d.ordem; desenhar(); }
