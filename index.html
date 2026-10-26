@@ -2794,16 +2794,34 @@ const idRodadaQuiz = (sem, atleta) => `${sem}__${atleta}`;
 // (rodadas salvas quando a semana começava na segunda continuam valendo)
 const fimDaSemana = sem => { const [a,m,d] = sem.split("-").map(Number); const f = new Date(a, m-1, d+6);
   return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,"0")}-${String(f.getDate()).padStart(2,"0")}`; };
+// a semana de uma rodada vem do momento em que ela começou (rodadas salvas na regra antiga, de segunda a domingo,
+// guardaram outra data na chave); sem esse horário, vale a semana que contém a data da chave
+// a 1ª rodada é a semana de 21 a 27/10/2026; quem jogou no lançamento (terça 20/10) conta nela também
+const QUIZ_1A_RODADA = "2026-10-21";
+const semanaDaRodada = r => {
+  const s = r.inicio ? semanaQuiz(new Date(r.inicio))
+    : (() => { const [a,m,d] = String(r.semana||"").split("-").map(Number); return a ? semanaQuiz(new Date(a, m-1, d)) : ""; })();
+  return s && s < QUIZ_1A_RODADA ? QUIZ_1A_RODADA : s;
+};
 const minhaRodadaQuiz = (sem, atleta) => {
-  const fim = fimDaSemana(sem);
-  const daSemana = estado.quizRodadas.filter(r => r.de === atleta && (r.id === idRodadaQuiz(sem, atleta) || (r.semana >= sem && r.semana <= fim)));
+  const daSemana = estado.quizRodadas.filter(r => r.de === atleta && (r.id === idRodadaQuiz(sem, atleta) || semanaDaRodada(r) === sem));
   return daSemana.find(r => r.fim) || daSemana.find(r => r.id === idRodadaQuiz(sem, atleta)) || daSemana[0];
 };
+// número da rodada, contando a partir da 1ª (21/10/2026), uma por semana
+function numeroRodada(sem){
+  const dia = x => { const [a,m,d] = x.split("-").map(Number); return Date.UTC(a, m-1, d); };
+  return Math.max(1, Math.round((dia(sem) - dia(QUIZ_1A_RODADA)) / (7*86400000)) + 1);
+}
+const nomeRodada = sem => `${numeroRodada(sem)}ª Rodada`;
 const pontosDaResposta = (certa, ms) => certa ? 10 + Math.max(0, Math.round(5 * (1 - ms / (QUIZ_SEG*1000)))) : 0;
 
 function rankingQuiz(temp){
-  const por = {};
-  estado.quizRodadas.filter(r => r.temporada === temp && r.de).forEach(r => {
+  const por = {}, melhor = {};
+  estado.quizRodadas.filter(r => r.de && semanaDaRodada(r).slice(0,4) === temp).forEach(r => {
+    const k = r.de + "|" + semanaDaRodada(r);
+    if (!melhor[k] || (Number(r.pontos)||0) > (Number(melhor[k].pontos)||0)) melhor[k] = r;
+  });
+  Object.values(melhor).forEach(r => {
     const x = por[r.de] || (por[r.de] = { id:r.de, pontos:0, semanas:0, acertos:0, respondidas:0 });
     x.pontos += Number(r.pontos)||0; x.semanas += 1;
     x.acertos += Number(r.acertos)||0; x.respondidas += (r.respostas||[]).length;
@@ -2842,12 +2860,12 @@ function mostrarPerguntaQuiz(){
   const r = quizAo.rodada, el = document.getElementById("tela-quiz");
   if (!r || !el) return;
   const i = r.respostas.length;
-  if (i >= r.perguntas.length) return terminarQuiz();
+  if (i >= (r.perguntas||[]).length) return terminarQuiz();
   const q = perguntaDe(r.perguntas[i]);
   if (!q) { r.respostas.push({ q:r.perguntas[i], escolha:null, ms:0, pts:0 }); return mostrarPerguntaQuiz(); }
   quizAo.resposta = null; quizAo.inicio = Date.now();
   el.innerHTML = `<div class="cartao quiz-jogo">
-    <div class="quiz-topo"><span>Pergunta <b>${i+1}</b> de ${r.perguntas.length}</span>
+    <div class="quiz-topo"><span>Pergunta <b>${i+1}</b> de ${(r.perguntas||[]).length}</span>
       <span class="selo neutro">${q.t === "f" ? "⚽ Futebol" : "📖 Bíblia"}</span><span><b>${r.pontos}</b> pts</span></div>
     <div class="quiz-barra"><i id="quizBarra"></i></div>
     <div class="quiz-pergunta">${escapar(q.p)}</div>
@@ -2875,7 +2893,7 @@ async function responderQuiz(escolha){
   quizAo.resposta = { escolha, pts };
   r.respostas = [...r.respostas, { q:q.id, escolha, ms, pts }];
   r.pontos += pts; if (certa) r.acertos += 1;
-  if (r.respostas.length >= r.perguntas.length) r.fim = Date.now();
+  if (r.respostas.length >= (r.perguntas||[]).length) r.fim = Date.now();
   // pinta os botões: verde na certa, vermelho na escolhida errada
   document.querySelectorAll("[data-quiz-op]").forEach(b => {
     const i = Number(b.dataset.quizOp); b.disabled = true;
@@ -2901,15 +2919,15 @@ function textoQuiz(){
   const quem = avaliadorQuiz(); const r = quem && minhaRodadaQuiz(semanaQuiz(), quem);
   if (!r) return "";
   const pos = rankingQuiz(r.temporada).findIndex(x => x.id === quem) + 1;
-  return [`*📖⚽ QUIZ ${nomeGrupo()}*`, `Semana ${rotuloSemana(r.semana)}`, "",
-    `Fiz *${r.pontos} pontos* e acertei *${r.acertos} de ${r.perguntas.length}*.`,
+  return [`*📖⚽ QUIZ ${nomeGrupo()}*`, `${nomeRodada(semanaDaRodada(r))} · ${rotuloSemana(semanaDaRodada(r))}`, "",
+    `Fiz *${r.pontos} pontos* e acertei *${r.acertos} de ${(r.perguntas||[]).length}*.`,
     pos ? `Estou em ${pos}º no ranking de ${r.temporada}.` : "", "", "E você? Bora jogar! 🙌",
     /^https?:/.test(location.href) ? location.href.split("#")[0] : ""].filter((x,i,a) => x !== "" || a[i-1] !== "").join("\n");
 }
 
 function cartaoRodadaQuiz(){
   const quem = avaliadorQuiz(), sem = semanaQuiz();
-  const cab = `<div class="titulo">Rodada da semana · ${rotuloSemana(sem)}</div>`;
+  const cab = `<div class="titulo">${nomeRodada(sem)} · ${rotuloSemana(sem)}</div>`;
   if (!quem) return `<div class="cartao">${cab}
     <div class="sub" style="margin-bottom:10px">10 perguntas (7 de Bíblia e 3 de futebol), ${QUIZ_SEG} segundos cada. Uma rodada por semana.</div>
     ${fb ? `<button class="btn-main" style="width:100%" data-acao="entrar">🔐 Entrar com minha senha para jogar</button>`
@@ -2922,7 +2940,7 @@ function cartaoRodadaQuiz(){
       Todo mundo recebe as mesmas perguntas. Não conte as respostas para os outros! 😉</div>
     <button class="btn-main" style="width:100%" data-acao="quiz-comecar">${r ? `Continuar (pergunta ${r.respostas.length+1})` : "▶️ Começar a rodada"}</button></div>`;
   return `<div class="cartao">${cab}
-    <div class="quiz-resultado"><b>${r.pontos}</b><span>pontos · ${r.acertos} de ${r.perguntas.length} certas</span></div>
+    <div class="quiz-resultado"><b>${r.pontos}</b><span>pontos · ${r.acertos} de ${(r.perguntas||[]).length} certas</span></div>
     <button class="btn-zap" style="width:100%;margin:12px 0" data-compartilhar-texto="quiz">📤 Mandar no grupo</button>
     <details class="quiz-revisao"><summary>Ver respostas e referências</summary>
       ${r.respostas.map((x,i) => { const q = perguntaDe(x.q); if (!q) return "";
@@ -2953,7 +2971,7 @@ function cartaoRankingQuiz(){
         <div class="quiz-pos">${medalha(i)}</div>
         ${retratoDe(atletaDe(x.id))}
         <div class="item-corpo"><div class="nome">${escapar(nomeDe(x.id))}</div>
-          <div class="sub">${premio(i)}${plural(x.semanas,"semana","semanas")} · ${x.respondidas ? Math.round(100*x.acertos/x.respondidas) : 0}% de acerto</div></div>
+          <div class="sub">${premio(i)}${plural(x.semanas,"rodada","rodadas")} · ${x.respondidas ? Math.round(100*x.acertos/x.respondidas) : 0}% de acerto</div></div>
         <b class="quiz-pts">${x.pontos}</b></div>`).join("")
       : `<div class="vazio"><b>Ninguém jogou ainda</b>Seja o primeiro da temporada!</div>`}
     ${lista.length ? `<button class="btn-zap" style="width:100%;margin-top:12px" data-compartilhar-texto="ranking-quiz">📤 Mandar o ranking no grupo</button>` : ""}
@@ -2963,7 +2981,7 @@ function cartaoRankingQuiz(){
 function textoRankingQuiz(){
   const temp = temporadaDe(semanaQuiz()), lista = rankingQuiz(temp);
   const medalha = i => ["🥇","🥈","🥉"][i] || `${i+1}º`;
-  const L = [`*📖⚽ QUIZ ${nomeGrupo()} — RANKING ${temp}*`, `Atualizado na semana ${rotuloSemana(semanaQuiz())}`, "",
+  const L = [`*📖⚽ QUIZ ${nomeGrupo()} — RANKING ${temp}*`, `Atualizado na ${nomeRodada(semanaQuiz())} (${rotuloSemana(semanaQuiz())})`, "",
     "🏆 1º lugar: *troféu do campeão*", "🎁 2º e 3º: *prêmios surpresa*", ""];
   lista.slice(0, 15).forEach((x, i) => L.push(`${medalha(i)} ${nomeDe(x.id)} — *${x.pontos} pts*${i === 0 ? " 🏆" : i < 3 ? " 🎁" : ""}`));
   if (lista.length > 15) L.push(`… e mais ${lista.length - 15}`);
