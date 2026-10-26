@@ -707,7 +707,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-26c";
+const VERSAO = "2026-10-26d";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -2790,7 +2790,15 @@ function perguntasDaSemana(sem){
 const opcoesDe = (q, sem) => embaralharCom(q.o.map((txt, i) => ({ txt, i })), sem + q.id);
 
 const idRodadaQuiz = (sem, atleta) => `${sem}__${atleta}`;
-const minhaRodadaQuiz = (sem, atleta) => estado.quizRodadas.find(r => r.id === idRodadaQuiz(sem, atleta));
+// rodada do atleta nesta semana: pela chave atual ou por qualquer rodada iniciada entre a quarta e a terça
+// (rodadas salvas quando a semana começava na segunda continuam valendo)
+const fimDaSemana = sem => { const [a,m,d] = sem.split("-").map(Number); const f = new Date(a, m-1, d+6);
+  return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,"0")}-${String(f.getDate()).padStart(2,"0")}`; };
+const minhaRodadaQuiz = (sem, atleta) => {
+  const fim = fimDaSemana(sem);
+  const daSemana = estado.quizRodadas.filter(r => r.de === atleta && (r.id === idRodadaQuiz(sem, atleta) || (r.semana >= sem && r.semana <= fim)));
+  return daSemana.find(r => r.fim) || daSemana.find(r => r.id === idRodadaQuiz(sem, atleta)) || daSemana[0];
+};
 const pontosDaResposta = (certa, ms) => certa ? 10 + Math.max(0, Math.round(5 * (1 - ms / (QUIZ_SEG*1000)))) : 0;
 
 function rankingQuiz(temp){
