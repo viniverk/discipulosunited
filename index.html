@@ -701,7 +701,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-26";
+const VERSAO = "2026-10-26b";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -2749,10 +2749,10 @@ const sorteador = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0;
 const embaralharCom = (l, seed) => { const r = sorteador(sementeDe(seed)), a = [...l];
   for (let i = a.length-1; i > 0; i--) { const k = Math.floor(r()*(i+1)); [a[i],a[k]] = [a[k],a[i]]; }
   return a; };
-// semana do quiz: de segunda a domingo; a chave é a data da segunda-feira
+// semana do quiz: de quarta a terça (o dia seguinte à pelada); a chave é a data da quarta-feira
 function semanaQuiz(data = new Date()){
   const d = new Date(data.getFullYear(), data.getMonth(), data.getDate());
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  d.setDate(d.getDate() - ((d.getDay() + 4) % 7));   // getDay: 3 = quarta
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 const temporadaDe = semana => semana.slice(0,4);
@@ -2917,7 +2917,7 @@ function cartaoRodadaQuiz(){
           <div class="sub">${x.escolha === 0 ? "✅" : "❌"} ${escapar(q.o[0])}${q.r ? ` · ${escapar(q.r)}` : ""}</div></div>
           <b class="quiz-pts">${x.pts}</b></div>`; }).join("")}
     </details>
-    <div class="sub" style="margin-top:10px">A próxima rodada abre na segunda-feira.</div></div>`;
+    <div class="sub" style="margin-top:10px">A próxima rodada abre na quarta-feira.</div></div>`;
 }
 
 function cartaoRankingQuiz(){
