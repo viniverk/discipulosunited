@@ -363,7 +363,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .ficha{background:var(--cal);border-radius:9px;padding:6px 4px;box-shadow:0 2px 6px rgba(0,0,0,.35);
   font-size:11.5px;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   border-top:4px solid var(--quadra);cursor:grab}
-.ficha.vermelho{border-top-color:#C0392B}
+.ficha.vermelho{border-top-color:#14140F}
 .ficha.colete{border-top-color:#5A554B}
 .ficha.livre{border-top-color:var(--borda)}
 .banco.livre{border-left:3px solid var(--cinza)}
@@ -385,24 +385,24 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .banco-fichas{display:flex;flex-wrap:wrap;gap:6px}
 .banco .ficha{flex:1 1 calc(50% - 6px);min-width:0;cursor:grab;padding:5px 4px;font-size:11px}
 .banco.alvo{border-color:var(--canarinho);background:#FBF6E8;color:#14140F}
-.banco.vermelho{border-left:3px solid #C0392B}
+.banco.vermelho{border-left:3px solid #14140F}
 .banco.colete{border-left:3px solid #5A554B}
 
 .escolha-time{display:flex;gap:5px;flex:none}
 .escolha-time button{width:38px;height:38px;border-radius:9px;border:1px solid var(--borda);
   background:var(--cal);font-size:15px;line-height:1;opacity:.45}
 .escolha-time button.on{opacity:1;border-color:transparent;box-shadow:0 0 0 2px var(--quadra) inset}
-.escolha-time button.on.vermelho{background:#FCE8E8;color:#14140F;box-shadow:0 0 0 2px #C0392B inset}
+.escolha-time button.on.vermelho{background:#E4E2DD;color:#14140F;box-shadow:0 0 0 2px #14140F inset}
 .escolha-time button.on.colete{background:#F1EFEA;color:#14140F;box-shadow:0 0 0 2px #5A554B inset}
 .escolha-time button.on.neutro{box-shadow:0 0 0 2px var(--cinza) inset}
 .escolha-linha{padding:7px 0}
-.escolha-linha.vermelho{box-shadow:inset 3px 0 0 #C0392B;padding-left:9px}
+.escolha-linha.vermelho{box-shadow:inset 3px 0 0 #14140F;padding-left:9px}
 .escolha-linha.colete{box-shadow:inset 3px 0 0 #5A554B;padding-left:9px}
 .escolha-linha .escolha-time button{width:44px;height:40px;font-size:18px}
 .escolha-placar{display:flex;gap:6px;flex-wrap:wrap}
 .escolha-placar span{flex:1;min-width:0;text-align:center;font-size:12.5px;background:var(--linha);border-radius:9px;padding:7px 4px;white-space:nowrap}
 .escolha-placar span b{font-size:15px;margin-left:2px}
-.escolha-placar .v{box-shadow:inset 0 -3px 0 #C0392B}
+.escolha-placar .v{box-shadow:inset 0 -3px 0 #14140F}
 .escolha-placar .c{box-shadow:inset 0 -3px 0 #5A554B}
 
 .times-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
@@ -477,7 +477,8 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .time{background:var(--cal);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden}
 .time-topo{padding:10px 12px;font-family:var(--display);font-size:15px;letter-spacing:.8px;
   text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:6px}
-.time.vermelho .time-topo{background:#C0392B}
+.time.vermelho .time-topo{background:#14140F}
+body.tema-placar .time.vermelho .time-topo{background:#000;box-shadow:inset 0 -1px 0 #3A3F47}
 .time.colete .time-topo{background:#5A554B;color:#fff}
 .time-topo b{margin-left:auto;font-weight:400;opacity:.85;font-size:13px}
 .time ol{list-style:none;padding:6px 12px 12px}
@@ -716,7 +717,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-27b";
+const VERSAO = "2026-10-27c";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -2431,7 +2432,7 @@ function textoEscalacao(){
   times.forEach(t => {
     const esc = escalacaoDe(jogo, t);
     L.push("");
-    L.push(t === "vermelho" ? "*🔴 TIME VERMELHO*" : "*🟡 TIME DE COLETE*");
+    L.push(t === "vermelho" ? "*⚫ TIME PRETO (SEM COLETE)*" : "*🟡 TIME DE COLETE*");
     form.forEach(p => L.push(`${p.r}: ${esc[p.k] ? nomeDe(esc[p.k]) : "—"}`));
     const fora = elencoDoTime(jogo,t).filter(id => !Object.values(esc).includes(id));
     if (fora.length) L.push(`Banco: ${fora.map(nomeDe).join(", ")}`);
@@ -2472,8 +2473,8 @@ async function soltar(jogo, id, alvo){
   estado.escolhido = null;
   desenhar();
   if (destino === "livre") avisar(`${nomeDe(id)} saiu dos times.`);
-  else if (origem && origem !== destino) avisar(`${nomeDe(id)} foi para o ${destino === "vermelho" ? "Vermelho" : "Colete"}.`);
-  else if (!origem) avisar(`${nomeDe(id)} entrou no ${destino === "vermelho" ? "Vermelho" : "Colete"}.`);
+  else if (origem && origem !== destino) avisar(`${nomeDe(id)} foi para o ${destino === "vermelho" ? "Preto" : "Colete"}.`);
+  else if (!origem) avisar(`${nomeDe(id)} entrou no ${destino === "vermelho" ? "Preto" : "Colete"}.`);
 }
 
 /* arrastar com o dedo: ponteiro serve para toque e mouse */
@@ -3098,7 +3099,7 @@ function cartaoMontarTimes(jogo){
     return `<div class="item escolha-linha ${t || "livre"}">
       <div class="item-corpo"><div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}</div></div>
       <div class="escolha-time">
-        <button class="${t==="vermelho"?"on vermelho":""}" data-por-time="vermelho" data-atleta="${id}" aria-label="Vermelho">🔴</button>
+        <button class="${t==="vermelho"?"on vermelho":""}" data-por-time="vermelho" data-atleta="${id}" aria-label="Preto (sem colete)">⚫</button>
         <button class="${!t?"on neutro":""}" data-por-time="livre" data-atleta="${id}" aria-label="Sem time">⚪</button>
         <button class="${t==="colete"?"on colete":""}" data-por-time="colete" data-atleta="${id}" aria-label="Colete">🟡</button>
       </div></div>`;
@@ -3106,10 +3107,10 @@ function cartaoMontarTimes(jogo){
   return `<div class="cartao">
     <div class="titulo">Montar os times</div>
     <button class="btn-main" style="width:100%;margin-bottom:10px" data-acao="sortear-times">${rotSortear}</button>
-    <div class="escolha-placar"><span class="v">🔴 Vermelho <b>${v.length}</b></span><span>⚪ Sem time <b>${livres.length}</b></span><span class="c">🟡 Colete <b>${c.length}</b></span></div>
+    <div class="escolha-placar"><span class="v">⚫ Preto <b>${v.length}</b></span><span>⚪ Sem time <b>${livres.length}</b></span><span class="c">🟡 Colete <b>${c.length}</b></span></div>
     <div class="sub" style="margin:8px 0 4px">Um toque escolhe o time de cada um. O sorteio mantém quem você já escolheu e distribui só o resto, com um goleiro para cada lado.</div>
     ${ordem.map(linha).join("")}
-    ${v.length || c.length ? `<div class="times-grade" style="margin-top:14px">${cartaoTime("vermelho","Vermelho",v)}${cartaoTime("colete","Colete",c)}</div>
+    ${v.length || c.length ? `<div class="times-grade" style="margin-top:14px">${cartaoTime("vermelho","Preto · sem colete",v)}${cartaoTime("colete","Colete",c)}</div>
     <div class="btn-linha">
       <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar no grupo</button>
       <button class="btn-sec" data-acao="zerar-times">Limpar</button>
@@ -3134,7 +3135,7 @@ function telaTimes(){
   if (podeMontarTimes()) { el.innerHTML = topo + cartaoMontarTimes(jogo); return; }
   const v = jogo.times?.vermelho || [], c = jogo.times?.colete || [];
   el.innerHTML = topo + (v.length || c.length
-    ? `<div class="times-grade">${cartaoTime("vermelho","Vermelho",v)}${cartaoTime("colete","Colete",c)}</div>
+    ? `<div class="times-grade">${cartaoTime("vermelho","Preto · sem colete",v)}${cartaoTime("colete","Colete",c)}</div>
        <div class="btn-linha" style="margin:0 0 14px">
          <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar os times no grupo</button></div>`
     : `<div class="cartao"><div class="vazio"><b>Times ainda não montados</b>O organizador monta perto da hora do jogo.</div></div>`);
@@ -3203,7 +3204,7 @@ function textoTimes(){
   if (!jogo || !jogo.times) return "";
   const { num, mes } = dataLonga(jogo.data);
   const L = [`*⚽ ${nomeGrupo()} — TIMES*`, `${num} ${mes}${jogo.hora?" · "+jogo.hora:""}${jogo.local?" · "+jogo.local:""}`, ""];
-  L.push("*🔴 TIME VERMELHO*");
+  L.push("*⚫ TIME PRETO (SEM COLETE)*");
   jogo.times.vermelho.forEach((id,i) => L.push(`${i+1}. ${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)}`));
   L.push("");
   L.push("*🟡 TIME DE COLETE*");
