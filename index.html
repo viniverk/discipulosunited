@@ -707,7 +707,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-26d";
+const VERSAO = "2026-10-27";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3106,6 +3106,9 @@ function cartaoMontarTimes(jogo){
   </div>`;
 }
 
+// admin, ou atleta com a permissão que entrou com a própria senha (na demonstração, o nome escolhido no topo)
+const podeMontarTimes = () => estado.admin || !!atletaDe(estado.vinculo || (!fb ? estado.eu : null))?.montaTimes;
+
 function telaTimes(){
   const el = document.getElementById("tela-times");
   if (!el) return;
@@ -3117,7 +3120,7 @@ function telaTimes(){
   }
   const { num, mes } = dataLonga(jogo.data);
   const topo = `<div class="aviso">Times da rodada de <b>${num} ${mes}</b>${jogo.local?" · "+escapar(jogo.local):""}.</div>`;
-  if (estado.admin) { el.innerHTML = topo + cartaoMontarTimes(jogo); return; }
+  if (podeMontarTimes()) { el.innerHTML = topo + cartaoMontarTimes(jogo); return; }
   const v = jogo.times?.vermelho || [], c = jogo.times?.colete || [];
   el.innerHTML = topo + (v.length || c.length
     ? `<div class="times-grade">${cartaoTime("vermelho","Vermelho",v)}${cartaoTime("colete","Colete",c)}</div>
@@ -3673,6 +3676,10 @@ function formAtleta(atleta){
       <label class="check" for="f_gol"><input type="checkbox" id="f_gol" ${a.goleiro?"checked":""}>
         <span><b>🧤 É goleiro</b><div class="sub">No sorteio, os goleiros são separados um para cada time.</div></span>
       </label></div>
+    <div class="campo"><label for="f_monta">Permissões</label>
+      <label class="check" for="f_monta"><input type="checkbox" id="f_monta" ${a.montaTimes?"checked":""}>
+        <span><b>🎲 Pode montar os times</b><div class="sub">Quando entrar com a própria senha, ele sorteia e monta os times na aba Times. Não vê caixa nem ajustes.</div></span>
+      </label></div>
     <div class="btn-linha"><button class="btn-main" id="f_salvar">Salvar atleta</button>
       ${atleta?`<button class="btn-sec" id="f_apagar" style="color:var(--deve)">Remover</button>`:""}</div>`);
 
@@ -3776,6 +3783,7 @@ function formAtleta(atleta){
       telefone:document.getElementById("f_tel").value.trim(),
       situacao, base, ativo: situacao !== "inativo",
       goleiro: document.getElementById("f_gol").checked,
+      montaTimes: document.getElementById("f_monta").checked,
       foto: fotoNova,
       desde: document.getElementById("f_noTime").value,
       // o inativo guarda o mensalDesde: sem ele, rodadas em que ele era avulso virariam "cobertas"
