@@ -395,6 +395,15 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .escolha-time button.on.vermelho{background:#FCE8E8;color:#14140F;box-shadow:0 0 0 2px #C0392B inset}
 .escolha-time button.on.colete{background:#F1EFEA;color:#14140F;box-shadow:0 0 0 2px #5A554B inset}
 .escolha-time button.on.neutro{box-shadow:0 0 0 2px var(--cinza) inset}
+.escolha-linha{padding:7px 0}
+.escolha-linha.vermelho{box-shadow:inset 3px 0 0 #C0392B;padding-left:9px}
+.escolha-linha.colete{box-shadow:inset 3px 0 0 #5A554B;padding-left:9px}
+.escolha-linha .escolha-time button{width:44px;height:40px;font-size:18px}
+.escolha-placar{display:flex;gap:6px;flex-wrap:wrap}
+.escolha-placar span{flex:1;min-width:0;text-align:center;font-size:12.5px;background:var(--linha);border-radius:9px;padding:7px 4px;white-space:nowrap}
+.escolha-placar span b{font-size:15px;margin-left:2px}
+.escolha-placar .v{box-shadow:inset 0 -3px 0 #C0392B}
+.escolha-placar .c{box-shadow:inset 0 -3px 0 #5A554B}
 
 .times-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 #tela-times .banco.livre{margin-bottom:8px}
@@ -707,7 +716,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-27";
+const VERSAO = "2026-10-27b";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3080,29 +3089,31 @@ function cartaoMontarTimes(jogo){
     Ninguém confirmou ainda nesta rodada.</div></div>`;
   const v = jogo.times?.vermelho || [], c = jogo.times?.colete || [];
   const livres = semTime(jogo);
-  const ficha = (id, time) => `<div class="ficha ${time} ${estado.escolhido===id?"escolhida":""}" data-arrastavel="${id}">
-      ${ehGoleiro(id)?"🧤 ":""}${escapar(primeiroNome(id))}</div>`;
-  const zona = (chave, rotulo, ids, vazio) => `<div class="banco ${chave}" data-banco="${chave}">
-      <div class="banco-rot">${rotulo} · ${ids.length}</div>
-      <div class="banco-fichas">${ids.length ? ids.map(id => ficha(id, chave)).join("") : `<span class="sub">${vazio}</span>`}</div></div>`;
   const rotSortear = !livres.length ? "🎲 Sortear de novo"
     : (v.length || c.length) ? `🎲 Sortear o resto (${livres.length})` : "🎲 Sortear os times";
+  // ordem fixa (goleiros primeiro, depois por nome): a linha não pula de lugar quando muda de time
+  const ordem = [...gente].sort((a,b) => (ehGoleiro(b) - ehGoleiro(a)) || nomeDe(a).localeCompare(nomeDe(b),"pt-BR"));
+  const linha = id => {
+    const t = timeDoAtleta(jogo, id);
+    return `<div class="item escolha-linha ${t || "livre"}">
+      <div class="item-corpo"><div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}</div></div>
+      <div class="escolha-time">
+        <button class="${t==="vermelho"?"on vermelho":""}" data-por-time="vermelho" data-atleta="${id}" aria-label="Vermelho">🔴</button>
+        <button class="${!t?"on neutro":""}" data-por-time="livre" data-atleta="${id}" aria-label="Sem time">⚪</button>
+        <button class="${t==="colete"?"on colete":""}" data-por-time="colete" data-atleta="${id}" aria-label="Colete">🟡</button>
+      </div></div>`;
+  };
   return `<div class="cartao">
     <div class="titulo">Montar os times</div>
     <button class="btn-main" style="width:100%;margin-bottom:10px" data-acao="sortear-times">${rotSortear}</button>
-    ${estado.escolhido ? `<div class="aviso escolhido-barra"><b>${escapar(nomeDe(estado.escolhido))}</b> escolhido — toque no time de destino.
-        <button class="btn-sec" style="margin-left:6px" data-acao="desmarcar">Cancelar</button></div>`
-      : `<div class="sub" style="margin-bottom:10px">Arraste o nome para um time, ou toque no nome e depois no time.
-          Se alguém já estiver num time, o sorteio mantém e só distribui o resto. Cada time recebe um goleiro.</div>`}
-    ${livres.length ? zona("livre", "⚪ Sem time", livres, "") : ""}
-    <div class="banco-dupla">
-      ${zona("vermelho", "🔴 Vermelho", v, "arraste para cá")}
-      ${zona("colete", "🟡 Colete", c, "arraste para cá")}
-    </div>
+    <div class="escolha-placar"><span class="v">🔴 Vermelho <b>${v.length}</b></span><span>⚪ Sem time <b>${livres.length}</b></span><span class="c">🟡 Colete <b>${c.length}</b></span></div>
+    <div class="sub" style="margin:8px 0 4px">Um toque escolhe o time de cada um. O sorteio mantém quem você já escolheu e distribui só o resto, com um goleiro para cada lado.</div>
+    ${ordem.map(linha).join("")}
+    ${v.length || c.length ? `<div class="times-grade" style="margin-top:14px">${cartaoTime("vermelho","Vermelho",v)}${cartaoTime("colete","Colete",c)}</div>
     <div class="btn-linha">
-      ${v.length || c.length ? `<button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar no grupo</button>
-      <button class="btn-sec" data-acao="zerar-times">Limpar</button>` : ""}
-    </div>
+      <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar no grupo</button>
+      <button class="btn-sec" data-acao="zerar-times">Limpar</button>
+    </div>` : ""}
   </div>`;
 }
 
