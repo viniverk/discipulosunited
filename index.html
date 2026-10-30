@@ -717,7 +717,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-27c";
+const VERSAO = "2026-10-30a";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -895,10 +895,10 @@ function valorPorJogador(j){
 }
 const recebidoNoJogo = j => confirmados(j)
   .filter(id => j.presencas[id].pago && !j.presencas[id].isento)
-  .reduce((s,id) => s + valorNaRodada(j,id), 0);
+  .reduce((s,id) => s + valorNaRodada(j,id), 0) + multasDoJogo(j, true);
 const aReceberNoJogo = j => confirmados(j)
   .filter(id => !j.presencas[id].pago && !j.presencas[id].isento)
-  .reduce((s,id) => s + valorNaRodada(j,id), 0);
+  .reduce((s,id) => s + valorNaRodada(j,id), 0) + multasDoJogo(j, false);
 const valeConta      = j => !j.cancelada;                       // rodada cancelada não entra em nada
 const jogosValidos   = () => estado.jogos.filter(valeConta);
 const jogosPassados  = () => jogosValidos().filter(j => j.data <= hojeISO());
@@ -1183,6 +1183,48 @@ function valorNaRodada(j, id){
   return cfgN("valorConvidado",10);                                     // convidado, ou fixo ainda avulso
 }
 
+/* ---------- multa: furou ou desistiu em cima da hora ---------- */
+const multaValor = () => cfgN("multaValor",10);
+const multaHoras = () => cfgN("multaHoras",12);
+// até quando dá para sair da lista sem multa (data/hora do jogo menos o prazo)
+function prazoSemMulta(j){
+  const [h,m] = String(j.hora || estado.config.hora || "20:00").split(":").map(Number);
+  const d = new Date(j.data + "T00:00:00"); d.setHours(h||0, m||0, 0, 0);
+  return d.getTime() - multaHoras() * 3600e3;
+}
+// multa desta rodada (0 se não tem). p = presença (o fechamento passa o rascunho)
+function multaNaRodada(j, id, p = (j.presencas||{})[id]){
+  if (!p || !modeloNovo(j) || p.multaIsenta || !(multaValor() > 0)) return 0;
+  const furo  = p.status === "in" && p.faltou;
+  const tarde = !!p.desistiuTarde && p.status !== "in";
+  if (furo && valorNaRodada(j, id) > 0) return 0;   // convidado que furou já paga a diária — não cobra duas vezes
+  return (furo || tarde) ? multaValor() : 0;
+}
+function multasDoJogo(j, pagas){
+  return Object.keys(j.presencas||{}).reduce((s,id) => {
+    const v = multaNaRodada(j, id);
+    return v && !!j.presencas[id].multaPaga === pagas ? s + v : s;
+  }, 0);
+}
+function pedirJustificativa(){
+  return new Promise(res => {
+    abrirModal("Sair em cima da hora?", `
+      <div class="aviso">Faltam menos de <b>${plural(multaHoras(),"hora","horas")}</b> para o jogo.
+        Quem sai da lista depois desse prazo fica devendo a multa de <b>${dinheiro(multaValor())}</b>, igual a quem fura.
+        <br><span class="sub">Teve um motivo (trabalho, saúde, família…)? Escreva aqui — o admin avalia e pode isentar.</span></div>
+      <div class="campo"><label>Justificativa</label><textarea id="dj_motivo" placeholder="Ex.: plantão no trabalho"></textarea></div>
+      <div class="btn-linha">
+        <button class="btn-main" style="flex:1" id="dj_ficar">Continuo confirmado</button>
+        <button class="btn-sec" id="dj_sair">Sair mesmo assim</button>
+      </div>`);
+    document.getElementById("dj_sair").onclick = () => {
+      const motivo = document.getElementById("dj_motivo").value.trim();
+      fecharModal(); res({ motivo });
+    };
+    document.getElementById("dj_ficar").onclick = () => { fecharModal(); res(null); };
+  });
+}
+
 
 function caixa(){
   const hoje = hojeISO();
@@ -1235,8 +1277,14 @@ function saldoAtleta(id){
 
   jogosValidos().forEach(j => {
     const p = (j.presencas||{})[id];
-    if (!p || p.status !== "in" || p.isento) return;
-    if (!contaNaDivida(j)) return;
+    if (!p || !contaNaDivida(j)) return;
+    const mu = multaNaRodada(j, id);
+    if (mu) {
+      devido += mu;
+      if (p.multaPaga) pago += mu;
+      else if (j.data <= hoje) atrasado += mu; else pendente += mu;
+    }
+    if (p.status !== "in" || p.isento) return;
     const v = valorNaRodada(j, id);
     if (!v) return;
     devido += v;
@@ -1424,12 +1472,18 @@ function linhasDoExtrato(id){
     let estado_ = "—", cor = "neutro";
     if (p.status === "in" && p.faltou) { estado_ = "furou"; cor = "deve"; }
     else if (p.status === "in")        { estado_ = "jogou"; cor = "pago"; }
+    else if (p.desistiuTarde)          { estado_ = "saiu em cima da hora"; cor = "deve"; }
     else if (p.status === "out")         estado_ = "avisou que não ia";
     const cobra = p.status === "in" && !p.isento && v > 0;
+    const mu = multaNaRodada(j, id, p);
+    const temMulta = (p.status === "in" && p.faltou) || (p.desistiuTarde && p.status !== "in");
+    if (mu) estado_ += " · multa";
     return { j, estado_, cor,
-      valor: cobra ? v : 0,
-      pago: cobra ? !!p.pago : null,
-      isento: !!p.isento };
+      valor: cobra ? v : mu,
+      pago: cobra ? !!p.pago : mu ? !!p.multaPaga : null,
+      isento: !!p.isento,
+      multaIsenta: temMulta && !!p.multaIsenta,
+      motivo: p.desistiuTarde ? (p.motivo || "") : "" };
   });
 }
 
@@ -1482,7 +1536,9 @@ function formExtrato(id){
     ${linhas.length ? linhas.map(l => `<div class="item">
         <div class="data-caixa"><b>${dataLonga(l.j.data).num}</b><span>${dataLonga(l.j.data).mes}</span></div>
         <div class="item-corpo"><div class="nome" style="font-weight:600">${l.estado_}</div>
-          ${l.isento?`<div class="sub">isento</div>`:""}</div>
+          ${l.isento?`<div class="sub">isento</div>`:""}
+          ${l.multaIsenta?`<div class="sub">multa perdoada</div>`:""}
+          ${l.motivo?`<div class="sub">“${escapar(l.motivo)}”</div>`:""}</div>
         ${l.valor ? `<span class="selo ${l.pago?"pago":"deve"}">${l.pago?"pago":dinheiro(l.valor)}</span>` : ""}
       </div>`).join("") : `<div class="vazio">Nenhuma rodada fechada ainda.</div>`}
 
@@ -3837,6 +3893,9 @@ function formFechamento(jogo){
       <button class="btn-main" style="flex:1" id="fch_salvar">Salvar rodada</button>
     </div>`);
 
+  // tem multa nesta rodada (mesmo que isenta)? — para mostrar o selo
+  const temMulta = (id, p) => !!multaNaRodada(jogo, id, { ...p, multaIsenta:false });
+
   function pintar(){
     const dentro = jogaram();
     const pagos = Object.values(rascunho).filter(p => p.status === "in" && p.pago).length;
@@ -3849,9 +3908,12 @@ function formFechamento(jogo){
       ? Object.entries(rascunho).filter(([,p]) => p.status==="in" && p.pago && !p.isento)
           .reduce((s,[id]) => s + valorNaRodada(jogo,id), 0)
       : pagos * v;
+    const multas = Object.entries(rascunho).map(([id,p]) => [p, multaNaRodada(jogo, id, p)]).filter(([,m]) => m);
+    const multaTxt = multas.length ? ` · multas ${dinheiro(multas.filter(([p]) => p.multaPaga).reduce((s,[,m]) => s+m, 0))} de ${dinheiro(multas.reduce((s,[,m]) => s+m, 0))}` : "";
     document.getElementById("fch_resumo").innerHTML =
-      `<b>${plural(dentro,"jogador","jogadores")}</b> · ${modeloNovo(jogo)?"convidados":dinheiro(v)+" por cabeça"} · recebido ${dinheiro(recebido)} de ${dinheiro(aReceber)}` +
+      `<b>${plural(dentro,"jogador","jogadores")}</b> · ${modeloNovo(jogo)?"convidados":dinheiro(v)+" por cabeça"} · recebido ${dinheiro(recebido)} de ${dinheiro(aReceber)}${multaTxt}` +
       "<br><span class='sub'>O primeiro selo gira entre <b>fora → jogou → furou</b>. Quem furou continua na lista e continua devendo — use o segundo selo para isentar.</span>"
+      + (modeloNovo(jogo) && multaValor() > 0 ? `<br><span class='sub'>Fixo que furou ou qualquer um que saiu a menos de ${plural(multaHoras(),"hora","horas")} do jogo leva multa de ${dinheiro(multaValor())}. Toque no selo da multa para alternar entre a pagar, paga e isenta (justificativa aceita).</span>` : "")
       + (modeloNovo(jogo)
         ? "<br><span class='sub'>Fixo está coberto pela mensalidade. No convidado, toque no selo para alternar entre a pagar, pago e isento.</span>"
         : Number(jogo.valorFixo) > 0 ? "" : "<br><span class='sub'>No rateio, o valor por cabeça muda conforme você marca quem jogou.</span>");
@@ -3861,7 +3923,9 @@ function formFechamento(jogo){
       const dentro = p.status === "in";
       return `<div class="item">
         <div class="item-corpo"><div class="nome">${escapar(a.nome)}</div>
-          ${quemConvidou(a.id) ? `<div class="sub">${escapar(quemConvidou(a.id))}</div>` : ""}</div>
+          ${quemConvidou(a.id) ? `<div class="sub">${escapar(quemConvidou(a.id))}</div>` : ""}
+          ${p.desistiuTarde && !dentro ? `<div class="sub" style="color:var(--deve)">saiu em cima da hora${p.motivo?` · “${escapar(p.motivo)}”`:" · sem justificativa"}</div>` : ""}</div>
+        ${temMulta(a.id, p) ? `<button class="selo ${p.multaIsenta?"neutro":p.multaPaga?"pago":"deve"}" data-fch-multa="${a.id}">${p.multaIsenta?"multa isenta":p.multaPaga?"multa paga":"multa "+dinheiro(multaValor())}</button>` : ""}
         <button class="selo ${!dentro?"neutro":p.faltou?"deve":"pago"}" data-fch-jogou="${a.id}">${!dentro?"fora":p.faltou?"furou":"jogou"}</button>
         ${valorNaRodada(jogo, a.id) > 0
           ? `<button class="selo ${p.isento?"neutro":p.pago?"pago":"deve"}" data-fch-pagou="${a.id}" ${dentro?"":"disabled"}>${p.isento?"isento":p.pago?"pago":"a pagar"}</button>`
@@ -3871,11 +3935,17 @@ function formFechamento(jogo){
   }
 
   document.getElementById("fch_lista").addEventListener("click", e => {
-    const b = e.target.closest("[data-fch-jogou],[data-fch-pagou]");
+    const b = e.target.closest("[data-fch-jogou],[data-fch-pagou],[data-fch-multa]");
     if (!b || b.disabled) return;
-    const id = b.dataset.fchJogou || b.dataset.fchPagou;
+    const id = b.dataset.fchJogou || b.dataset.fchPagou || b.dataset.fchMulta;
     const p = rascunho[id] = rascunho[id] || {};
-    if (b.dataset.fchJogou) {
+    if (b.dataset.fchMulta) {
+      // multa cicla entre: a pagar → paga → isenta → a pagar
+      if (p.multaIsenta) { p.multaIsenta = false; p.multaPaga = false; }
+      else if (p.multaPaga) { p.multaPaga = false; p.multaIsenta = true; }
+      else { p.multaPaga = true; p.multaPagaEm = hojeISO(); }
+    }
+    else if (b.dataset.fchJogou) {
       if (p.status !== "in") { p.status = "in"; p.faltou = false; p.em = p.em || Date.now(); }
       else if (!p.faltou)    { p.faltou = true; }                       // confirmou e não veio
       else { p.status = null; p.faltou = false; p.pago = false; }
@@ -4026,6 +4096,10 @@ function formAjustes(){
     <div class="dupla"><div class="campo"><label>Convidado por rodada (R$)</label><input type="number" step="0.01" id="f_conv10" value="${cfgN("valorConvidado",10)}"></div>
       <div class="campo"><label>Mensalidade cobrada na</label><select id="f_rodcob">
         ${[1,2,3,4].map(n => `<option value="${n}" ${cfgN("rodadaCobranca",2)===n?"selected":""}>${n}ª rodada do mês</option>`).join("")}</select></div></div>
+    <div class="dupla"><div class="campo"><label>Multa por furo (R$)</label><input type="number" step="0.01" id="f_multa" value="${cfgN("multaValor",10)}"></div>
+      <div class="campo"><label>Sair sem multa até</label><select id="f_multaH">
+        ${[2,3,4,6,12,24,48].map(n => `<option value="${n}" ${cfgN("multaHoras",12)===n?"selected":""}>${n}h antes do jogo</option>`).join("")}</select></div></div>
+    <div class="sub" style="margin:-4px 0 10px">Multa para o fixo que confirma e fura, e para quem sai da lista depois do prazo. Convidado que fura já paga a diária. Com justificativa, o admin isenta no fechamento da rodada. Coloque 0 para desligar.</div>
     <div class="campo"><label>Link do grupo no WhatsApp</label><input id="f_grupo" value="${escapar(c.linkGrupo||"")}" placeholder="https://chat.whatsapp.com/...">
       <div class="sub" style="margin-top:5px">Opcional. Só liga o botão "Abrir grupo" na tela da lista. Fica salvo no Firestore, não no código do site.</div></div>
     <div class="titulo" style="margin-top:18px">Pagamento online (Stripe)</div>
@@ -4127,6 +4201,8 @@ function formAjustes(){
       valorMensalista:Number(document.getElementById("f_fixo50").value)||0,
       valorConvidado:Number(document.getElementById("f_conv10").value)||0,
       rodadaCobranca:Number(document.getElementById("f_rodcob").value)||2,
+      multaValor:Number(document.getElementById("f_multa").value)||0,
+      multaHoras:Number(document.getElementById("f_multaH").value)||12,
       exigirLogin:document.getElementById("f_login").checked,
       pagOnline:document.getElementById("f_pagOnline").checked,
       servidorPagamento:document.getElementById("f_srvPag").value.trim(),
@@ -4262,13 +4338,27 @@ document.body.addEventListener("click", async e => {
     const jogo = estado.jogos.find(j => j.id === d.jogo);
     const atual = (jogo.presencas||{})[estado.eu]?.status;
     const novo = atual === d.confirmar ? null : d.confirmar;
+    // saiu da lista depois do prazo? multa, a não ser que o admin aceite a justificativa
+    let tarde = null;
+    if (atual === "in" && novo !== "in" && modeloNovo(jogo) && multaValor() > 0
+        && jogo.data >= hojeISO() && Date.now() > prazoSemMulta(jogo)) {
+      tarde = await pedirJustificativa();
+      if (!tarde) return;                    // desistiu de sair
+    }
+    const extra = tarde
+      ? { desistiuTarde:true, desistiuEm:Date.now(), motivo:tarde.motivo || "", multaPaga:false, multaIsenta:false }
+      : (novo === "in" || atual === "in")
+        ? { desistiuTarde:false, desistiuEm:null, motivo:"" }   // voltou, ou saiu dentro do prazo
+        : {};
     await gravarPresenca(d.jogo, estado.eu, {
       status:novo,
       pago:(jogo.presencas||{})[estado.eu]?.pago||false,
-      em: novo === "in" ? Date.now() : null   // saiu e voltou? vai para o fim da fila
+      em: novo === "in" ? Date.now() : null,   // saiu e voltou? vai para o fim da fila
+      ...extra
     });
     desenhar();
-    avisar(novo === "in" ? "Confirmado. Bola pra frente." : novo === "out" ? "Anotado, fica pra próxima." : "Presença desmarcada.");
+    avisar(tarde ? `Você saiu da lista. Multa de ${dinheiro(multaValor())} anotada${tarde.motivo?" — o admin vai avaliar a justificativa":""}.`
+      : novo === "in" ? "Confirmado. Bola pra frente." : novo === "out" ? "Anotado, fica pra próxima." : "Presença desmarcada.");
   }
   else if (d.pagar) {
     const jogo = estado.jogos.find(j => j.id === d.jogo);
