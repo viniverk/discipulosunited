@@ -721,7 +721,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-02b";
+const VERSAO = "2026-11-02c";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -4372,6 +4372,8 @@ document.body.addEventListener("click", async e => {
     if (!estado.eu) return modoLogin() ? formEntrar() : avisar("Escolha seu nome lá em cima primeiro.");
     const jogo = estado.jogos.find(j => j.id === d.jogo);
     const atual = (jogo.presencas||{})[estado.eu]?.status;
+    // já está como "não vou"? tocar de novo não tira o nome dos ausentes
+    if (atual === "out" && d.confirmar === "out") return avisar("Você já está na lista dos ausentes.");
     const novo = atual === d.confirmar ? null : d.confirmar;
     // saiu da lista depois do prazo? multa, a não ser que o admin aceite a justificativa
     let tarde = null;
