@@ -721,7 +721,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-02a";
+const VERSAO = "2026-11-02b";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3520,8 +3520,12 @@ function desenhar(){
   else if (!estado.eu) lerEndereco();
   const sel = document.getElementById("selEu");
   const ativos = estado.atletas.filter(a => situacaoDe(a) !== "inativo").sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
-  sel.innerHTML = `<option value="">— escolha seu nome —</option>` +
-    ativos.map(a => `<option value="${a.id}" ${a.id===estado.eu?"selected":""}>${escapar(a.nome)}</option>`).join("");
+  // fixos primeiro, depois os convidados — cada grupo em ordem alfabética
+  const opcao = a => `<option value="${a.id}" ${a.id===estado.eu?"selected":""}>${escapar(a.nome)}</option>`;
+  const fixosSel = ativos.filter(a => ehFixo(a.id)), convSel = ativos.filter(a => !ehFixo(a.id));
+  sel.innerHTML = `<option value="">— escolha seu nome —</option>`
+    + (fixosSel.length ? `<optgroup label="Fixos">${fixosSel.map(opcao).join("")}</optgroup>` : "")
+    + (convSel.length ? `<optgroup label="Convidados">${convSel.map(opcao).join("")}</optgroup>` : "");
 
   const nome = (estado.config.nomeGrupo || "Discípulos United").trim();
   const corte = nome.lastIndexOf(" ");
