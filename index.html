@@ -278,6 +278,10 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .eu-mesmo{color:#14140F;background:#FFF8E3;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
 
 .foras{display:flex;flex-wrap:wrap;gap:6px}
+.em-aberto{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.aberto-chip{background:var(--linha);color:var(--cinza);border:0;border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer;text-align:left}
+.aberto-chip.vencido{background:#FCE8E8;color:var(--deve)}
+span.aberto-chip{cursor:default}
 .fora-chip{background:var(--linha);color:var(--cinza);border-radius:999px;padding:5px 11px;font-size:13px}
 
 /* ---------- pix ---------- */
@@ -717,7 +721,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-10-30a";
+const VERSAO = "2026-11-02a";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -1306,6 +1310,26 @@ function saldoAtleta(id){
     });
   }
   return { devido, pago, atrasado, pendente, mesesAdiantados, aberto: atrasado + pendente };
+}
+// o que compõe o "em aberto" do atleta, item por item (mesmas regras do saldoAtleta)
+function itensEmAberto(id){
+  const hoje = hojeISO(), itens = [];
+  jogosValidos().forEach(j => {
+    const p = (j.presencas||{})[id];
+    if (!p || !contaNaDivida(j)) return;
+    const mu = multaNaRodada(j, id);
+    if (mu && !p.multaPaga) itens.push({ jogo:j, data:j.data, valor:mu, vencido:j.data <= hoje,
+      rotulo: p.status === "in" ? "furou · multa" : "saiu em cima da hora", motivo: p.desistiuTarde ? p.motivo||"" : "" });
+    if (p.status !== "in" || p.isento || p.pago) return;
+    const v = valorNaRodada(j, id);
+    if (v) itens.push({ jogo:j, data:j.data, valor:v, vencido:j.data <= hoje, rotulo: p.faltou ? "furou · diária" : "diária" });
+  });
+  mesesComCobranca().filter(m => deveMensalNoMes(id, m)).forEach(m => {
+    if (mensalidadeIsenta(m, id) || mensalidadePaga(m, id)) return;
+    const d = rodadaDeCobranca(m).data;
+    itens.push({ mes:m, data:d, valor:cfgN("valorMensalista",50), vencido: d < hoje, rotulo:"mensalidade "+rotuloMes(m) });
+  });
+  return itens.sort((a,b) => a.data.localeCompare(b.data));
 }
 const presencasDoAtleta = id => jogosValidos().filter(j => (j.presencas||{})[id]?.status === "in").length;
 const presencasJogadas = id => jogosPassados().filter(j => (j.presencas||{})[id]?.status === "in").length;
@@ -2128,12 +2152,19 @@ function telaCaixa(){
           return `<div class="item">
             <div class="item-corpo">
               <div class="nome">${escapar(a.nome)}${quemConvidou(a.id)?' <span class="selo convidado">convidado</span>':""}</div>
-              <div class="sub">${quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${partes.join(" + ")}</div></div>
+              <div class="sub">${quemConvidou(a.id)?escapar(quemConvidou(a.id))+" · ":""}${partes.join(" + ")}</div>
+              <div class="em-aberto">${itensEmAberto(a.id).map(it => {
+                const txt = `${it.jogo ? dataCurta(it.data) + " · " : ""}${escapar(it.rotulo)} · ${dinheiro(it.valor)}${it.motivo ? ` · “${escapar(it.motivo)}”` : ""}`;
+                return it.jogo
+                  ? `<button class="aberto-chip ${it.vencido?"vencido":""}" ${estado.admin?`data-fechar="${it.jogo.id}"`:`data-abrir-jogo="${it.jogo.id}"`} title="Abrir a rodada">${txt} ›</button>`
+                  : `<span class="aberto-chip ${it.vencido?"vencido":""}">${txt}</span>`;
+              }).join("")}</div></div>
             <div class="valor ${a.atrasado>0.005?"neg":""}">${dinheiro(a.aberto)}</div></div>`;
         };
         const atrasados = devedores.filter(a => a.atrasado > 0.005);
         const soProxima = devedores.filter(a => a.atrasado <= 0.005);
-        return (atrasados.length ? `<div class="grupo-rot atraso">Em atraso · já venceu</div>${atrasados.map(linha).join("")}` : "")
+        return (estado.admin ? `<div class="sub" style="margin-bottom:6px">Toque na rodada para abrir o fechamento e marcar pago ou isento.</div>` : "")
+             + (atrasados.length ? `<div class="grupo-rot atraso">Em atraso · já venceu</div>${atrasados.map(linha).join("")}` : "")
              + (soProxima.length ? `<div class="grupo-rot">A vencer na rodada de ${prox?dataCurta(prox.data):"—"}</div>${soProxima.map(linha).join("")}` : "");
       })()
         : (()=>{
