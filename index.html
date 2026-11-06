@@ -278,6 +278,13 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .eu-mesmo{color:#14140F;background:#FFF8E3;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px}
 
 .foras{display:flex;flex-wrap:wrap;gap:6px}
+.extrato-mes{border-top:1px solid var(--linha);padding:8px 0}
+.extrato-mes summary{cursor:pointer;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;list-style:none}
+.extrato-mes summary::before{content:"▸ ";color:var(--cinza)}
+.extrato-mes[open] summary::before{content:"▾ "}
+.extrato-linha[data-fechar]{cursor:pointer}
+.extrato-mes .pos{color:var(--pago)} .extrato-mes .neg{color:var(--deve)}
+.tipo-rot{font-size:11px;font-weight:700;color:var(--cinza);margin:12px 0 2px;letter-spacing:.4px}
 .em-aberto{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .aberto-chip{background:var(--linha);color:var(--cinza);border:0;border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer;text-align:left}
 .aberto-chip.vencido{background:#FCE8E8;color:var(--deve)}
@@ -721,7 +728,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-02c";
+const VERSAO = "2026-11-06b";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -1273,6 +1280,48 @@ function caixa(){
   return { entrou, deRodadas, deMensalidades, avulsasEntrada, mensalAdiantado, adiantado, saiu: quadra+extras,
            quadra, quadraAntiga, quadraMensal, mesesQuadra: mesesPagos.length, extras,
            saldo: entrou-quadra-extras, aReceber: atrasado+pendente, atrasado, pendente };
+}
+
+// cada lançamento que entra no saldo do caixa — mesmas regras do caixa(), linha por linha
+function lancamentosCaixa(){
+  const hoje = hojeISO(), L = [];
+  const isoDe = ts => { const d = new Date(ts); return isNaN(d) ? "" :
+    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+  const rod = j => "rodada " + dataCurta(j.data);
+  jogosValidos().forEach(j => {
+    Object.entries(j.presencas || {}).forEach(([id, p]) => {
+      if (p.status === "in" && p.pago && !p.isento) {
+        const v = valorNaRodada(j, id);
+        if (v) L.push({ data: p.pagoEm || j.data, valor: v, tipo:"Diária", desc: `${nomeDe(id)} · ${rod(j)}`, jogo:j.id });
+      }
+      const mu = multaNaRodada(j, id);
+      if (mu && p.multaPaga) L.push({ data: p.multaPagaEm || j.data, valor: mu, tipo:"Multa", desc: `${nomeDe(id)} · ${rod(j)}`, jogo:j.id });
+    });
+    if (!modeloNovo(j) && j.data <= hoje && Number(j.custo))
+      L.push({ data: j.data, valor: -Number(j.custo), tipo:"Quadra", desc: `${rod(j)} (rateio antigo)`, jogo:j.id });
+  });
+  const vm = cfgN("valorMensalista",50);
+  estado.mensalidades.forEach(x => Object.entries(x.pagos || {}).forEach(([id, ts]) => {
+    L.push({ data: (typeof ts === "number" && isoDe(ts)) || x.id + "-01", valor: vm, tipo:"Mensalidade",
+      desc: `${nomeDe(id)} · ${rotuloMes(x.id)}${(x.online||{})[id] ? " · online" : ""}` });
+  }));
+  [...new Set(jogosValidos().filter(j => modeloNovo(j) && j.data <= hoje).map(j => mesDe(j.data)))].forEach(m =>
+    L.push({ data: m + "-01", valor: -cfgN("custoMensal",450), tipo:"Quadra", desc: `mês de ${rotuloMes(m)}` }));
+  estado.despesas.forEach(d => {
+    const v = Number(d.valor) || 0;
+    L.push({ data: d.data || "", valor: d.tipo === "entrada" ? v : -v, tipo: d.tipo === "entrada" ? "Entrada avulsa" : "Saída avulsa",
+      desc: (d.descricao || "") + (d.quem ? " · " + d.quem : "") });
+  });
+  return L.sort((a,b) => String(b.data).localeCompare(String(a.data)) || a.tipo.localeCompare(b.tipo));
+}
+function baixarExtratoCaixa(){
+  const q = v => `"${String(v).replace(/"/g,'""')}"`;
+  const linhas = [["Data","Tipo","Descrição","Valor"].map(q).join(";")]
+    .concat(lancamentosCaixa().map(l => [l.data, l.tipo, l.desc, l.valor.toFixed(2).replace(".",",")].map(q).join(";")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + linhas.join("\n")], { type:"text/csv;charset=utf-8" }));
+  a.download = `caixa-${hojeISO()}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 function saldoAtleta(id){
@@ -2163,9 +2212,15 @@ function telaCaixa(){
         };
         const atrasados = devedores.filter(a => a.atrasado > 0.005);
         const soProxima = devedores.filter(a => a.atrasado <= 0.005);
+        // dentro de cada grupo: fixos primeiro, depois os convidados
+        const porTipo = lista => {
+          const fx = lista.filter(a => ehFixo(a.id)), cv = lista.filter(a => !ehFixo(a.id));
+          return (fx.length ? `<div class="tipo-rot">Fixos · ${fx.length}</div>${fx.map(linha).join("")}` : "")
+               + (cv.length ? `<div class="tipo-rot">Convidados · ${cv.length}</div>${cv.map(linha).join("")}` : "");
+        };
         return (estado.admin ? `<div class="sub" style="margin-bottom:6px">Toque na rodada para abrir o fechamento e marcar pago ou isento.</div>` : "")
-             + (atrasados.length ? `<div class="grupo-rot atraso">Em atraso · já venceu</div>${atrasados.map(linha).join("")}` : "")
-             + (soProxima.length ? `<div class="grupo-rot">A vencer na rodada de ${prox?dataCurta(prox.data):"—"}</div>${soProxima.map(linha).join("")}` : "");
+             + (atrasados.length ? `<div class="grupo-rot atraso">Em atraso · já venceu</div>${porTipo(atrasados)}` : "")
+             + (soProxima.length ? `<div class="grupo-rot">A vencer na rodada de ${prox?dataCurta(prox.data):"—"}</div>${porTipo(soProxima)}` : "");
       })()
         : (()=>{
             const semValor = estado.jogos.filter(j => !modeloNovo(j) && contaNaDivida(j) && confirmados(j).length && valorPorJogador(j) < 0.005);
@@ -2198,7 +2253,36 @@ function telaCaixa(){
       </div>
       <div class="btn-linha" style="margin-top:8px">
         <button class="btn-sec" style="width:100%" data-acao="ajustes">Ajustes da pelada</button></div>`:""}
-    </div>`;
+    </div>
+    ${estado.admin ? cartaoExtratoCaixa(c) : ""}`;
+}
+
+function cartaoExtratoCaixa(c){
+  const L = lancamentosCaixa();
+  const soma = L.reduce((s,l) => s + l.valor, 0);
+  const bate = Math.abs(soma - c.saldo) < 0.01;
+  const meses = [...new Set(L.map(l => mesDe(l.data) || "sem data"))];
+  const icone = { "Diária":"⚽", "Multa":"⏰", "Mensalidade":"📅", "Quadra":"🏟️", "Entrada avulsa":"➕", "Saída avulsa":"➖" };
+  return `<div class="cartao">
+    <div class="titulo">Extrato do caixa · ${plural(L.length,"lançamento","lançamentos")}</div>
+    <div class="aviso" style="${bate?"":"background:#FCE8E8;color:var(--deve)"}">
+      Somando tudo abaixo: <b>${dinheiro(soma)}</b> ${bate ? "— bate com o saldo do caixa." : `— <b>não bate</b> com o saldo (${dinheiro(c.saldo)}).`}
+      <br><span class="sub">Mensalidade contada a ${dinheiro(cfgN("valorMensalista",50))} e quadra a ${dinheiro(cfgN("custoMensal",450))} por mês com rodada jogada — os valores atuais de Ajustes, aplicados a todos os meses.</span></div>
+    ${meses.map((m, i) => {
+      const doMes = L.filter(l => (mesDe(l.data) || "sem data") === m);
+      const ent = doMes.filter(l => l.valor > 0).reduce((s,l) => s + l.valor, 0);
+      const sai = doMes.filter(l => l.valor < 0).reduce((s,l) => s - l.valor, 0);
+      return `<details class="extrato-mes" ${i===0?"open":""}>
+        <summary><b>${m === "sem data" ? m : escapar(rotuloMes(m))}</b>
+          <span class="sub">+${dinheiro(ent)} · −${dinheiro(sai)} · <b class="${ent-sai>=0?"pos":"neg"}">${dinheiro(ent-sai)}</b></span></summary>
+        ${doMes.map(l => `<div class="item extrato-linha" ${l.jogo?`data-fechar="${l.jogo}"`:""}>
+          <div class="item-corpo"><div class="nome">${icone[l.tipo]||""} ${escapar(l.tipo)}</div>
+            <div class="sub">${l.data?dataCurta(l.data)+" · ":""}${escapar(l.desc)}</div></div>
+          <div class="valor ${l.valor>=0?"pos":"neg"}">${l.valor>=0?"+":"−"} ${dinheiro(Math.abs(l.valor))}</div></div>`).join("")}
+      </details>`;
+    }).join("")}
+    <button class="btn-sec" style="width:100%;margin-top:10px" data-acao="extrato-csv">⬇️ Baixar planilha (CSV)</button>
+  </div>`;
 }
 
 /* ============================================================
@@ -4419,6 +4503,7 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "nova-despesa") formDespesa("saida");
   else if (d.acao === "nova-entrada") formDespesa("entrada");
   else if (d.acao === "ajustes")      formAjustes();
+  else if (d.acao === "extrato-csv")  baixarExtratoCaixa();
   else if (d.acao === "editar-estatuto")  formDocumento("estatuto","Estatuto da pelada",ESTATUTO_MODELO);
   else if (d.acao === "editar-identidade") formDocumento("identidade","Visão, princípios e valores",IDENTIDADE_MODELO);
   else if (d.compartilharTexto === "identidade") await compartilharTexto(textoIdentidade());
