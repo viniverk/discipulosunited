@@ -728,7 +728,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-06b";
+const VERSAO = "2026-11-06c";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -1261,8 +1261,11 @@ function caixa(){
   // saídas: quadra rateada (modelo antigo), quadra mensal e despesas avulsas
   const quadraAntiga = jogosValidos().filter(j => !modeloNovo(j) && j.data <= hoje)
     .reduce((s,j) => s + (Number(j.custo)||0), 0);
-  const mesesPagos = [...new Set(jogosValidos().filter(j => modeloNovo(j) && j.data <= hoje).map(j => mesDe(j.data)))];
-  const quadraMensal = mesesPagos.length * cfgN("custoMensal",450);
+  // quadra do modelo mensal: só sai do caixa quando o admin marca o mês como pago
+  const qp = quadraPagas();
+  const mesesPagos = Object.keys(qp);
+  const quadraMensal = mesesPagos.reduce((s,m) => s + (Number(qp[m].valor)||0), 0);
+  const quadraAPagar = mesesDeQuadra().filter(m => !qp[m]).length * cfgN("custoMensal",450);
   const quadra = quadraAntiga + quadraMensal;
 
   // a receber
@@ -1278,8 +1281,35 @@ function caixa(){
   const pendente = pendenteRodadas + pendenteMensal;
 
   return { entrou, deRodadas, deMensalidades, avulsasEntrada, mensalAdiantado, adiantado, saiu: quadra+extras,
-           quadra, quadraAntiga, quadraMensal, mesesQuadra: mesesPagos.length, extras,
+           quadra, quadraAntiga, quadraMensal, quadraAPagar, mesesQuadra: mesesPagos.length, extras,
            saldo: entrou-quadra-extras, aReceber: atrasado+pendente, atrasado, pendente };
+}
+
+/* ---------- quadra mensal: o admin marca quando pagou ---------- */
+const quadraPagas = () => estado.config.quadraPagas || {};
+// meses do modelo mensal que têm rodada (até o mês atual) ou que já foram marcados
+function mesesDeQuadra(){
+  const atual = mesDe(hojeISO());
+  const comRodada = jogosValidos().filter(j => modeloNovo(j) && mesDe(j.data) <= atual).map(j => mesDe(j.data));
+  return [...new Set([...comRodada, ...Object.keys(quadraPagas())])].sort().reverse();
+}
+async function gravarQuadraPagas(mapa){
+  estado.config.quadraPagas = mapa;
+  if (fb) await fb.fs.updateDoc(fb.fs.doc(fb.db,"config","geral"), { quadraPagas: mapa });
+}
+function formQuadraPaga(m){
+  abrirModal(`Quadra · ${rotuloMes(m)}`, `
+    <div class="dupla"><div class="campo"><label>Valor pago (R$)</label><input type="number" step="0.01" id="q_valor" value="${cfgN("custoMensal",450)}"></div>
+      <div class="campo"><label>Data do pagamento</label><input type="date" id="q_data" value="${hojeISO()}"></div></div>
+    <div class="sub" style="margin-bottom:10px">O valor só sai do saldo do caixa a partir de agora.</div>
+    <div class="btn-linha"><button class="btn-main" style="flex:1" id="q_ok">Marcar como paga</button></div>`);
+  document.getElementById("q_ok").onclick = async () => {
+    const valor = Number(document.getElementById("q_valor").value) || 0;
+    const data = document.getElementById("q_data").value || hojeISO();
+    if (!(valor > 0)) return avisar("Informe o valor pago.");
+    await gravarQuadraPagas({ ...quadraPagas(), [m]: { valor, data } });
+    fecharModal(); desenhar(); avisar(`Quadra de ${rotuloMes(m)} debitada do caixa.`);
+  };
 }
 
 // cada lançamento que entra no saldo do caixa — mesmas regras do caixa(), linha por linha
@@ -1305,8 +1335,8 @@ function lancamentosCaixa(){
     L.push({ data: (typeof ts === "number" && isoDe(ts)) || x.id + "-01", valor: vm, tipo:"Mensalidade",
       desc: `${nomeDe(id)} · ${rotuloMes(x.id)}${(x.online||{})[id] ? " · online" : ""}` });
   }));
-  [...new Set(jogosValidos().filter(j => modeloNovo(j) && j.data <= hoje).map(j => mesDe(j.data)))].forEach(m =>
-    L.push({ data: m + "-01", valor: -cfgN("custoMensal",450), tipo:"Quadra", desc: `mês de ${rotuloMes(m)}` }));
+  Object.entries(quadraPagas()).forEach(([m, q]) =>
+    L.push({ data: q.data || m + "-01", valor: -(Number(q.valor)||0), tipo:"Quadra", desc: `mês de ${rotuloMes(m)}` }));
   estado.despesas.forEach(d => {
     const v = Number(d.valor) || 0;
     L.push({ data: d.data || "", valor: d.tipo === "entrada" ? v : -v, tipo: d.tipo === "entrada" ? "Entrada avulsa" : "Saída avulsa",
@@ -2115,7 +2145,7 @@ function telaCaixa(){
       <div class="kpi"><small>Recebido</small><b style="color:var(--pago)">${dinheiro(c.entrou)}</b>
         <div class="sub">${dinheiro(c.deMensalidades)} mensalidades · ${dinheiro(c.deRodadas)} rodadas${c.avulsasEntrada>0.005?` · ${dinheiro(c.avulsasEntrada)} avulsas`:""}</div></div>
       <div class="kpi"><small>Gasto</small><b style="color:var(--deve)">${dinheiro(c.saiu)}</b>
-        <div class="sub">${c.mesesQuadra?plural(c.mesesQuadra,"mês de quadra","meses de quadra"):plural(jogosPassados().length,"rodada","rodadas")} + despesas</div></div>
+        <div class="sub">${c.mesesQuadra?plural(c.mesesQuadra,"mês de quadra pago","meses de quadra pagos"):plural(jogosPassados().length,"rodada","rodadas")} + despesas${c.quadraAPagar>0.005?` · <b style="color:var(--deve)">${dinheiro(c.quadraAPagar)} de quadra a pagar</b>`:""}</div></div>
       <div class="kpi" style="grid-column:1/-1"><small>A receber dos atletas</small><b>${dinheiro(c.aReceber)}</b>
         <div class="sub">${c.atrasado>0.005?dinheiro(c.atrasado)+" atrasado":"nada atrasado"}${c.pendente>0.005?" · "+dinheiro(c.pendente)+" da próxima rodada":""}</div></div>
     </div>
@@ -2267,7 +2297,16 @@ function cartaoExtratoCaixa(c){
     <div class="titulo">Extrato do caixa · ${plural(L.length,"lançamento","lançamentos")}</div>
     <div class="aviso" style="${bate?"":"background:#FCE8E8;color:var(--deve)"}">
       Somando tudo abaixo: <b>${dinheiro(soma)}</b> ${bate ? "— bate com o saldo do caixa." : `— <b>não bate</b> com o saldo (${dinheiro(c.saldo)}).`}
-      <br><span class="sub">Mensalidade contada a ${dinheiro(cfgN("valorMensalista",50))} e quadra a ${dinheiro(cfgN("custoMensal",450))} por mês com rodada jogada — os valores atuais de Ajustes, aplicados a todos os meses.</span></div>
+      <br><span class="sub">Mensalidade contada a ${dinheiro(cfgN("valorMensalista",50))} (valor atual de Ajustes). A quadra só entra quando você marca o mês como pago.</span></div>
+    <div class="titulo" style="margin-top:14px">Quadra por mês</div>
+    ${mesesDeQuadra().length ? mesesDeQuadra().map(m => { const q = quadraPagas()[m];
+      return `<div class="item">
+        <div class="item-corpo"><div class="nome">🏟️ ${escapar(rotuloMes(m))}</div>
+          <div class="sub">${q ? `paga em ${dataCurta(q.data)} · sai do caixa` : `ainda não paga · não sai do caixa`}</div></div>
+        <div class="valor ${q?"neg":""}">${dinheiro(q ? q.valor : cfgN("custoMensal",450))}</div>
+        <button class="${q?"btn-sec":"btn-main"}" data-quadra="${m}">${q?"Desfazer":"Paguei"}</button></div>`; }).join("")
+      : `<div class="vazio">Nenhum mês de quadra no modelo mensal ainda.</div>`}
+    <div class="titulo" style="margin-top:14px">Lançamentos</div>
     ${meses.map((m, i) => {
       const doMes = L.filter(l => (mesDe(l.data) || "sem data") === m);
       const ent = doMes.filter(l => l.valor > 0).reduce((s,l) => s + l.valor, 0);
@@ -4448,7 +4487,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-isento],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-extrato],[data-lupa],[data-apagar-peca]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-isento],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-quadra],[data-extrato],[data-lupa],[data-apagar-peca]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -4504,6 +4543,14 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "nova-entrada") formDespesa("entrada");
   else if (d.acao === "ajustes")      formAjustes();
   else if (d.acao === "extrato-csv")  baixarExtratoCaixa();
+  else if (d.quadra) {
+    if (!estado.admin) return;
+    if (quadraPagas()[d.quadra]) {
+      if (!confirm(`Desfazer o pagamento da quadra de ${rotuloMes(d.quadra)}? O valor volta para o saldo.`)) return;
+      const mapa = { ...quadraPagas() }; delete mapa[d.quadra];
+      await gravarQuadraPagas(mapa); desenhar(); avisar("Pagamento da quadra desfeito.");
+    } else formQuadraPaga(d.quadra);
+  }
   else if (d.acao === "editar-estatuto")  formDocumento("estatuto","Estatuto da pelada",ESTATUTO_MODELO);
   else if (d.acao === "editar-identidade") formDocumento("identidade","Visão, princípios e valores",IDENTIDADE_MODELO);
   else if (d.compartilharTexto === "identidade") await compartilharTexto(textoIdentidade());
