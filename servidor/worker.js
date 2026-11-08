@@ -1,6 +1,6 @@
 /* Discípulos United — servidor de pagamento (Cloudflare Workers, plano grátis)
-   POST /pagar    → o atleta logado escolhe meses + forma; devolve o link do Stripe Checkout
-   POST /webhook  → o Stripe avisa que foi pago; os meses ficam marcados no Firestore
+   POST /pagar    → o atleta logado escolhe meses, diárias e multas + forma; devolve o link do Stripe Checkout (ou o QR do Pix)
+   POST /webhook  → o Stripe avisa que foi pago; meses, diárias e multas ficam marcados no Firestore
    Segredos (Settings → Variables and Secrets):
      STRIPE_SECRET_KEY      sk_live_...            (ou sk_test_... para testar)
      STRIPE_WEBHOOK_SECRET  whsec_...
@@ -17,7 +17,7 @@ class Erro extends Error { constructor(msg, status = 400) { super(msg); this.sta
 
 export default {
   // só para os testes automáticos (node servidor/teste.mjs)
-  get _teste() { return { valorDaCobranca, limparMeses, assinaturaStripeOk }; },
+  get _teste() { return { valorDaCobranca, limparMeses, limparItens, itemDevido, textoItens, lerItens, assinaturaStripeOk }; },
   async fetch(req, env) {
     const appUrl = env.APP_URL || APP_URL_PADRAO;
     const cors = { "Access-Control-Allow-Origin": new URL(appUrl).origin, "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -49,6 +49,31 @@ function valorDaCobranca(valorMensal, tipo, cartaoPct = 0, cartaoFixo = 0) {
 const limparMeses = l => Array.isArray(l)
   ? [...new Set(l.map(String).filter(m => /^\d{4}-(0[1-9]|1[0-2])$/.test(m)))].sort().slice(0, 12) : [];
 const nomeMes = m => { const [a, n] = m.split("-").map(Number); return `${MESES_NOMES[n - 1]} de ${a}`; };
+// diárias e multas: [{ jogo, tipo: "d" | "m" }] — no máximo 20 por pagamento
+const limparItens = l => {
+  if (!Array.isArray(l)) return [];
+  const vistos = new Set(), saida = [];
+  for (const x of l) {
+    const jogo = String((x && x.jogo) || ""), tipo = x && x.tipo === "m" ? "m" : x && x.tipo === "d" ? "d" : "";
+    if (!tipo || !/^[A-Za-z0-9_-]{1,40}$/.test(jogo) || vistos.has(jogo + tipo)) continue;
+    vistos.add(jogo + tipo); saida.push({ jogo, tipo });
+  }
+  return saida.slice(0, 20);
+};
+// o item ainda está devendo? devolve o valor (0 = não deve). Mesmas regras do app.
+function itemDevido(item, jogo, atletaId, cfg) {
+  if (!jogo || jogo.cancelada) return 0;
+  if (!cfg.modeloDesde || String(jogo.data || "") < cfg.modeloDesde) return 0;   // rodadas do rateio antigo não passam por aqui
+  const p = (jogo.presencas || {})[atletaId];
+  if (!p) return 0;
+  if (item.tipo === "d") return p.status === "in" && !p.pago && !p.isento ? Number(cfg.valorConvidado ?? 10) || 0 : 0;
+  const furo = p.status === "in" && p.faltou, tarde = !!p.desistiuTarde && p.status !== "in";
+  return (furo || tarde) && !p.multaPaga && !p.multaIsenta ? Number(cfg.multaValor ?? 10) || 0 : 0;
+}
+const textoItens = itens => itens.map(i => `${i.jogo}:${i.tipo}`).join(",");
+const lerItens = t => limparItens(String(t || "").split(",").filter(Boolean).map(x => { const [jogo, tipo] = x.split(":"); return { jogo, tipo }; }));
+const dataBR = iso => { const [a, m, d] = String(iso || "").split("-"); return d ? `${d}/${m}` : ""; };
+const hojeBR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
 
 /* ---------- POST /pagar ---------- */
 async function criarPagamento(req, env, appUrl) {
@@ -57,8 +82,9 @@ async function criarPagamento(req, env, appUrl) {
   const corpo = await req.json().catch(() => ({}));
   const tipo = corpo.tipo === "card" ? "card" : corpo.tipo === "pix" ? "pix" : null;
   const meses = limparMeses(corpo.meses);
+  const itensPedidos = limparItens(corpo.itens);
   if (!tipo) throw new Erro("Escolha Pix ou cartão.");
-  if (!meses.length) throw new Erro("Escolha pelo menos um mês.");
+  if (!meses.length && !itensPedidos.length) throw new Erro("Escolha o que quer pagar.");
 
   const fs = await firestore(env);
   const vinculo = await fs.get(`vinculos/${uid}`);
@@ -67,32 +93,44 @@ async function criarPagamento(req, env, appUrl) {
   const atleta = await fs.get(`atletas/${atletaId}`);
   if (!atleta) throw new Erro("Atleta não encontrado.", 404);
   const situacao = atleta.situacao || (atleta.ativo === false ? "inativo" : "fixo");
-  if (situacao !== "fixo") throw new Erro("Só atleta fixo paga mensalidade.");
+  if (meses.length && situacao !== "fixo") throw new Erro("Só atleta fixo paga mensalidade.");
   const desde = atleta.mensalDesde || "";
 
   const docs = await Promise.all(meses.map(m => fs.get(`mensalidades/${m}`)));
   // tira meses já pagos, isentos (DM etc.) ou anteriores ao início como mensalista
   const aPagar = meses.filter((m, i) => !((docs[i] && docs[i].pagos) || {})[atletaId]
     && !((docs[i] && docs[i].isentos) || {})[atletaId] && (!desde || m >= desde));
-  if (!aPagar.length) throw new Erro("Esses meses já estão pagos ou isentos.");
 
   const cfg = (await fs.get("config/geral")) || {};
   if (!cfg.pagOnline) throw new Erro("Pagamento online desligado nos ajustes.");
-  const unit = valorDaCobranca(cfg.valorMensalista ?? 50, tipo, cfg.cartaoPct ?? 3.99, cfg.cartaoFixo ?? 0.39);
+  const pct = cfg.cartaoPct ?? 3.99, fixoTaxa = cfg.cartaoFixo ?? 0.39;
+  const unit = valorDaCobranca(cfg.valorMensalista ?? 50, tipo, pct, fixoTaxa);
+  // diárias e multas: confere uma por uma no banco (valor vem dos ajustes, nunca do aparelho)
+  const jogos = {};
+  for (const j of [...new Set(itensPedidos.map(i => i.jogo))]) jogos[j] = await fs.get(`jogos/${j}`);
+  const itens = itensPedidos.map(i => ({ ...i, base: itemDevido(i, jogos[i.jogo], atletaId, cfg), data: (jogos[i.jogo] || {}).data || "" }))
+    .filter(i => i.base > 0).map(i => ({ ...i, valor: valorDaCobranca(i.base, tipo, pct, fixoTaxa) }));
+  if (!aPagar.length && !itens.length) throw new Erro("Isso já está pago ou isento.");
+
   const grupo = cfg.nomeGrupo || "Discípulos United";
-  const meta = { atletaId, meses: aPagar.join(","), tipo };
+  const total = arred(unit * aPagar.length + itens.reduce((s, i) => s + i.valor, 0));
+  const itensTxt = textoItens(itens);
+  const meta = { atletaId, meses: aPagar.join(","), itens: itensTxt, tipo };
+  const nomeItem = i => `${i.tipo === "m" ? "Multa" : "Diária"} da rodada ${dataBR(i.data)}`;
+  const resumo = [...aPagar.map(m => "Mensalidade " + nomeMes(m)), ...itens.map(nomeItem)].join(", ");
   if (tipo === "pix" && env.MP_ACCESS_TOKEN)
-    return await pixMercadoPago(env, fs, { atletaId, nome: atleta.nome || "", meses: aPagar, unit, grupo, origem: new URL(req.url).origin });
+    return await pixMercadoPago(env, fs, { atletaId, nome: atleta.nome || "", meses: aPagar, itens, total, resumo, grupo, origem: new URL(req.url).origin });
 
   const params = {
     mode: "payment", locale: "pt-BR", "payment_method_types[0]": tipo,
     client_reference_id: atletaId,
     success_url: appUrl + "#pago=ok", cancel_url: appUrl + "#pago=cancelado",
-    ...achatar({ metadata: meta, payment_intent_data: { metadata: meta, description: `Mensalidade ${grupo}` } })
+    ...achatar({ metadata: meta, payment_intent_data: { metadata: meta, description: `${grupo} — ${resumo}`.slice(0, 500) } })
   };
-  aPagar.forEach((m, i) => Object.assign(params, achatar({ [`line_items[${i}]`]: { quantity: 1, price_data: {
-    currency: "brl", unit_amount: Math.round(unit * 100),
-    product_data: { name: `Mensalidade ${nomeMes(m)}`, description: `${grupo} — ${atleta.nome || ""}` } } } })));
+  const linhas = [...aPagar.map(m => ({ nome: `Mensalidade ${nomeMes(m)}`, valor: unit })), ...itens.map(i => ({ nome: nomeItem(i), valor: i.valor }))];
+  linhas.forEach((l, i) => Object.assign(params, achatar({ [`line_items[${i}]`]: { quantity: 1, price_data: {
+    currency: "brl", unit_amount: Math.round(l.valor * 100),
+    product_data: { name: l.nome, description: `${grupo} — ${atleta.nome || ""}` } } } })));
   if (tipo === "pix") params["payment_method_options[pix][expires_after_seconds]"] = "3600";
 
   const resp = await fetch("https://api.stripe.com/v1/checkout/sessions", { method: "POST",
@@ -107,8 +145,8 @@ async function criarPagamento(req, env, appUrl) {
     if (tipo === "pix" && /pix/i.test(msg)) throw new Erro("O Pix ainda não está ativo na conta do Stripe. Use o cartão por enquanto. (Stripe: " + msg + ")");
     throw new Erro("O Stripe não aceitou a cobrança: " + msg, 502);
   }
-  await fs.set(`pagamentosStripe/${sessao.id}`, { atletaId, meses: aPagar, tipo, valor: arred(unit * aPagar.length), status: "aberto", em: Date.now() });
-  return { url: sessao.url, meses: aPagar, valor: arred(unit * aPagar.length) };
+  await fs.set(`pagamentosStripe/${sessao.id}`, { atletaId, meses: aPagar, itens: itensTxt, tipo, valor: total, status: "aberto", em: Date.now() });
+  return { url: sessao.url, meses: aPagar, itens: itens.map(({ jogo, tipo }) => ({ jogo, tipo })), valor: total };
 }
 // {a:{b:1}} → {"a[b]": "1"} (formato que a API do Stripe espera)
 function achatar(obj, prefixo = "", saida = {}) {
@@ -144,9 +182,11 @@ async function webhook(req, env) {
 }
 async function marcarPago(fs, s, eventoId) {
   const md = s.metadata || {};
-  const atletaId = md.atletaId, meses = String(md.meses || "").split(",").filter(Boolean);
-  if (!atletaId || !meses.length) { console.warn("Sessão sem metadados", s.id); return; }
-  await marcarMeses(fs, atletaId, meses, { pagamento: s.id, forma: md.tipo || "", valor: arred((s.amount_total || 0) / 100 / meses.length) });
+  const atletaId = md.atletaId, meses = String(md.meses || "").split(",").filter(Boolean), itens = lerItens(md.itens);
+  if (!atletaId || (!meses.length && !itens.length)) { console.warn("Sessão sem metadados", s.id); return; }
+  const online = { pagamento: s.id, forma: md.tipo || "" };
+  if (meses.length) await marcarMeses(fs, atletaId, meses, online);
+  await marcarItens(fs, atletaId, itens, online);
   await fs.set(`pagamentosStripe/${s.id}`, { status: "pago", pagoEm: Date.now(), evento: eventoId }, true);
 }
 async function marcarMeses(fs, atletaId, meses, online) {
@@ -154,18 +194,27 @@ async function marcarMeses(fs, atletaId, meses, online) {
   for (const m of meses)
     await fs.set(`mensalidades/${m}`, { pagos: { [atletaId]: agora }, online: { [atletaId]: online } }, true);
 }
+// marca só os campos daquele atleta, dentro de presencas — o resto da rodada fica como está
+async function marcarItens(fs, atletaId, itens, online) {
+  const hoje = hojeBR();
+  for (const i of itens) {
+    const campos = i.tipo === "m" ? { multaPaga: true, multaPagaEm: hoje, multaOnline: online } : { pago: true, pagoEm: hoje, pagoOnline: online };
+    const base = `presencas.${nomeCampo(atletaId)}`;
+    await fs.set(`jogos/${i.jogo}`, { presencas: { [atletaId]: campos } }, true, Object.keys(campos).map(c => `${base}.${c}`));
+  }
+}
 
 /* ---------- Pix pelo Mercado Pago ---------- */
 // cria a cobrança Pix e devolve o QR code para o app mostrar
-async function pixMercadoPago(env, fs, { atletaId, nome, meses, unit, grupo, origem }) {
-  const total = arred(unit * meses.length);
+async function pixMercadoPago(env, fs, { atletaId, nome, meses, itens, total, resumo, grupo, origem }) {
   const expira = new Date(Date.now() + 60 * 60e3 - 3 * 3600e3).toISOString().replace("Z", "-03:00");   // 1 hora, no horário de Brasília
   const resp = await fetch("https://api.mercadopago.com/v1/payments", { method: "POST",
     headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}`, "Content-Type": "application/json", "X-Idempotency-Key": crypto.randomUUID() },
     body: JSON.stringify({
       transaction_amount: total, payment_method_id: "pix",
-      description: `Mensalidade ${grupo} — ${meses.map(nomeMes).join(", ")}`,
-      external_reference: `mensalidade|${atletaId}|${meses.join(",")}`,
+      description: `${grupo} — ${resumo}`.slice(0, 250),
+      // a lista completa fica em pagamentosMP/{id}; a referência só identifica o atleta
+      external_reference: `du|${atletaId}`,
       notification_url: `${origem}/webhook-mp`,
       date_of_expiration: expira,
       payer: { email: emailPagador(atletaId), first_name: (nome.split(" ")[0] || "Atleta").slice(0, 40) }
@@ -176,8 +225,8 @@ async function pixMercadoPago(env, fs, { atletaId, nome, meses, unit, grupo, ori
     throw new Erro("O Mercado Pago não aceitou a cobrança: " + (pg.message || pg.error || resp.status), 502);
   }
   const td = (pg.point_of_interaction && pg.point_of_interaction.transaction_data) || {};
-  await fs.set(`pagamentosMP/${pg.id}`, { atletaId, meses, tipo: "pix", valor: total, status: pg.status || "pending", em: Date.now() });
-  return { pix: true, id: String(pg.id), meses, valor: total, qr: td.qr_code_base64 || "", copiaCola: td.qr_code || "", link: td.ticket_url || "" };
+  await fs.set(`pagamentosMP/${pg.id}`, { atletaId, meses, itens: textoItens(itens), tipo: "pix", valor: total, status: pg.status || "pending", em: Date.now() });
+  return { pix: true, id: String(pg.id), meses, itens: itens.map(({ jogo, tipo }) => ({ jogo, tipo })), valor: total, qr: td.qr_code_base64 || "", copiaCola: td.qr_code || "", link: td.ticket_url || "" };
 }
 // o Mercado Pago exige um e-mail do pagador; usamos um endereço fixo por atleta (não recebe nada)
 const emailPagador = id => String(id).normalize("NFD").replace(/[^A-Za-z0-9]/g, "").toLowerCase().slice(0, 40) + "@pagamentos.discipulosunited.com.br";
@@ -195,15 +244,20 @@ async function webhookMP(req, env) {
   const pg = await r.json();
   const fs = await firestore(env);
   const ref = String(pg.external_reference || "").split("|");
-  if (pg.status !== "approved" || ref[0] !== "mensalidade" || !ref[1] || !ref[2]) {
-    if (ref[0] === "mensalidade") await fs.set(`pagamentosMP/${id}`, { status: pg.status || "?" }, true);
-    return new Response("ok");
-  }
+  const nosso = (ref[0] === "mensalidade" && ref[1] && ref[2]) || (ref[0] === "du" && ref[1]);
+  if (!nosso) return new Response("ok");
+  if (pg.status !== "approved") { await fs.set(`pagamentosMP/${id}`, { status: pg.status || "?" }, true); return new Response("ok"); }
+  // o que foi pago: o registro feito na criação (formato novo) ou a própria referência (cobranças antigas)
+  const reg = ref[0] === "du" ? await fs.get(`pagamentosMP/${id}`) : null;
+  if (ref[0] === "du" && (!reg || reg.atletaId !== ref[1])) { console.error("Pagamento MP sem registro", id); return new Response("sem registro", { status: 500 }); }
+  const meses = ref[0] === "du" ? (reg.meses || []) : ref[2].split(",").filter(Boolean);
+  const itens = ref[0] === "du" ? lerItens(reg.itens) : [];
   // cada pagamento aprovado é processado uma vez só
   if (!(await fs.criarSeNaoExiste(`eventosMP/${id}`, { em: Date.now() }))) return new Response("ok (repetido)");
-  const meses = ref[2].split(",").filter(Boolean);
   try {
-    await marcarMeses(fs, ref[1], meses, { pagamento: `mp_${id}`, forma: "pix", valor: arred((pg.transaction_amount || 0) / meses.length) });
+    const online = { pagamento: `mp_${id}`, forma: "pix" };
+    if (meses.length) await marcarMeses(fs, ref[1], meses, online);
+    await marcarItens(fs, ref[1], itens, online);
     await fs.set(`pagamentosMP/${id}`, { status: "pago", pagoEm: Date.now() }, true);
   } catch (e) {
     await fs.apagar(`eventosMP/${id}`).catch(() => {});
@@ -280,8 +334,8 @@ async function firestore(env) {
       return decodificarCampos((await r.json()).fields || {});
     },
     // juntar=true: só os campos enviados mudam (como merge); mapas viram caminhos campo.`chave`
-    async set(caminho, dados, juntar = false) {
-      const qs = juntar ? caminhosDe(dados).map(c => "updateMask.fieldPaths=" + encodeURIComponent(c)).join("&") : "";
+    async set(caminho, dados, juntar = false, mascara = null) {
+      const qs = juntar ? (mascara || caminhosDe(dados)).map(c => "updateMask.fieldPaths=" + encodeURIComponent(c)).join("&") : "";
       const r = await fetch(urlDoc(caminho) + (qs ? "?" + qs : ""), { method: "PATCH", headers: await cab(),
         body: JSON.stringify({ fields: codificarCampos(dados) }) });
       if (!r.ok) throw new Error(`Firestore set ${caminho}: ${r.status} ${await r.text()}`);
