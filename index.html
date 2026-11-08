@@ -728,7 +728,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-06c";
+const VERSAO = "2026-11-08a";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -860,8 +860,7 @@ function semear(){
     goleiro: i===3 || i===9 || i===11,
     convidadoPor: i===14 ? "a-vinícios" : i===15 ? "a-rafael" : ""
   }));
-  estado.config = { ...estado.config, pixChave:"47 99999-0000", pixTipo:"Celular",
-                    pixNome:"Organizador da pelada", custoPadrao:180, valorFixo:0, vagas:14, pin:"1234" };
+  estado.config = { ...estado.config, custoPadrao:180, valorFixo:0, vagas:14, pin:"1234" };
 
   const hoje = new Date();
   const emDias = d => { const x = new Date(hoje); x.setDate(x.getDate()+d); return x.toISOString().slice(0,10); };
@@ -1047,6 +1046,8 @@ const emAtraso = (id, m) => mesesComCobranca().includes(m) && deveMensalNoMes(id
 const valorCartao = () => { const v = cfgN("valorMensalista",50), pct = cfgN("cartaoPct",3.99)/100, fixo = cfgN("cartaoFixo",0.39);
   return Math.round((v + fixo) / (1 - pct) * 100) / 100; };
 const pagamentoOnlineAtivo = () => !!estado.config.pagOnline;
+// link que abre o app direto na Minha Página, onde o atleta paga (nunca chave Pix nos textos)
+const linkPagar = () => { const u = location.href.split("#")[0]; return /^https?:/.test(u) ? u + "#pagar" : ""; };
 
 async function irParaPagamento(tipo){
   const meses = [...document.querySelectorAll("[data-mes-pagar]:checked")].map(x => x.value);
@@ -1093,6 +1094,7 @@ document.addEventListener("click", async e => {
 // ao voltar do Stripe: avisa e confere sozinho quando o webhook marcar os meses
 function lerVoltaDoPagamento(){
   const h = location.hash || "";
+  if (/pagar/.test(h) && !/pago=/.test(h)) { history.replaceState(null, "", location.pathname + location.search); estado.tela = "eu"; return; }
   if (!/pago=/.test(h)) return;
   history.replaceState(null, "", location.pathname + location.search);
   if (/pago=ok/.test(h)) { estado.aguardandoPagamento = true; avisar("Pagamento enviado! Confirmando com o banco…"); }
@@ -1602,10 +1604,8 @@ function textoExtrato(id){
   L.push(s.aberto > 0.005 ? `*EM ABERTO: ${dinheiro(s.aberto)}*` : "*Está tudo em dia!* 🙌");
   if (s.atrasado > 0.005) L.push(`vencido: ${dinheiro(s.atrasado)}`);
   if (s.pendente > 0.005) L.push(`a vencer: ${dinheiro(s.pendente)}`);
-  if (s.aberto > 0.005 && estado.config.pixChave)
-    L.push(`\n*Pix:* ${estado.config.pixChave}${estado.config.pixNome?" ("+estado.config.pixNome+")":""}`);
-  const url = location.href.split("#")[0];
-  if (/^https?:/.test(url)) { L.push(""); L.push(url); }
+  const url = linkPagar();
+  if (url) { L.push(""); L.push(s.aberto > 0.005 ? `*Pague pelo site:* ${url}` : url); }
   return L.join("\n");
 }
 
@@ -1783,10 +1783,8 @@ function textoDaLista(j){
     const faltam = dentro.filter(id => !j.presencas[id].pago && !j.presencas[id].isento && valorNaRodada(j,id) > 0).length;
     if (faltam) L.push(`${faltam===1?"Falta":"Faltam"} *${plural(faltam,"pessoa","pessoas")}* acertar.`);
   }
-  if (estado.config.pixChave) L.push(`*Pix:* ${estado.config.pixChave}${estado.config.pixNome?" ("+estado.config.pixNome+")":""}`);
-
   const url = location.href.split("#")[0];
-  if (/^https?:/.test(url)) { L.push(""); L.push(`Confirme sua presença: ${url}`); }
+  if (/^https?:/.test(url)) { L.push(""); L.push(`Confirme sua presença e pague pelo site: ${url}`); }
   return L.join("\n");
 }
 
@@ -1833,12 +1831,8 @@ function textoMensalidades(m){
     adiantados.forEach(x => L.push(`• ${x.a.nome} até ${rotuloMes(x.frente[x.frente.length-1])}`));
   }
 
-  if (estado.config.pixChave) {
-    L.push("");
-    L.push(`*Pix:* ${estado.config.pixChave}${estado.config.pixNome?" ("+estado.config.pixNome+")":""}`);
-  }
-  const url = location.href.split("#")[0];
-  if (/^https?:/.test(url)) { L.push(""); L.push(url); }
+  const url = linkPagar();
+  if (url) { L.push(""); L.push(`*Pague pelo site* (Minha Página): ${url}`); }
   return L.join("\n");
 }
 
@@ -1980,12 +1974,8 @@ function telaJogo(){
       </div>
 
       <div class="capa-bloco">
-        ${estado.config.pixChave ? `
-          <div class="capa-rot">Pix · ${escapar(estado.config.pixTipo||"chave")}${estado.config.pixNome?" · "+escapar(estado.config.pixNome):""}</div>
-          <div class="capa-pix"><code>${escapar(estado.config.pixChave)}</code>
-            <button class="btn-ouro" data-copiar="${escapar(estado.config.pixChave)}">Copiar</button></div>`
-        : `<div class="capa-rot">Pix</div>
-           <div class="capa-pix"><code style="opacity:.6;font-weight:400">${estado.admin?"Cadastre a chave em Caixa → Ajustes.":"Chave ainda não cadastrada — peça ao organizador."}</code></div>`}
+        ${estado.eu ? "" : `<div class="capa-rot">Pagamento</div>
+        <div class="capa-pix"><code style="font-weight:400">Pix ou cartão, pelo site — escolha seu nome acima</code></div>`}
 
         ${estado.eu ? (()=>{
           const sa = saldoAtleta(estado.eu);
@@ -3730,6 +3720,11 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
 }
 
 /* ---------- portão ---------- */
+function ligarAdmin(){
+  estado.admin = true; desenhar(); avisar("Modo admin ligado.");
+  // pagamento agora é só pelo site: apaga a chave Pix antiga que ficou guardada
+  if (estado.config.pixChave || estado.config.pixNome) gravarConfig({ pixChave:"", pixTipo:"", pixNome:"" }).catch(() => {});
+}
 const trancado = () => !!estado.config.exigirLogin && !estado.vinculo && !estado.admin;
 
 function desenharPortao(carregando){
@@ -3787,7 +3782,7 @@ function desenharPortao(carregando){
   document.getElementById("p_admin").onclick = () => {
     const pin = prompt("Senha de admin:");
     if (pin === null) return;
-    if (pin === String(estado.config.pin)) { estado.admin = true; desenhar(); avisar("Modo admin ligado."); }
+    if (pin === String(estado.config.pin)) ligarAdmin();
     else avisar("Senha errada.");
   };
 }
@@ -4236,10 +4231,7 @@ function formAjustes(){
       <div class="sub" style="margin-top:5px">Aparece no cabeçalho, na aba do navegador e nos textos que vão para o WhatsApp.</div></div>
     <div class="campo"><label>Lema</label><input id="f_lema" value="${escapar(c.lema||"")}" placeholder="${escapar(lemaPadrao())}">
       <div class="sub" style="margin-top:5px">Linha embaixo do nome, no cabeçalho. Deixe vazio para usar o dia da pelada: <b>${escapar(lemaPadrao())}</b>.</div></div>
-    <div class="campo"><label>Chave Pix</label><input id="f_pix" value="${escapar(c.pixChave)}" placeholder="celular, e-mail, CPF ou aleatória"></div>
-    <div class="dupla"><div class="campo"><label>Tipo da chave</label><select id="f_tipo">
-      ${["Celular","E-mail","CPF/CNPJ","Aleatória"].map(t => `<option ${c.pixTipo===t?"selected":""}>${t}</option>`).join("")}</select></div>
-      <div class="campo"><label>Nome do favorecido</label><input id="f_nomepix" value="${escapar(c.pixNome)}"></div></div>
+
     <div class="dupla"><div class="campo"><label>Dia da pelada</label><select id="f_dia">
         ${DIAS.map((d,i) => `<option value="${i}" ${Number(c.diaSemana??2)===i?"selected":""}>${d}</option>`).join("")}</select></div>
       <div class="campo"><label>Hora</label><input type="time" id="f_hora" value="${c.hora||"20:00"}"></div></div>
@@ -4346,9 +4338,7 @@ function formAjustes(){
     await gravarConfig({
       nomeGrupo:document.getElementById("f_nomegrupo").value.trim() || "Discípulos United",
       lema:document.getElementById("f_lema").value.trim(),
-      pixChave:document.getElementById("f_pix").value.trim(),
-      pixTipo:document.getElementById("f_tipo").value,
-      pixNome:document.getElementById("f_nomepix").value.trim(),
+      pixChave:"", pixTipo:"", pixNome:"",   // pagamento só pelo site: a chave não fica mais guardada
       diaSemana:Number(document.getElementById("f_dia").value),
       hora:document.getElementById("f_hora").value || "20:00",
       linkGrupo:document.getElementById("f_grupo").value.trim(),
@@ -4476,7 +4466,7 @@ document.getElementById("btnAdmin").onclick = () => {
   if (estado.admin) { estado.admin = false; estado.eu = null; desenhar(); return avisar("Modo admin desligado."); }
   const pin = prompt("Senha de admin:");
   if (pin === null) return;
-  if (pin === String(estado.config.pin)) { estado.admin = true; desenhar(); avisar("Modo admin ligado."); }
+  if (pin === String(estado.config.pin)) ligarAdmin();
   else avisar("Senha errada.");
 };
 

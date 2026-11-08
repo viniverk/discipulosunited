@@ -125,7 +125,7 @@ Cada `index.html` novo que você subir republica sozinho.
 ## 5. Primeiro uso
 
 1. Abra o site, clique em 🔒 e entre com a senha `1234`.
-2. **Caixa → Ajustes da pelada**: nome do grupo, chave Pix, favorecido, dia e hora da pelada, custo padrão da quadra, vagas por rodada e — importante — **troque a senha**. O nome do grupo aparece no cabeçalho, na aba do navegador e em todo texto que vai para o WhatsApp. O **lema** é a linha embaixo do nome: deixe vazio e ele mostra o dia da pelada automaticamente, ou escreva o que quiser e o texto fixo passa a valer. O dia escolhido vira o padrão ao marcar um jogo novo e aparece embaixo do escudo.
+2. **Caixa → Ajustes da pelada**: nome do grupo, dia e hora da pelada, custo padrão da quadra, vagas por rodada e — importante — **troque a senha**. O nome do grupo aparece no cabeçalho, na aba do navegador e em todo texto que vai para o WhatsApp. O **lema** é a linha embaixo do nome: deixe vazio e ele mostra o dia da pelada automaticamente, ou escreva o que quiser e o texto fixo passa a valer. O dia escolhido vira o padrão ao marcar um jogo novo e aparece embaixo do escudo.
 3. **Atletas**: cadastre a galera. Cada um entra como **fixo**, **convidado** (aí você indica quem trouxe) ou **inativo**.
 4. **Agenda → Marcar jogo**: data, local e custo.
 5. Mande o link no grupo do WhatsApp.
@@ -291,7 +291,7 @@ O fixo que pagou a mensalidade está coberto em todas as rodadas do mês — na 
 
 Mensalidade adiantada entra no caixa na hora, porque o dinheiro está na mão, mas **não abate dívida de mês que ainda não venceu**. O cartão separa quanto do recebido veio de meses futuros.
 
-O botão **Mandar a mensalidade no grupo** monta o texto do mês que estiver na tela: valor, quem já pagou, quem está em aberto com o total, quem está adiantado e a chave Pix.
+O botão **Mandar a mensalidade no grupo** monta o texto do mês que estiver na tela: valor, quem já pagou, quem está em aberto com o total, quem está adiantado e o link para pagar pelo site (Pix ou cartão, na Minha Página). O app não mostra mais chave Pix: todo pagamento é pelo site.
 
 Na lista da rodada, o ⏳ ao lado de um fixo sai do **mesmo saldo** que o selo da lista no app mostra — os dois nunca divergem. O 🎫 sozinho quer dizer mensalista sem nada em aberto; o 🎫✅ é quem já pagou o mês daquela rodada. Enquanto a mensalidade do mês não vence, o resumo diz *vence na rodada de 13/10* em vez de cobrar.
 
