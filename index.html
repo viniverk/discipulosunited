@@ -284,6 +284,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .extrato-mes[open] summary::before{content:"▾ "}
 .extrato-linha[data-fechar]{cursor:pointer}
 .extrato-mes .pos{color:var(--pago)} .extrato-mes .neg{color:var(--deve)}
+.btn-mini{display:block;margin-top:6px;padding:5px 10px;font-size:12px;border-radius:999px;white-space:nowrap}
 .tipo-rot{font-size:11px;font-weight:700;color:var(--cinza);margin:12px 0 2px;letter-spacing:.4px}
 .em-aberto{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .aberto-chip{background:var(--linha);color:var(--cinza);border:0;border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer;text-align:left}
@@ -728,7 +729,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-08b";
+const VERSAO = "2026-11-08c";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -1047,7 +1048,11 @@ const valorCartao = () => { const v = cfgN("valorMensalista",50), pct = cfgN("ca
   return Math.round((v + fixo) / (1 - pct) * 100) / 100; };
 const pagamentoOnlineAtivo = () => !!estado.config.pagOnline;
 // link que abre o app direto na Minha Página, onde o atleta paga (nunca chave Pix nos textos)
-const linkPagar = () => { const u = location.href.split("#")[0]; return /^https?:/.test(u) ? u + "#pagar" : ""; };
+// convidado não tem senha: o link dele já abre a página de pagamento com o nome dele
+const linkPagar = id => { const u = location.href.split("#")[0]; if (!/^https?:/.test(u)) return "";
+  return u + (id && !ehFixo(id) ? "#pagar=" + encodeURIComponent(id) : "#pagar"); };
+// atleta da página de pagamento: quem entrou com senha, ou o convidado do link
+const pagadorDaPagina = () => estado.vinculo || (estado.pagarPor && !ehFixo(estado.pagarPor) && atletaDe(estado.pagarPor) ? estado.pagarPor : null) || (!fb ? estado.eu : null);
 
 // diárias e multas que dá para pagar pelo site (rodadas do modelo mensal)
 const itensPagaveis = id => itensEmAberto(id).filter(it => it.jogo && modeloNovo(it.jogo));
@@ -1074,10 +1079,10 @@ async function irParaPagamento(tipo){
   try {
     const token = await fb.auth.currentUser.getIdToken();
     const resp = await fetch(srv + "/pagar", { method:"POST",
-      headers:{ "Content-Type":"application/json", Authorization:"Bearer " + token }, body: JSON.stringify({ meses, itens, tipo }) });
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer " + token }, body: JSON.stringify({ meses, itens, tipo, atleta: estado.vinculo ? undefined : pagadorDaPagina() }) });
     const r = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(r.erro || "Não consegui abrir o pagamento.");
-    try { sessionStorage.setItem("du-pagando", JSON.stringify({ id: estado.vinculo || estado.eu, meses: r.meses || [], itens: r.itens || [] })); } catch(_) {}
+    try { sessionStorage.setItem("du-pagando", JSON.stringify({ id: pagadorDaPagina(), porLink: !estado.vinculo, meses: r.meses || [], itens: r.itens || [] })); } catch(_) {}
     if (r.pix) { botoes.forEach(b => { b.disabled = false; }); mostrarPix(r); return; }   // Pix (Mercado Pago): QR aqui mesmo
     location.href = r.url;                       // cartão: página do Stripe; ao terminar, volta para o app
   } catch (e) {
@@ -1107,9 +1112,12 @@ document.addEventListener("click", async e => {
 // ao voltar do Stripe: avisa e confere sozinho quando o webhook marcar os meses
 function lerVoltaDoPagamento(){
   const h = location.hash || "";
+  const pp = h.match(/pagar=([^&]+)/);
+  if (pp) estado.pagarPor = decodeURIComponent(pp[1]);
   if (/pagar/.test(h) && !/pago=/.test(h)) { history.replaceState(null, "", location.pathname + location.search); estado.tela = "eu"; return; }
   if (!/pago=/.test(h)) return;
   history.replaceState(null, "", location.pathname + location.search);
+  try { const pg = JSON.parse(sessionStorage.getItem("du-pagando") || "null"); if (pg && pg.porLink) estado.pagarPor = pg.id; } catch(_) {}
   if (/pago=ok/.test(h)) { estado.aguardandoPagamento = true; avisar("Pagamento enviado! Confirmando com o banco…"); }
   else { try { sessionStorage.removeItem("du-pagando"); } catch(_) {} avisar("Pagamento cancelado."); }
   estado.tela = "eu";
@@ -1129,7 +1137,7 @@ function conferirPagamento(){
 /* ---------- TELA — MINHA PÁGINA ---------- */
 function telaEu(){
   const el = document.getElementById("tela-eu"); if (!el) return;
-  const id = estado.vinculo || (!fb ? estado.eu : null);
+  const id = pagadorDaPagina();
   if (!id) {
     el.innerHTML = `<div class="cartao"><div class="vazio"><b>Minha página</b>
       Entre com a sua senha para ver suas mensalidades e pagar pelo app.</div>
@@ -1626,8 +1634,8 @@ function textoExtrato(id){
   L.push(s.aberto > 0.005 ? `*EM ABERTO: ${dinheiro(s.aberto)}*` : "*Está tudo em dia!* 🙌");
   if (s.atrasado > 0.005) L.push(`vencido: ${dinheiro(s.atrasado)}`);
   if (s.pendente > 0.005) L.push(`a vencer: ${dinheiro(s.pendente)}`);
-  const url = linkPagar();
-  if (url) { L.push(""); L.push(s.aberto > 0.005 ? `*Pague pelo site:* ${url}` : url); }
+  const url = linkPagar(id);
+  if (url) { L.push(""); L.push(s.aberto > 0.005 ? `*Pague pelo site (Pix ou cartão):* ${url}` : url); }
   return L.join("\n");
 }
 
@@ -2250,7 +2258,8 @@ function telaCaixa(){
                   ? `<button class="aberto-chip ${it.vencido?"vencido":""}" ${estado.admin?`data-fechar="${it.jogo.id}"`:`data-abrir-jogo="${it.jogo.id}"`} title="Abrir a rodada">${txt} ›</button>`
                   : `<span class="aberto-chip ${it.vencido?"vencido":""}">${txt}</span>`;
               }).join("")}</div></div>
-            <div class="valor ${a.atrasado>0.005?"neg":""}">${dinheiro(a.aberto)}</div></div>`;
+            <div class="valor ${a.atrasado>0.005?"neg":""}">${dinheiro(a.aberto)}
+              ${estado.admin && !ehFixo(a.id) ? `<button class="btn-zap btn-mini" data-cobrar="${a.id}">📲 Cobrar</button>` : ""}</div></div>`;
         };
         const atrasados = devedores.filter(a => a.atrasado > 0.005);
         const soProxima = devedores.filter(a => a.atrasado <= 0.005);
@@ -3747,7 +3756,9 @@ function ligarAdmin(){
   // pagamento agora é só pelo site: apaga a chave Pix antiga que ficou guardada
   if (estado.config.pixChave || estado.config.pixNome) gravarConfig({ pixChave:"", pixTipo:"", pixNome:"" }).catch(() => {});
 }
-const trancado = () => !!estado.config.exigirLogin && !estado.vinculo && !estado.admin;
+// o convidado que abre o link de pagamento vê só a página de pagar, mesmo com o login obrigatório
+const trancado = () => !!estado.config.exigirLogin && !estado.vinculo && !estado.admin
+  && !(estado.tela === "eu" && estado.pagarPor && atletaDe(estado.pagarPor) && !ehFixo(estado.pagarPor));
 
 function desenharPortao(carregando){
   document.body.classList.add("trancado");
@@ -4499,7 +4510,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-isento],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-quadra],[data-extrato],[data-lupa],[data-apagar-peca]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-isento],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-quadra],[data-cobrar],[data-extrato],[data-lupa],[data-apagar-peca]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -4555,6 +4566,7 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "nova-entrada") formDespesa("entrada");
   else if (d.acao === "ajustes")      formAjustes();
   else if (d.acao === "extrato-csv")  baixarExtratoCaixa();
+  else if (d.cobrar) compartilharTexto(textoExtrato(d.cobrar));
   else if (d.quadra) {
     if (!estado.admin) return;
     if (quadraPagas()[d.quadra]) {

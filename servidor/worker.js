@@ -88,11 +88,15 @@ async function criarPagamento(req, env, appUrl) {
 
   const fs = await firestore(env);
   const vinculo = await fs.get(`vinculos/${uid}`);
-  const atletaId = vinculo && vinculo.atletaId;
+  let atletaId = vinculo && vinculo.atletaId;
+  // convidado não tem senha: pelo link que o organizador manda, paga só diárias e multas dele
+  const porLink = !atletaId && typeof corpo.atleta === "string" && /^[^/]{1,80}$/.test(corpo.atleta);
+  if (porLink) atletaId = corpo.atleta;
   if (!atletaId) throw new Erro("Entre no app com sua senha para pagar.", 403);
   const atleta = await fs.get(`atletas/${atletaId}`);
   if (!atleta) throw new Erro("Atleta não encontrado.", 404);
   const situacao = atleta.situacao || (atleta.ativo === false ? "inativo" : "fixo");
+  if (porLink && (situacao !== "convidado" || meses.length)) throw new Erro("Entre no app com sua senha para pagar.", 403);
   if (meses.length && situacao !== "fixo") throw new Erro("Só atleta fixo paga mensalidade.");
   const desde = atleta.mensalDesde || "";
 
