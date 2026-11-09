@@ -729,7 +729,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-09a";
+const VERSAO = "2026-11-09b";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3697,8 +3697,9 @@ function desenhar(){
   const ativos = estado.atletas.filter(a => situacaoDe(a) !== "inativo").sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
   // fixos primeiro, depois os convidados — cada grupo em ordem alfabética
   // admin: na próxima rodada, quem ainda não respondeu fica em negrito; quem já respondeu, cinza claro
-  const rodada = estado.admin ? jogosValidos().filter(j => j.data >= hojeISO() && !j.fechada)
-    .sort((x,y) => x.data.localeCompare(y.data))[0] : null;   // a de hoje ainda conta no dia do jogo
+  // mesma rodada da tela A Lista: a que está aberta na tela, ou a próxima (a de hoje conta no dia do jogo)
+  const rodada = !estado.admin ? null : (estado.jogoAberto && estado.jogos.find(j => j.id === estado.jogoAberto))
+    || jogosValidos().filter(j => j.data >= hojeISO()).sort((x,y) => x.data.localeCompare(y.data))[0];
   const resposta = id => rodada ? ((rodada.presencas||{})[id] || {}).status : undefined;
   const opcao = a => {
     const st = resposta(a.id), marca = !rodada ? "" : st === "in" ? " ✓" : st === "out" ? " ✗" : " •";
