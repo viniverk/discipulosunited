@@ -729,7 +729,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-08c";
+const VERSAO = "2026-11-08d";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3040,6 +3040,7 @@ const fimDaSemana = sem => { const [a,m,d] = sem.split("-").map(Number); const f
 // a 1ª rodada é a semana de 21 a 27/10/2026; quem jogou no lançamento (terça 20/10) conta nela também
 const QUIZ_1A_RODADA = "2026-10-21";
 const semanaDaRodada = r => {
+  if (r.retro && r.semana) return r.semana;           // rodada atrasada: vale para a semana escolhida, não para quando jogou
   const s = r.inicio ? semanaQuiz(new Date(r.inicio))
     : (() => { const [a,m,d] = String(r.semana||"").split("-").map(Number); return a ? semanaQuiz(new Date(a, m-1, d)) : ""; })();
   return s && s < QUIZ_1A_RODADA ? QUIZ_1A_RODADA : s;
@@ -3083,13 +3084,27 @@ async function salvarRodadaQuiz(r){
 /* estado da rodada em andamento (só neste aparelho) */
 const quizAo = { rodada:null, inicio:0, timer:null, resposta:null };
 
-async function comecarQuiz(){
+// rodadas já encerradas da temporada atual (da 1ª até a semana passada)
+function semanasPassadasQuiz(){
+  const atual = semanaQuiz(), temp = temporadaDe(atual), lista = [];
+  const [a,m,d] = QUIZ_1A_RODADA.split("-").map(Number);
+  for (let k = 0; k < 60; k++) {
+    const w = semanaQuiz(new Date(a, m-1, d + 7*k));
+    if (w >= atual) break;
+    if (temporadaDe(w) === temp) lista.push(w);
+  }
+  return lista;
+}
+const rodadasPerdidasQuiz = quem => semanasPassadasQuiz().filter(w => !(minhaRodadaQuiz(w, quem) || {}).fim);
+
+async function comecarQuiz(semEscolhida){
   const quem = avaliadorQuiz(); if (!quem) return fb ? formEntrar() : avisar("Escolha seu nome lá em cima primeiro.");
-  const sem = semanaQuiz();
+  const atual = semanaQuiz();
+  const sem = semEscolhida && semanasPassadasQuiz().includes(semEscolhida) ? semEscolhida : atual;
   let r = minhaRodadaQuiz(sem, quem);
-  if (r && r.fim) return avisar("Você já jogou a rodada desta semana.");
+  if (r && r.fim) return avisar(sem === atual ? "Você já jogou a rodada desta semana." : `Você já jogou a ${nomeRodada(sem)}.`);
   if (!r) {
-    r = { id: idRodadaQuiz(sem, quem), semana: sem, temporada: temporadaDe(sem), de: quem,
+    r = { id: idRodadaQuiz(sem, quem), semana: sem, temporada: temporadaDe(sem), de: quem, retro: sem !== atual,
           perguntas: perguntasDaSemana(sem), respostas: [], pontos: 0, acertos: 0, inicio: Date.now(), fim: null };
     await salvarRodadaQuiz(r);
   }
@@ -3150,6 +3165,8 @@ async function responderQuiz(escolha){
 
 function terminarQuiz(){
   clearInterval(quizAo.timer);
+  const r = quizAo.rodada;
+  if (r && r.fim && r.retro) avisar(`${nomeRodada(r.semana)} concluída: ${r.pontos} pontos. Já contam no ranking!`);
   quizAo.rodada = null; quizAo.resposta = null;
   telaQuiz();
 }
@@ -3191,6 +3208,20 @@ function cartaoRodadaQuiz(){
           <b class="quiz-pts">${x.pts}</b></div>`; }).join("")}
     </details>
     <div class="sub" style="margin-top:10px">A próxima rodada abre na quarta-feira.</div></div>`;
+}
+
+// quem esqueceu ou entrou depois joga as rodadas passadas; os pontos vão para a semana daquela rodada
+function cartaoRodadasPerdidasQuiz(){
+  const quem = avaliadorQuiz(); if (!quem) return "";
+  const perdidas = rodadasPerdidasQuiz(quem); if (!perdidas.length) return "";
+  return `<div class="cartao">
+    <div class="titulo">Rodadas que você perdeu · ${perdidas.length}</div>
+    <div class="sub" style="margin-bottom:8px">Esqueceu ou chegou depois? Ainda dá tempo: as perguntas são as mesmas daquela semana e os pontos entram no ranking da temporada.</div>
+    ${perdidas.map(w => { const r = minhaRodadaQuiz(w, quem);
+      return `<div class="item"><div class="item-corpo"><div class="nome">${nomeRodada(w)}</div>
+          <div class="sub">${rotuloSemana(w)}</div></div>
+        <button class="btn-main" data-quiz-retro="${w}">${r ? `Continuar (${r.respostas.length+1}/${(r.perguntas||[]).length})` : "▶️ Jogar"}</button></div>`; }).join("")}
+  </div>`;
 }
 
 function cartaoRankingQuiz(){
@@ -3274,7 +3305,7 @@ function telaQuiz(){
   el.innerHTML = `<div class="quiz-capa"><div class="quiz-capa-ico">📖⚽</div>
       <b>Quiz ${escapar((estado.config.nomeGrupo || "Discípulos United").trim())}</b>
       <span>Bíblia e futebol, uma rodada por semana</span></div>`
-    + cartaoRodadaQuiz() + cartaoRankingQuiz() + (estado.admin ? cartaoPerguntasAdmin() : "");
+    + cartaoRodadaQuiz() + cartaoRodadasPerdidasQuiz() + cartaoRankingQuiz() + (estado.admin ? cartaoPerguntasAdmin() : "");
 }
 
 /* ---------- montar os times: sorteio com um goleiro para cada lado, ou na mão ---------- */
@@ -4510,7 +4541,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-isento],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-quadra],[data-cobrar],[data-extrato],[data-lupa],[data-apagar-peca]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-isento],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-quiz-retro],[data-quadra],[data-cobrar],[data-extrato],[data-lupa],[data-apagar-peca]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -4633,6 +4664,7 @@ document.body.addEventListener("click", async e => {
   else if (d.pagarTipo) await irParaPagamento(d.pagarTipo);
   else if (d.quizOp !== undefined) await responderQuiz(Number(d.quizOp));
   else if (d.acao === "quiz-comecar") await comecarQuiz();
+  else if (d.quizRetro) await comecarQuiz(d.quizRetro);
   else if (d.acao === "quiz-proxima") mostrarPerguntaQuiz();
   else if (d.acao === "quiz-nova") formPerguntaQuiz();
   else if (d.quizApagar) { if (confirm("Apagar esta pergunta?")) { await apagar("quizPerguntas", d.quizApagar); desenhar(); } }
