@@ -729,7 +729,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-08d";
+const VERSAO = "2026-11-09a";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3696,7 +3696,15 @@ function desenhar(){
   const sel = document.getElementById("selEu");
   const ativos = estado.atletas.filter(a => situacaoDe(a) !== "inativo").sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));
   // fixos primeiro, depois os convidados — cada grupo em ordem alfabética
-  const opcao = a => `<option value="${a.id}" ${a.id===estado.eu?"selected":""}>${escapar(a.nome)}</option>`;
+  // admin: na próxima rodada, quem ainda não respondeu fica em negrito; quem já respondeu, cinza claro
+  const rodada = estado.admin ? jogosValidos().filter(j => j.data >= hojeISO() && !j.fechada)
+    .sort((x,y) => x.data.localeCompare(y.data))[0] : null;   // a de hoje ainda conta no dia do jogo
+  const resposta = id => rodada ? ((rodada.presencas||{})[id] || {}).status : undefined;
+  const opcao = a => {
+    const st = resposta(a.id), marca = !rodada ? "" : st === "in" ? " ✓" : st === "out" ? " ✗" : " •";
+    const estilo = !rodada ? "" : st ? ` style="color:#A8A8A0;font-weight:400"` : ` style="font-weight:700;color:#14140F"`;
+    return `<option value="${a.id}"${estilo} ${a.id===estado.eu?"selected":""}>${escapar(a.nome)}${marca}</option>`;
+  };
   const fixosSel = ativos.filter(a => ehFixo(a.id)), convSel = ativos.filter(a => !ehFixo(a.id));
   sel.innerHTML = `<option value="">— escolha seu nome —</option>`
     + (fixosSel.length ? `<optgroup label="Fixos">${fixosSel.map(opcao).join("")}</optgroup>` : "")
