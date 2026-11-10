@@ -356,8 +356,8 @@ span.aberto-chip{cursor:default}
 .campo-barra button{flex:1;padding:9px 6px;border-radius:9px;font-weight:700;font-size:13px;
   border:1px solid var(--borda);background:var(--cal);color:var(--cinza)}
 .campo-barra button.on{color:#fff;border-color:transparent}
-.campo-barra button.on.vermelho{background:#C0392B}
-.campo-barra button.on.colete{background:#5A554B}
+.campo-barra button.on.vermelho{background:#1E5AA8}
+.campo-barra button.on.colete{background:#E8730C}
 .gramado{position:relative;width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;
   background:repeating-linear-gradient(180deg,#2F7A3B 0 9%,#2A6F35 9% 18%);
   box-shadow:var(--sombra);touch-action:none;user-select:none}
@@ -375,12 +375,12 @@ span.aberto-chip{cursor:default}
 .ficha{background:var(--cal);border-radius:9px;padding:6px 4px;box-shadow:0 2px 6px rgba(0,0,0,.35);
   font-size:11.5px;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   border-top:4px solid var(--quadra);cursor:grab}
-.ficha.vermelho{border-top-color:#14140F}
-.ficha.colete{border-top-color:#5A554B}
+.ficha.vermelho{border-top-color:#1E5AA8}
+.ficha.colete{border-top-color:#E8730C}
 .ficha.livre{border-top-color:var(--borda)}
 .banco.livre{border-left:3px solid var(--cinza)}
-.vaga-pos.vermelho{border-color:rgba(255,160,150,.75);color:rgba(255,220,215,.9)}
-.vaga-pos.colete{border-color:rgba(255,255,255,.55)}
+.vaga-pos.vermelho{border-color:rgba(150,190,255,.8);color:rgba(220,232,255,.95)}
+.vaga-pos.colete{border-color:rgba(255,180,110,.85);color:rgba(255,230,205,.95)}
 .etiqueta-time{position:absolute;left:50%;transform:translateX(-50%);font-family:var(--display);
   font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.55)}
 .etiqueta-time.cima{top:1.5%}
@@ -397,25 +397,25 @@ span.aberto-chip{cursor:default}
 .banco-fichas{display:flex;flex-wrap:wrap;gap:6px}
 .banco .ficha{flex:1 1 calc(50% - 6px);min-width:0;cursor:grab;padding:5px 4px;font-size:11px}
 .banco.alvo{border-color:var(--canarinho);background:#FBF6E8;color:#14140F}
-.banco.vermelho{border-left:3px solid #14140F}
-.banco.colete{border-left:3px solid #5A554B}
+.banco.vermelho{border-left:3px solid #1E5AA8}
+.banco.colete{border-left:3px solid #E8730C}
 
 .escolha-time{display:flex;gap:5px;flex:none}
 .escolha-time button{width:38px;height:38px;border-radius:9px;border:1px solid var(--borda);
   background:var(--cal);font-size:15px;line-height:1;opacity:.45}
 .escolha-time button.on{opacity:1;border-color:transparent;box-shadow:0 0 0 2px var(--quadra) inset}
-.escolha-time button.on.vermelho{background:#E4E2DD;color:#14140F;box-shadow:0 0 0 2px #14140F inset}
-.escolha-time button.on.colete{background:#F1EFEA;color:#14140F;box-shadow:0 0 0 2px #5A554B inset}
+.escolha-time button.on.vermelho{background:#E3ECF8;color:#14140F;box-shadow:0 0 0 2px #1E5AA8 inset}
+.escolha-time button.on.colete{background:#FDEBDC;color:#14140F;box-shadow:0 0 0 2px #E8730C inset}
 .escolha-time button.on.neutro{box-shadow:0 0 0 2px var(--cinza) inset}
 .escolha-linha{padding:7px 0}
-.escolha-linha.vermelho{box-shadow:inset 3px 0 0 #14140F;padding-left:9px}
-.escolha-linha.colete{box-shadow:inset 3px 0 0 #5A554B;padding-left:9px}
+.escolha-linha.vermelho{box-shadow:inset 3px 0 0 #1E5AA8;padding-left:9px}
+.escolha-linha.colete{box-shadow:inset 3px 0 0 #E8730C;padding-left:9px}
 .escolha-linha .escolha-time button{width:44px;height:40px;font-size:18px}
 .escolha-placar{display:flex;gap:6px;flex-wrap:wrap}
 .escolha-placar span{flex:1;min-width:0;text-align:center;font-size:12.5px;background:var(--linha);border-radius:9px;padding:7px 4px;white-space:nowrap}
 .escolha-placar span b{font-size:15px;margin-left:2px}
-.escolha-placar .v{box-shadow:inset 0 -3px 0 #14140F}
-.escolha-placar .c{box-shadow:inset 0 -3px 0 #5A554B}
+.escolha-placar .v{box-shadow:inset 0 -3px 0 #1E5AA8}
+.escolha-placar .c{box-shadow:inset 0 -3px 0 #E8730C}
 
 .times-grade{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 #tela-times .banco.livre{margin-bottom:8px}
@@ -489,9 +489,9 @@ span.aberto-chip{cursor:default}
 .time{background:var(--cal);border-radius:var(--raio);box-shadow:var(--sombra);overflow:hidden}
 .time-topo{padding:10px 12px;font-family:var(--display);font-size:15px;letter-spacing:.8px;
   text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:6px}
-.time.vermelho .time-topo{background:#14140F}
-body.tema-placar .time.vermelho .time-topo{background:#000;box-shadow:inset 0 -1px 0 #3A3F47}
-.time.colete .time-topo{background:#5A554B;color:#fff}
+.time.vermelho .time-topo{background:#1E5AA8}
+body.tema-placar .time.vermelho .time-topo{background:#1E5AA8;box-shadow:inset 0 -1px 0 #3A3F47}
+.time.colete .time-topo{background:#E8730C;color:#fff}
 .time-topo b{margin-left:auto;font-weight:400;opacity:.85;font-size:13px}
 .time ol{list-style:none;padding:6px 12px 12px}
 .time li{padding:6px 0;border-bottom:1px solid var(--borda);font-size:14.5px;font-weight:600;
@@ -729,7 +729,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-09b";
+const VERSAO = "2026-11-10a";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -2487,7 +2487,7 @@ function desenhaEscalacao(jogo){
     }
     c.fillStyle = "rgba(0,0,0,.28)"; arred(c, cx+2, cy+4, fw, fh, 10); c.fill();
     c.fillStyle = "#fff"; arred(c, cx, cy, fw, fh, 10); c.fill();
-    c.fillStyle = time === "vermelho" ? "#C0392B" : "#5A554B";
+    c.fillStyle = time === "vermelho" ? "#1E5AA8" : "#E8730C";
     c.save(); arred(c, cx, cy, fw, fh, 10); c.clip(); c.fillRect(cx, cy, fw, 7); c.restore();
     c.fillStyle = "#0B0B0A"; c.font = `bold 22px ${corpo}`;
     const nome = (ehGoleiro(id) ? "🧤 " : "") + primeiroNome(id);
@@ -2506,7 +2506,7 @@ function desenhaEscalacao(jogo){
   const reservasDe = t => (jogo.times[t]||[]).filter(id => !Object.values(escalacaoDe(jogo,t)).includes(id));
   const maior = Math.max(reservasDe("vermelho").length, reservasDe("colete").length, 1);
   const bh = Math.min(74 + maior*28, 230);
-  [["vermelho","#C0392B",px],["colete","#5A554B",px+pw/2+10]].forEach(([t,cor,bx]) => {
+  [["vermelho","#1E5AA8",px],["colete","#E8730C",px+pw/2+10]].forEach(([t,cor,bx]) => {
     const bw = pw/2 - 10;
     c.fillStyle = "#fff"; arred(c, bx, ry+26, bw, bh, 12); c.fill();
     c.fillStyle = cor; c.save(); arred(c, bx, ry+26, bw, bh, 12); c.clip(); c.fillRect(bx,ry+26,6,bh); c.restore();
@@ -2611,8 +2611,8 @@ function svgCampo(jogo){
   return `<div class="gramado" id="gramado">
     <div class="linha borda"></div><div class="linha meio"></div><div class="linha circulo"></div>
     <div class="linha area area-b"></div><div class="linha area area-c"></div>
-    <div class="etiqueta-time cima">Colete</div>
-    <div class="etiqueta-time baixo">Vermelho</div>
+    <div class="etiqueta-time cima">Laranja</div>
+    <div class="etiqueta-time baixo">Azul</div>
     ${desenhar("colete", true)}${desenhar("vermelho", false)}</div>`;
 }
 
@@ -2640,8 +2640,8 @@ function blocoEscalacao(jogo){
         Arrastar para o outro time muda o jogador de lado.</div>`}
     ${livres.length ? caixa("livre","⚪ Sem time", livres, "todo mundo dividido") : ""}
     <div class="banco-dupla">
-      ${caixa("vermelho","🔴 Reservas", dentro("vermelho"), "sem reserva")}
-      ${caixa("colete","🟡 Reservas", dentro("colete"), "sem reserva")}
+      ${caixa("vermelho","🔵 Reservas", dentro("vermelho"), "sem reserva")}
+      ${caixa("colete","🟠 Reservas", dentro("colete"), "sem reserva")}
     </div>
     <div class="btn-linha">
       <button class="btn-zap" style="flex:1" data-acao="escala-imagem">🖼️ Mandar imagem</button>
@@ -2663,7 +2663,7 @@ function textoEscalacao(){
   times.forEach(t => {
     const esc = escalacaoDe(jogo, t);
     L.push("");
-    L.push(t === "vermelho" ? "*⚫ TIME PRETO (SEM COLETE)*" : "*🟡 TIME DE COLETE*");
+    L.push(t === "vermelho" ? "*🔵 TIME AZUL*" : "*🟠 TIME LARANJA*");
     form.forEach(p => L.push(`${p.r}: ${esc[p.k] ? nomeDe(esc[p.k]) : "—"}`));
     const fora = elencoDoTime(jogo,t).filter(id => !Object.values(esc).includes(id));
     if (fora.length) L.push(`Banco: ${fora.map(nomeDe).join(", ")}`);
@@ -2704,8 +2704,8 @@ async function soltar(jogo, id, alvo){
   estado.escolhido = null;
   desenhar();
   if (destino === "livre") avisar(`${nomeDe(id)} saiu dos times.`);
-  else if (origem && origem !== destino) avisar(`${nomeDe(id)} foi para o ${destino === "vermelho" ? "Preto" : "Colete"}.`);
-  else if (!origem) avisar(`${nomeDe(id)} entrou no ${destino === "vermelho" ? "Preto" : "Colete"}.`);
+  else if (origem && origem !== destino) avisar(`${nomeDe(id)} foi para o ${destino === "vermelho" ? "Azul" : "Laranja"}.`);
+  else if (!origem) avisar(`${nomeDe(id)} entrou no ${destino === "vermelho" ? "Azul" : "Laranja"}.`);
 }
 
 /* arrastar com o dedo: ponteiro serve para toque e mouse */
@@ -2776,7 +2776,7 @@ function listaManual(jogo){
   if (!gente.length) return `<div class="cartao"><div class="vazio"><b>Lista vazia</b>
     Ninguém confirmou ainda nesta rodada.</div></div>`;
   return `<div class="cartao">
-    <div class="titulo">Escolher na mão · 🔴 ${v} · 🟡 ${c}${gente.length-v-c>0?` · ${gente.length-v-c} sem time`:""}</div>
+    <div class="titulo">Escolher na mão · 🔵 ${v} · 🟠 ${c}${gente.length-v-c>0?` · ${gente.length-v-c} sem time`:""}</div>
     ${gente.map(id => {
       const t = timeDoAtleta(jogo, id);
       return `<div class="item">
@@ -2784,8 +2784,8 @@ function listaManual(jogo){
         <div class="item-corpo"><div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}</div>
           ${quemConvidou(id)?`<div class="sub">${escapar(quemConvidou(id))}</div>`:""}</div>
         <div class="escolha-time">
-          <button class="${t==="vermelho"?"on vermelho":""}" data-por-time="vermelho" data-atleta="${id}">🔴</button>
-          <button class="${t==="colete"?"on colete":""}" data-por-time="colete" data-atleta="${id}">🟡</button>
+          <button class="${t==="vermelho"?"on vermelho":""}" data-por-time="vermelho" data-atleta="${id}">🔵</button>
+          <button class="${t==="colete"?"on colete":""}" data-por-time="colete" data-atleta="${id}">🟠</button>
           <button class="${!t?"on neutro":""}" data-por-time="livre" data-atleta="${id}">—</button>
         </div>
       </div>`;
@@ -3361,18 +3361,18 @@ function cartaoMontarTimes(jogo){
     return `<div class="item escolha-linha ${t || "livre"}">
       <div class="item-corpo"><div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}</div></div>
       <div class="escolha-time">
-        <button class="${t==="vermelho"?"on vermelho":""}" data-por-time="vermelho" data-atleta="${id}" aria-label="Preto (sem colete)">⚫</button>
+        <button class="${t==="vermelho"?"on vermelho":""}" data-por-time="vermelho" data-atleta="${id}" aria-label="Time Azul">🔵</button>
         <button class="${!t?"on neutro":""}" data-por-time="livre" data-atleta="${id}" aria-label="Sem time">⚪</button>
-        <button class="${t==="colete"?"on colete":""}" data-por-time="colete" data-atleta="${id}" aria-label="Colete">🟡</button>
+        <button class="${t==="colete"?"on colete":""}" data-por-time="colete" data-atleta="${id}" aria-label="Time Laranja">🟠</button>
       </div></div>`;
   };
   return `<div class="cartao">
     <div class="titulo">Montar os times</div>
     <button class="btn-main" style="width:100%;margin-bottom:10px" data-acao="sortear-times">${rotSortear}</button>
-    <div class="escolha-placar"><span class="v">⚫ Preto <b>${v.length}</b></span><span>⚪ Sem time <b>${livres.length}</b></span><span class="c">🟡 Colete <b>${c.length}</b></span></div>
+    <div class="escolha-placar"><span class="v">🔵 Azul <b>${v.length}</b></span><span>⚪ Sem time <b>${livres.length}</b></span><span class="c">🟠 Laranja <b>${c.length}</b></span></div>
     <div class="sub" style="margin:8px 0 4px">Um toque escolhe o time de cada um. O sorteio mantém quem você já escolheu e distribui só o resto, com um goleiro para cada lado.</div>
     ${ordem.map(linha).join("")}
-    ${v.length || c.length ? `<div class="times-grade" style="margin-top:14px">${cartaoTime("vermelho","Preto · sem colete",v)}${cartaoTime("colete","Colete",c)}</div>
+    ${v.length || c.length ? `<div class="times-grade" style="margin-top:14px">${cartaoTime("vermelho","Time Azul",v)}${cartaoTime("colete","Time Laranja",c)}</div>
     <div class="btn-linha">
       <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar no grupo</button>
       <button class="btn-sec" data-acao="zerar-times">Limpar</button>
@@ -3397,7 +3397,7 @@ function telaTimes(){
   if (podeMontarTimes()) { el.innerHTML = topo + cartaoMontarTimes(jogo); return; }
   const v = jogo.times?.vermelho || [], c = jogo.times?.colete || [];
   el.innerHTML = topo + (v.length || c.length
-    ? `<div class="times-grade">${cartaoTime("vermelho","Preto · sem colete",v)}${cartaoTime("colete","Colete",c)}</div>
+    ? `<div class="times-grade">${cartaoTime("vermelho","Time Azul",v)}${cartaoTime("colete","Time Laranja",c)}</div>
        <div class="btn-linha" style="margin:0 0 14px">
          <button class="btn-zap" style="flex:1" data-compartilhar-texto="times">📤 Mandar os times no grupo</button></div>`
     : `<div class="cartao"><div class="vazio"><b>Times ainda não montados</b>O organizador monta perto da hora do jogo.</div></div>`);
@@ -3466,10 +3466,10 @@ function textoTimes(){
   if (!jogo || !jogo.times) return "";
   const { num, mes } = dataLonga(jogo.data);
   const L = [`*⚽ ${nomeGrupo()} — TIMES*`, `${num} ${mes}${jogo.hora?" · "+jogo.hora:""}${jogo.local?" · "+jogo.local:""}`, ""];
-  L.push("*⚫ TIME PRETO (SEM COLETE)*");
+  L.push("*🔵 TIME AZUL*");
   jogo.times.vermelho.forEach((id,i) => L.push(`${i+1}. ${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)}`));
   L.push("");
-  L.push("*🟡 TIME DE COLETE*");
+  L.push("*🟠 TIME LARANJA*");
   jogo.times.colete.forEach((id,i) => L.push(`${i+1}. ${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)}`));
   return L.join("\n");
 }
