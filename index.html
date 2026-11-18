@@ -729,7 +729,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-18b";
+const VERSAO = "2026-11-18c";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3017,7 +3017,10 @@ const perguntaDe = id => todasPerguntas().find(q => q.id === id);
 function perguntasDaSemana(sem){
   const temp = temporadaDe(sem);
   const [a,m,d] = sem.split("-").map(Number);
-  const nSemana = Math.floor((new Date(a,m-1,d) - new Date(a,0,1)) / (7*86400000));
+  // cada rodada resetada pelo admin pula um bloco de perguntas: a rodada nova (e as seguintes) não repetem nada
+  const resets = Object.entries(estado.config.quizResets || {})
+    .filter(([w]) => w <= sem && temporadaDe(w) === temp).reduce((t,[,n]) => t + (Number(n)||0), 0);
+  const nSemana = Math.floor((new Date(a,m-1,d) - new Date(a,0,1)) / (7*86400000)) + resets;
   const escolhidas = [];
   ["b","f"].forEach(t => {
     const fixas = embaralharCom(QUIZ_BANCO.filter(q => q.t === t), temp+t);
@@ -4679,9 +4682,13 @@ document.body.addEventListener("click", async e => {
   else if (d.acao === "quiz-resetar") {
     if (!estado.admin) return;
     const sem = semanaQuiz(), daSemana = estado.quizRodadas.filter(r => semanaDaRodada(r) === sem);
-    if (!confirm(`Resetar a ${nomeRodada(sem)}? As respostas de ${plural(daSemana.length,"pessoa","pessoas")} são apagadas e todo mundo pode jogar de novo.`)) return;
+    if (!confirm(`Resetar a ${nomeRodada(sem)}? As respostas de ${plural(daSemana.length,"pessoa","pessoas")} são apagadas, entram perguntas novas e todo mundo pode jogar de novo.`)) return;
     for (const r of daSemana) await apagar("quizRodadas", r.id);
-    desenhar(); avisar(`${nomeRodada(sem)} resetada. Todo mundo pode jogar de novo.`);
+    // perguntas novas para a rodada resetada
+    const resets = { ...(estado.config.quizResets || {}) };
+    resets[sem] = (Number(resets[sem]) || 0) + 1;
+    await gravarConfig({ quizResets: resets });
+    desenhar(); avisar(`${nomeRodada(sem)} resetada com perguntas novas. Todo mundo pode jogar de novo.`);
   }
   else if (d.acao === "quiz-proxima") mostrarPerguntaQuiz();
   else if (d.acao === "quiz-nova") formPerguntaQuiz();
