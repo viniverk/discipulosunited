@@ -729,7 +729,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-18a";
+const VERSAO = "2026-11-18b";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3269,6 +3269,8 @@ function cartaoPerguntasAdmin(){
     <summary><span class="titulo" style="margin:0">🔒 Perguntas do quiz</span>
       <span class="sub">${nb} de Bíblia · ${nf} de futebol · ${minhas.length} cadastradas por você</span></summary>
     <button class="btn-main" style="width:100%;margin:12px 0" data-acao="quiz-nova">➕ Cadastrar pergunta</button>
+    ${(() => { const n = estado.quizRodadas.filter(r => semanaDaRodada(r) === semanaQuiz()).length;
+      return n ? `<button class="btn-sec" style="width:100%;margin:0 0 12px" data-acao="quiz-resetar">🔄 Resetar a ${nomeRodada(semanaQuiz())} (${plural(n,"pessoa jogou","pessoas jogaram")})</button>` : ""; })()}
     ${minhas.map(q => `<div class="item"><div class="item-corpo">
         <div class="nome">${q.t==="f"?"⚽":"📖"} ${escapar(q.p)}</div>
         <div class="sub">✅ ${escapar(q.o[0])}${q.r?` · ${escapar(q.r)}`:""}</div></div>
@@ -4674,6 +4676,13 @@ document.body.addEventListener("click", async e => {
   else if (d.quizOp !== undefined) await responderQuiz(Number(d.quizOp));
   else if (d.acao === "quiz-comecar") await comecarQuiz();
   else if (d.quizRetro) await comecarQuiz(d.quizRetro);
+  else if (d.acao === "quiz-resetar") {
+    if (!estado.admin) return;
+    const sem = semanaQuiz(), daSemana = estado.quizRodadas.filter(r => semanaDaRodada(r) === sem);
+    if (!confirm(`Resetar a ${nomeRodada(sem)}? As respostas de ${plural(daSemana.length,"pessoa","pessoas")} são apagadas e todo mundo pode jogar de novo.`)) return;
+    for (const r of daSemana) await apagar("quizRodadas", r.id);
+    desenhar(); avisar(`${nomeRodada(sem)} resetada. Todo mundo pode jogar de novo.`);
+  }
   else if (d.acao === "quiz-proxima") mostrarPerguntaQuiz();
   else if (d.acao === "quiz-nova") formPerguntaQuiz();
   else if (d.quizApagar) { if (confirm("Apagar esta pergunta?")) { await apagar("quizPerguntas", d.quizApagar); desenhar(); } }
