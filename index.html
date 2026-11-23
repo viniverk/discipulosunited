@@ -207,6 +207,7 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
   color:var(--quadra);
 }
 .vaga.livre .num{color:var(--borda)}
+.num.num-13{font-size:19px;letter-spacing:0;white-space:nowrap}
 .vaga.livre .nome{color:var(--cinza);font-style:italic;font-size:14px}
 .vaga-corpo{flex:1;min-width:0}
 .nome{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -729,7 +730,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-18c";
+const VERSAO = "2026-11-23a";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -1731,6 +1732,9 @@ const lemaPadrao = () => DIAS[Number(estado.config.diaSemana ?? 2)] + " à noite
 const lemaAtual  = () => (estado.config.lema || "").trim() || lemaPadrao();
 
 /* ---------- texto para mandar no grupo ---------- */
+// número da vaga na lista: o 13 aparece como "12+1"
+const numeroVaga = n => n === 13 ? "12+1" : String(n).padStart(2,"0");
+
 function textoDaLista(j){
   const d = asData(j.data);
   const diaSem = d.toLocaleDateString("pt-BR",{ weekday:"long" });
@@ -1768,7 +1772,7 @@ function textoDaLista(j){
   L.push("");
   L.push("*NA LISTA*");
   if (titulares.length) titulares.forEach((id,i) =>
-    L.push(`${i+1}. ${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)} ${marca(id)}`));
+    L.push(`${i+1===13?"12+1":i+1}. ${ehGoleiro(id)?"🧤 ":""}${nomeDe(id)} ${marca(id)}`));
   else L.push("_ninguém confirmou ainda_");
   if (livres) L.push(`_${plural(livres,"vaga livre","vagas livres")}_`);
 
@@ -1957,7 +1961,7 @@ function telaJogo(){
   const linhas = [];
   for (let i = 0; i < Math.max(vagas, titulares.length); i++) {
     const id = titulares[i];
-    if (!id) { linhas.push(`<li class="vaga livre"><span class="num">${String(i+1).padStart(2,"0")}</span>
+    if (!id) { linhas.push(`<li class="vaga livre"><span class="num ${i+1===13?"num-13":""}">${numeroVaga(i+1)}</span>
       <div class="vaga-corpo"><div class="nome">vaga livre</div></div></li>`); continue; }
     const p = proximo.presencas[id], s = saldoAtleta(id);
     const custa = valorNaRodada(proximo, id) > 0 && !p.isento;
@@ -1965,7 +1969,7 @@ function telaJogo(){
       : (s.aberto > 0.005 ? `<span class="selo deve">deve ${dinheiro(s.aberto)}</span>`
                           : '<span class="selo pago">em dia</span>');
     linhas.push(`<li class="vaga ${id===estado.eu?"eu-mesmo":""}">
-      <span class="num">${String(i+1).padStart(2,"0")}</span>
+      <span class="num ${i+1===13?"num-13":""}">${numeroVaga(i+1)}</span>
       <div class="vaga-corpo">
         <div class="nome">${ehGoleiro(id)?"🧤 ":""}${escapar(nomeDe(id))}${furou(proximo,id)?' <span class="selo furo">furou</span>':""}${quemConvidou(id)?' <span class="selo convidado">convidado</span>':""}</div>
         ${quemConvidou(id) ? `<div class="sub">${escapar(quemConvidou(id))}</div>`
