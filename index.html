@@ -296,6 +296,21 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .qg-jogo-pe{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--cinza)}
 .qg-jogo-pe .pos{color:var(--pago)}
 .qg-admin{display:flex;gap:6px}.qg-admin .btn-mini{margin-top:0}
+.podio{display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:8px;margin:6px 0 14px}
+.podio-col{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.podio-foto{position:relative;margin-bottom:6px}
+.podio-retrato{width:64px;height:64px;border-width:3px}
+.podio-col.p1 .podio-retrato{width:84px;height:84px;border-color:#D4A72C}
+.podio-col.p2 .podio-retrato{border-color:#B9BEC6}
+.podio-col.p3 .podio-retrato{border-color:#C98A55}
+.podio-med{position:absolute;right:-6px;bottom:-4px;font-size:22px;line-height:1}
+.podio-nome{font-weight:700;font-size:13px;line-height:1.2;overflow-wrap:anywhere}
+.podio-pts{font-size:12px;color:var(--cinza);margin:2px 0 6px}
+.podio-degrau{width:100%;border-radius:10px 10px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;
+  font-family:var(--display);font-size:22px;color:#fff}
+.podio-col.p1 .podio-degrau{height:70px;background:linear-gradient(#E3B93C,#B88F1E)}
+.podio-col.p2 .podio-degrau{height:50px;background:linear-gradient(#C3C8CF,#959BA4)}
+.podio-col.p3 .podio-degrau{height:36px;background:linear-gradient(#D49A68,#A86A3A)}
 .tipo-rot{font-size:11px;font-weight:700;color:var(--cinza);margin:12px 0 2px;letter-spacing:.4px}
 .em-aberto{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .aberto-chip{background:var(--linha);color:var(--cinza);border:0;border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer;text-align:left}
@@ -742,7 +757,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-27b";
+const VERSAO = "2026-11-27c";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -3293,6 +3308,17 @@ function cartaoRodadasPerdidasQuiz(){
   </div>`;
 }
 
+// pódio: os 3 primeiros lado a lado, com foto (2º · 1º · 3º, o campeão no meio e mais alto)
+function podioHTML(lista, pontos){
+  if (!lista.length) return "";
+  const vaga = (x, i) => !x ? `<div class="podio-col vazio"></div>` : `<div class="podio-col p${i+1}">
+      <div class="podio-foto">${retratoDe(atletaDe(x.id), "podio-retrato")}<span class="podio-med">${["🥇","🥈","🥉"][i]}</span></div>
+      <div class="podio-nome">${escapar(nomeDe(x.id).split(" ").slice(0,2).join(" "))}</div>
+      <div class="podio-pts">${pontos(x)} pts</div>
+      <div class="podio-degrau">${i+1}º</div></div>`;
+  return `<div class="podio">${vaga(lista[1],1)}${vaga(lista[0],0)}${vaga(lista[2],2)}</div>`;
+}
+
 function cartaoRankingQuiz(){
   const temp = temporadaDe(semanaQuiz());
   const lista = rankingQuiz(temp), quem = avaliadorQuiz();
@@ -3308,7 +3334,8 @@ function cartaoRankingQuiz(){
     <div class="sub" style="margin:-2px 0 10px">Os prêmios são entregues no fim da temporada, a soma de todas as semanas de ${temp}.</div>
     ${anterior ? `<div class="aviso" style="margin-bottom:8px">🏆 Campeão de ${Number(temp)-1}: <b>${escapar(nomeDe(anterior.id))}</b> · ${anterior.pontos} pts</div>` : ""}
     ${estado.quizErro ? `<div class="aviso grave">O banco não deixou ler o ranking. Confira as regras do Firestore (coleção <b>quizRodadas</b>).</div>` : ""}
-    ${lista.length ? lista.map((x,i) => `<div class="item ${x.id===quem?"quiz-eu":""}">
+    ${podioHTML(lista, x => x.pontos)}
+    ${lista.length ? lista.map((x,i) => i < 3 ? "" : `<div class="item ${x.id===quem?"quiz-eu":""}">
         <div class="quiz-pos">${medalha(i)}</div>
         ${retratoDe(atletaDe(x.id))}
         <div class="item-corpo"><div class="nome">${escapar(nomeDe(x.id))}</div>
@@ -3627,14 +3654,15 @@ function telaQG(){
     ${estado.admin && jogos.length < QG_MAX_JOGOS ? `<button class="btn-sec" style="width:100%;margin-top:10px" data-acao="qg-jogo-novo">➕ Adicionar jogo (${jogos.length}/${QG_MAX_JOGOS})</button>` : ""}
   </div>`;
 
-  const linhas = (lista, vazio) => lista.length ? lista.map((x,i) => `<div class="item">
+  const linhas = (lista, vazio, desde = 0) => lista.length ? lista.map((x,i) => i < desde ? "" : `<div class="item">
       <div class="num" style="font-size:20px">${["🥇","🥈","🥉"][i] || i+1}</div>
       <div class="item-corpo"><div class="nome">${escapar(nomeDe(x.id))}</div>
         <div class="sub">📖⚽ ${x.quiz} · 🎯 ${x.palpites}${x.exatos ? ` · ${plural(x.exatos,"placar exato","placares exatos")}` : ""}</div></div>
       <div class="valor">${x.total}</div></div>`).join("") : `<div class="vazio">${vazio}</div>`;
   const cRank = `<div class="cartao"><div class="titulo">🏆 Ranking ${temp}${qgTeste(sem) ? " (teste)" : ""}</div>
       ${minha ? `<div class="sub" style="margin-bottom:8px">Sua semana: 📖⚽ ${minha.quiz} + 🎯 ${minha.palpites} = <b>${minha.quiz + minha.palpites}</b></div>` : ""}
-      ${linhas(rankingQG(w => temporadaDe(w) === temp), "Ninguém pontuou ainda.")}
+      ${(() => { const l = rankingQG(w => temporadaDe(w) === temp);
+        return podioHTML(l, x => x.total) + (l.length > 3 ? linhas(l, "", 3) : l.length ? "" : `<div class="vazio">Ninguém pontuou ainda.</div>`); })()}
       <details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Ranking só desta semana</summary>
         ${linhas(rankingQG(w => w === sem), "Ninguém pontuou nesta semana.")}</details>
       <button class="btn-zap" style="width:100%;margin-top:12px" data-acao="qg-compartilhar">📤 Mandar ranking no grupo</button></div>`;
