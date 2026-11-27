@@ -286,6 +286,16 @@ a.btn-sec{text-decoration:none;display:inline-flex;align-items:center;color:var(
 .extrato-linha[data-fechar]{cursor:pointer}
 .extrato-mes .pos{color:var(--pago)} .extrato-mes .neg{color:var(--deve)}
 .btn-mini{display:block;margin-top:6px;padding:5px 10px;font-size:12px;border-radius:999px;white-space:nowrap}
+.qg-jogo{border:1px solid var(--linha);border-radius:12px;padding:10px 12px;margin-top:10px}
+.qg-jogo-topo{display:flex;justify-content:space-between;font-size:11px;color:var(--cinza);font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.qg-placar,.qg-placar-form{display:grid;grid-template-columns:1fr 52px auto 52px 1fr;align-items:center;gap:8px;margin:8px 0}
+.qg-placar input,.qg-placar-form input{width:52px;height:44px;text-align:center;font-size:22px;font-weight:700;border:1px solid var(--linha);border-radius:10px;background:var(--fundo,#fff)}
+.qg-time{font-weight:700;font-size:14px;text-align:right;overflow-wrap:anywhere}
+.qg-time.fora{text-align:left}
+.qg-placar-form span:last-child{text-align:left}.qg-placar-form span:first-child{text-align:right;font-weight:700}
+.qg-jogo-pe{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--cinza)}
+.qg-jogo-pe .pos{color:var(--pago)}
+.qg-admin{display:flex;gap:6px}.qg-admin .btn-mini{margin-top:0}
 .tipo-rot{font-size:11px;font-weight:700;color:var(--cinza);margin:12px 0 2px;letter-spacing:.4px}
 .em-aberto{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .aberto-chip{background:var(--linha);color:var(--cinza);border:0;border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer;text-align:left}
@@ -674,6 +684,7 @@ body.tema-placar .barrinha{background:#2A2E35}
   <button class="aba" data-tela="caixa"><i>💰</i><em>Caixa</em></button>
   <button class="aba" data-tela="times"><i>🎲</i><em>Times</em></button>
   <button class="aba" data-tela="quiz"><i>📖</i><em>Quiz</em></button>
+  <button class="aba" data-tela="qg"><i>🏆</i><em>Quiz Game</em></button>
   <button class="aba" data-tela="uniforme"><i>👕</i><em>Uniforme</em></button>
   <button class="aba" data-tela="valores"><i>✝️</i><em>Valores</em></button>
   <button class="aba" data-tela="estatuto"><i>📜</i><em>Estatuto</em></button>
@@ -693,6 +704,7 @@ body.tema-placar .barrinha{background:#2A2E35}
   <section class="tela" id="tela-caixa"></section>
   <section class="tela" id="tela-times"></section>
   <section class="tela" id="tela-quiz"></section>
+  <section class="tela" id="tela-qg"></section>
   <section class="tela" id="tela-uniforme"></section>
   <section class="tela" id="tela-valores"></section>
   <section class="tela" id="tela-estatuto"></section>
@@ -730,7 +742,7 @@ const firebaseConfig = {
 };
 
 const CONECTADO = firebaseConfig.apiKey !== "COLE_AQUI";
-const VERSAO = "2026-11-23a";
+const VERSAO = "2026-11-27b";
 
 /* ---------- estado ---------- */
 const estado = {
@@ -740,7 +752,8 @@ const estado = {
   eu: null, admin: false, tela: "jogo", jogoAberto: null,
   instalar: null, semConvite: false, mesMensal: null, escalaTime: "vermelho", escolhido: null,
   vinculo: null, cfgOk: false, vincOk: false, ordemAtletas: "nome", modoTimes: "roleta",
-  quizPerguntas: [], quizRodadas: [], quizErro: false
+  quizPerguntas: [], quizRodadas: [], quizErro: false,
+  qgRodadas: [], qgJogos: [], qgPalpites: []
 };
 
 /* ---------- camada de dados ---------- */
@@ -793,6 +806,10 @@ async function iniciar(){
       fs.onSnapshot(fs.collection(db,"quizRodadas"), s => {
         estado.quizRodadas = s.docs.map(d => ({ id:d.id, ...d.data() })); estado.quizErro = false; desenhar();
       }, () => { estado.quizRodadas = []; estado.quizErro = true; });
+      // Quiz Game (2027): quiz + palpites
+      ["qgRodadas","qgJogos","qgPalpites"].forEach(c => fs.onSnapshot(fs.collection(db,c), s => {
+        estado[c] = s.docs.map(d => ({ id:d.id, ...d.data() })); desenhar();
+      }, () => { estado[c] = []; }));
       fs.onSnapshot(fs.doc(db,"config","geral"), d => {
         if (d.exists()) estado.config = { ...estado.config, ...d.data() };
         estado.cfgOk = true; desenhar();
@@ -2989,6 +3006,51 @@ const QUIZ_BANCO = [
   ["f",3,"Quem foi o último brasileiro a ganhar a Bola de Ouro (até 2025)?",["Kaká","Ronaldinho","Neymar","Ronaldo"],"Kaká, em 2007"]
 ].map(([t,n,p,o,r], i) => ({ id:"q"+String(i+1).padStart(3,"0"), t, n, p, o, r, banco:true }));
 
+// futebol atualizado até 2026 — só para o Quiz Game (o quiz atual continua com o banco de sempre)
+const QUIZ_FUT_NOVAS = [
+  ["f",1,"Qual seleção foi campeã da Copa do Mundo de 2026?",["Espanha","Argentina","França","Inglaterra"],"1 a 0 na Argentina, na prorrogação"],
+  ["f",2,"Quem fez o gol do título da Espanha na final da Copa de 2026?",["Ferran Torres","Lamine Yamal","Pedri","Oyarzabal"],"Na prorrogação, no MetLife Stadium"],
+  ["f",1,"Quem a Espanha venceu na final da Copa de 2026?",["Argentina","França","Brasil","Inglaterra"],"1 a 0, com gol na prorrogação"],
+  ["f",2,"Em qual estádio foi a final da Copa de 2026?",["MetLife Stadium (Nova Jersey)","Estádio Azteca (Cidade do México)","SoFi Stadium (Los Angeles)","BC Place (Vancouver)"],"East Rutherford, Nova Jersey"],
+  ["f",1,"Quantas seleções disputaram a Copa do Mundo de 2026?",["48","32","40","36"],"Primeira Copa com 48 seleções"],
+  ["f",2,"Com quantos gols Mbappé virou o maior artilheiro da história das Copas?",["22","16","19","25"],"Passou Messi (21) e Klose (16) em 2026"],
+  ["f",3,"Contra quem Mbappé fez história como maior artilheiro das Copas, em 2026?",["Inglaterra","Marrocos","Espanha","Brasil"],"Na disputa do 3º lugar"],
+  ["f",2,"Quantas Copas do Mundo a Espanha tem depois de 2026?",["2","1","3","4"],"2010 e 2026"],
+  ["f",2,"Em que ano a Espanha ganhou sua primeira Copa do Mundo?",["2010","2006","1982","2014"],"Na África do Sul"],
+  ["f",2,"Messi jogou em 2026 sua terceira final de Copa. Quem é o outro jogador com três finais?",["Cafu","Pelé","Ronaldo","Paolo Maldini"],"Cafu jogou as finais de 1994, 1998 e 2002"],
+  ["f",2,"Em que ano o Brasil sedia a Copa do Mundo Feminina?",["2027","2026","2028","2030"],"Primeira Copa feminina na América do Sul"],
+  ["f",2,"Quais países sediam a Copa do Mundo de 2030?",["Espanha, Portugal e Marrocos","Argentina, Uruguai e Chile","Inglaterra e Irlanda","Estados Unidos e México"],"Com jogos de abertura na América do Sul"],
+  ["f",2,"Qual país vai sediar a Copa do Mundo de 2034?",["Arábia Saudita","Catar","Austrália","China"],"Confirmado pela FIFA em 2024"],
+  ["f",3,"Quem foi o técnico da Seleção Brasileira na Copa de 2026?",["Carlo Ancelotti","Dorival Júnior","Tite","Fernando Diniz"],"O italiano assumiu a Seleção em 2025"],
+  ["f",1,"Quem foi campeão da Libertadores de 2025?",["Flamengo","Palmeiras","Botafogo","River Plate"],"1 a 0 no Palmeiras, em Lima"],
+  ["f",2,"Quem fez o gol do título do Flamengo na final da Libertadores de 2025?",["Danilo","Arrascaeta","Bruno Henrique","Pedro"],"De cabeça, no Monumental de Lima"],
+  ["f",2,"Com a Libertadores de 2025, quantas o Flamengo tem?",["4","3","5","2"],"1981, 2019, 2022 e 2025"],
+  ["f",3,"Qual foi o primeiro clube brasileiro tetracampeão da Libertadores?",["Flamengo","Palmeiras","São Paulo","Santos"],"Em 2025"],
+  ["f",2,"Quem venceu a Libertadores de 2024?",["Botafogo","Atlético-MG","Flamengo","River Plate"],"3 a 1 no Atlético-MG, em Buenos Aires"],
+  ["f",2,"Quem foi o campeão brasileiro de 2024?",["Botafogo","Palmeiras","Flamengo","Fortaleza"],"No mesmo ano da Libertadores"],
+  ["f",2,"Quem venceu a Libertadores de 2023?",["Fluminense","Boca Juniors","Palmeiras","Flamengo"],"2 a 1 no Boca, no Maracanã"],
+  ["f",3,"Quem foi campeão da Copa do Brasil de 2024?",["Flamengo","Atlético-MG","Corinthians","São Paulo"],"Venceu o Atlético-MG na final"],
+  ["f",2,"Qual clube brasileiro foi campeão do mundo da FIFA em 2012?",["Corinthians","São Paulo","Internacional","Santos"],"1 a 0 no Chelsea, gol de Guerrero"],
+  ["f",2,"Qual clube é o maior campeão do Campeonato Brasileiro?",["Palmeiras","Flamengo","Santos","Corinthians"],"Mais títulos da Série A"],
+  ["f",1,"Qual é o maior estádio do Brasil?",["Maracanã","Mineirão","Morumbi","Mané Garrincha"],"No Rio de Janeiro"],
+  ["f",1,"Qual time é conhecido como \"Timão\"?",["Corinthians","Palmeiras","Vasco","Grêmio"],"O Sport Club Corinthians Paulista"],
+  ["f",1,"Qual é o apelido do Palmeiras?",["Verdão","Peixe","Tricolor","Galo"],"Por causa da camisa verde"],
+  ["f",1,"Qual time é conhecido como \"Peixe\"?",["Santos","Fortaleza","Ceará","Vitória"],"Time da Vila Belmiro"],
+  ["f",1,"Qual time é chamado de \"Galo\"?",["Atlético-MG","Cruzeiro","América-MG","Grêmio"],"O Clube Atlético Mineiro"],
+  ["f",2,"Em qual estádio o Corinthians manda seus jogos?",["Neo Química Arena","Allianz Parque","Morumbi","Pacaembu"],"Em Itaquera"],
+  ["f",2,"Em qual estádio o Palmeiras manda seus jogos?",["Allianz Parque","Neo Química Arena","Morumbi","Canindé"],"Antigo Palestra Itália"],
+  ["f",2,"Qual brasileiro foi eleito o melhor do mundo no prêmio FIFA The Best de 2024?",["Vinícius Júnior","Rodrygo","Raphinha","Neymar"],"Pelo Real Madrid"],
+  ["f",2,"Quem ganhou a Bola de Ouro de 2024?",["Rodri","Vinícius Júnior","Bellingham","Haaland"],"Volante da Espanha e do Manchester City"],
+  ["f",2,"Quem ganhou a Bola de Ouro de 2025?",["Ousmane Dembélé","Lamine Yamal","Mbappé","Raphinha"],"Campeão da Champions com o PSG"],
+  ["f",2,"Quem foi campeão da Champions League 2024/25?",["PSG","Inter de Milão","Real Madrid","Barcelona"],"5 a 0 na Inter, em Munique"],
+  ["f",2,"Quem venceu o Mundial de Clubes da FIFA de 2025, nos EUA?",["Chelsea","PSG","Real Madrid","Flamengo"],"3 a 0 no PSG na final"],
+  ["f",2,"Quantos clubes disputaram o novo Mundial de Clubes de 2025?",["32","24","16","48"],"Nos Estados Unidos"],
+  ["f",2,"Qual seleção venceu a Copa América de 2024?",["Argentina","Colômbia","Uruguai","Brasil"],"1 a 0 na Colômbia, na prorrogação"],
+  ["f",2,"Qual seleção venceu a Eurocopa de 2024?",["Espanha","Inglaterra","França","Alemanha"],"2 a 1 na Inglaterra, em Berlim"],
+  ["f",3,"Quem é o maior artilheiro da história da Seleção Brasileira?",["Neymar","Pelé","Ronaldo","Romário"],"Passou Pelé em 2023"],
+  ["f",1,"Em que país fica o Real Madrid?",["Espanha","Portugal","Itália","França"],"Na capital, Madri"]
+].map(([t,n,p,o,r], i) => ({ id:"n"+String(i+1).padStart(3,"0"), t, n, p, o, r, banco:true, qg:true }));
+
 /* ---------- Quiz: uma rodada de 10 perguntas por semana, ranking da temporada ---------- */
 const QUIZ_SEG = 15;                  // segundos por pergunta
 const QUIZ_QTD = { b:7, f:3 };        // 7 de Bíblia e 3 de futebol por rodada
@@ -3010,7 +3072,7 @@ const temporadaDe = semana => semana.slice(0,4);
 const rotuloSemana = sem => { const [a,m,d] = sem.split("-").map(Number); const fim = new Date(a, m-1, d+6);
   return `${String(d).padStart(2,"0")}/${String(m).padStart(2,"0")} a ${String(fim.getDate()).padStart(2,"0")}/${String(fim.getMonth()+1).padStart(2,"0")}`; };
 
-const todasPerguntas = () => [...QUIZ_BANCO,
+const todasPerguntas = () => [...QUIZ_BANCO, ...QUIZ_FUT_NOVAS,
   ...estado.quizPerguntas.filter(q => q && q.p && Array.isArray(q.o) && q.o.length === 4)
     .map(q => ({ ...q, t: q.t === "f" ? "f" : "b" }))
     .sort((a,b) => (a.em||0) - (b.em||0))];
@@ -3027,7 +3089,7 @@ function perguntasDaSemana(sem){
   const nSemana = Math.floor((new Date(a,m-1,d) - new Date(a,0,1)) / (7*86400000)) + resets;
   const escolhidas = [];
   ["b","f"].forEach(t => {
-    const fixas = embaralharCom(QUIZ_BANCO.filter(q => q.t === t), temp+t);
+    const fixas = embaralharCom(QUIZ_BANCO.filter(q => q.t === t), temp+t);   // sem as perguntas novas do Quiz Game
     const extras = todasPerguntas().filter(q => !q.banco && q.t === t);
     const fila = [...fixas, ...extras];
     for (let k = 0; k < QUIZ_QTD[t] && k < fila.length; k++) escolhidas.push(fila[(nSemana*QUIZ_QTD[t] + k) % fila.length].id);
@@ -3315,6 +3377,273 @@ function telaQuiz(){
       <b>Quiz ${escapar((estado.config.nomeGrupo || "Discípulos United").trim())}</b>
       <span>Bíblia e futebol, uma rodada por semana</span></div>`
     + cartaoRodadaQuiz() + cartaoRodadasPerdidasQuiz() + cartaoRankingQuiz() + (estado.admin ? cartaoPerguntasAdmin() : "");
+}
+
+/* ============================================================
+   QUIZ GAME (temporada 2027): quiz 60% Bíblia / 40% futebol + palpites de 5 jogos por semana.
+   Quiz e palpites valem o mesmo: até 150 pontos cada por semana.
+   ============================================================ */
+const QG_QTD = { b:6, f:4 };                                   // 6 de Bíblia e 4 de futebol
+const QG_PTS = { exato:30, resultado:15, gols:6 };             // 5 jogos × 30 = 150 = máximo do quiz (10 × 15)
+const QG_MAX_JOGOS = 5;
+const QG_COMPETICOES = ["Brasileirão Série A","Paulistão","Carioca","Copa do Brasil","Libertadores","Outro"];
+const QG_1A_TEMPORADA = "2027";
+const qgTeste = sem => temporadaDe(sem) < QG_1A_TEMPORADA;    // antes de 2027 é só teste do admin
+const jogadorQG = () => estado.vinculo || (estado.admin ? estado.eu : null) || (!fb ? estado.eu : null);
+const idQG = (sem, quem) => `${sem}__${quem}`;
+// rodadas contam a partir da primeira quarta-feira do ano
+function numeroRodadaQG(sem){
+  const a = Number(sem.slice(0,4)), d = new Date(a, 0, 1);
+  while (d.getDay() !== 3) d.setDate(d.getDate()+1);
+  const [y,m,dd] = sem.split("-").map(Number);
+  return Math.max(1, Math.round((Date.UTC(y,m-1,dd) - Date.UTC(a,0,d.getDate())) / (7*86400000)) + 1);
+}
+const nomeRodadaQG = sem => qgTeste(sem) ? "Rodada de teste" : `${numeroRodadaQG(sem)}ª Rodada`;
+
+function perguntasDaSemanaQG(sem){
+  const temp = temporadaDe(sem), n = numeroRodadaQG(sem) - 1, out = [];
+  ["b","f"].forEach(t => {
+    const fixas = embaralharCom(todasPerguntas().filter(q => q.banco && q.t === t), "qg" + temp + t);
+    const extras = todasPerguntas().filter(q => !q.banco && q.t === t);
+    const fila = [...fixas, ...extras];
+    for (let k = 0; k < QG_QTD[t] && k < fila.length; k++) out.push(fila[(n*QG_QTD[t] + k) % fila.length].id);
+  });
+  return embaralharCom(out, "qg-ordem" + sem);      // Bíblia e futebol misturadas, mesma ordem para todos
+}
+const minhaRodadaQG = (sem, quem) => estado.qgRodadas.find(r => r.id === idQG(sem, quem));
+
+async function salvarRodadaQG(r){
+  const i = estado.qgRodadas.findIndex(x => x.id === r.id);
+  if (i >= 0) estado.qgRodadas[i] = r; else estado.qgRodadas.push(r);
+  if (fb) { const { id, ...dados } = r;
+    try { await fb.fs.setDoc(fb.fs.doc(fb.db,"qgRodadas",id), dados); } catch (e) { console.warn(e); avisar("Não consegui salvar no banco."); } }
+}
+
+/* ---- jogo do quiz (mesma mecânica do quiz: 15 s por pergunta, 10 + até 5 de bônus) ---- */
+const qgAo = { rodada:null, inicio:0, timer:null, resposta:null };
+async function comecarQG(){
+  const quem = jogadorQG(); if (!quem) return fb ? formEntrar() : avisar("Escolha seu nome lá em cima primeiro.");
+  const sem = semanaQuiz();
+  let r = minhaRodadaQG(sem, quem);
+  if (r && r.fim) return avisar("Você já jogou o quiz desta semana.");
+  if (!r) { r = { id: idQG(sem, quem), semana: sem, de: quem, perguntas: perguntasDaSemanaQG(sem),
+                  respostas: [], pontos: 0, acertos: 0, inicio: Date.now(), fim: null };
+            await salvarRodadaQG(r); }
+  qgAo.rodada = r; mostrarPerguntaQG();
+}
+function mostrarPerguntaQG(){
+  const r = qgAo.rodada, el = document.getElementById("tela-qg");
+  if (!r || !el) return;
+  const i = r.respostas.length;
+  if (i >= r.perguntas.length) return terminarQG();
+  const q = perguntaDe(r.perguntas[i]);
+  if (!q) { r.respostas.push({ q:r.perguntas[i], escolha:null, ms:0, pts:0 }); return mostrarPerguntaQG(); }
+  qgAo.resposta = null; qgAo.inicio = Date.now();
+  el.innerHTML = `<div class="cartao quiz-jogo">
+    <div class="quiz-topo"><span>Pergunta <b>${i+1}</b> de ${r.perguntas.length}</span>
+      <span class="selo neutro">${q.t === "f" ? "⚽ Futebol" : "📖 Bíblia"}</span><span><b>${r.pontos}</b> pts</span></div>
+    <div class="quiz-barra"><i id="qgBarra"></i></div>
+    <div class="quiz-pergunta">${escapar(q.p)}</div>
+    <div class="quiz-opcoes">${opcoesDe(q, "qg" + r.semana).map(op => `<button data-qg-op="${op.i}">${escapar(op.txt)}</button>`).join("")}</div>
+    <div id="qgRetorno"></div></div>`;
+  window.scrollTo({ top:0, behavior:"instant" });
+  clearInterval(qgAo.timer);
+  qgAo.timer = setInterval(() => {
+    const resto = Math.max(0, 1 - (Date.now() - qgAo.inicio) / (QUIZ_SEG*1000));
+    const b = document.getElementById("qgBarra");
+    if (b) { b.style.width = (resto*100) + "%"; b.classList.toggle("fim", resto < .3); }
+    if (resto <= 0) responderQG(null);
+  }, 100);
+}
+async function responderQG(escolha){
+  const r = qgAo.rodada; if (!r || qgAo.resposta) return;
+  clearInterval(qgAo.timer);
+  const ms = Math.min(Date.now() - qgAo.inicio, QUIZ_SEG*1000);
+  const q = perguntaDe(r.perguntas[r.respostas.length]);
+  const certa = escolha === 0, pts = pontosDaResposta(certa, ms);
+  qgAo.resposta = { escolha, pts };
+  r.respostas = [...r.respostas, { q:q.id, escolha, ms, pts }];
+  r.pontos += pts; if (certa) r.acertos += 1;
+  if (r.respostas.length >= r.perguntas.length) r.fim = Date.now();
+  document.querySelectorAll("[data-qg-op]").forEach(b => { const i = Number(b.dataset.qgOp); b.disabled = true;
+    if (i === 0) b.classList.add("certa"); else if (i === escolha) b.classList.add("errada"); });
+  document.getElementById("qgRetorno").innerHTML = `<div class="aviso ${certa?"":"grave"}" style="margin-top:12px">
+      ${certa ? `✅ <b>Acertou!</b> +${pts} pontos` : escolha === null ? "⏰ <b>Tempo esgotado.</b>" : "❌ <b>Não foi dessa vez.</b>"}
+      <div class="sub" style="margin-top:4px">Resposta: <b>${escapar(q.o[0])}</b>${q.r ? ` · ${escapar(q.r)}` : ""}</div></div>
+    <button class="btn-main" style="width:100%;margin-top:12px" data-acao="qg-proxima">${r.fim ? "Ver resultado" : "Próxima →"}</button>`;
+  await salvarRodadaQG(r);
+}
+function terminarQG(){
+  clearInterval(qgAo.timer);
+  const r = qgAo.rodada;
+  if (r && r.fim) avisar(`Quiz da semana: ${r.pontos} pontos. Agora é só esperar os jogos!`);
+  qgAo.rodada = null; qgAo.resposta = null;
+  telaQG();
+}
+
+/* ---- palpites: placar exato vale 30; acertar vencedor/empate vale 15; cada placar de time certo, +6 ---- */
+const jogosDaSemanaQG = sem => estado.qgJogos.filter(j => j.semana === sem).sort((a,b) => String(a.quando).localeCompare(String(b.quando)));
+const comecouQG = j => !!j.quando && Date.now() >= Date.parse(j.quando);
+const temResultadoQG = j => j.golsCasa !== null && j.golsCasa !== undefined && j.golsCasa !== "" && j.golsFora !== null && j.golsFora !== undefined && j.golsFora !== "";
+function pontosPalpite(p, j){
+  if (!p || !temResultadoQG(j)) return null;
+  if (j.quando && p.em && p.em > Date.parse(j.quando)) return 0;      // palpite feito depois do início não vale
+  const gc = Number(j.golsCasa), gf = Number(j.golsFora), pc = Number(p.c), pf = Number(p.f);
+  if (pc === gc && pf === gf) return QG_PTS.exato;
+  let pts = Math.sign(pc - pf) === Math.sign(gc - gf) ? QG_PTS.resultado : 0;
+  if (pc === gc) pts += QG_PTS.gols;
+  if (pf === gf) pts += QG_PTS.gols;
+  return pts;
+}
+const palpitesDe = (sem, quem) => estado.qgPalpites.find(p => p.id === idQG(sem, quem));
+const quandoTxt = j => { if (!j.quando) return ""; const d = new Date(j.quando);
+  return `${["dom","seg","ter","qua","qui","sex","sáb"][d.getDay()]} ${dataCurta(j.quando.slice(0,10))} · ${j.quando.slice(11,16)}`; };
+
+async function salvarPalpitesQG(){
+  const quem = jogadorQG(); if (!quem) return fb ? formEntrar() : avisar("Escolha seu nome lá em cima primeiro.");
+  const sem = semanaQuiz(), atual = palpitesDe(sem, quem) || { p:{} }, p = { ...(atual.p || {}) };
+  let n = 0, fechados = 0;
+  jogosDaSemanaQG(sem).forEach(j => {
+    const c = document.querySelector(`[data-qg-c="${j.id}"]`), f = document.querySelector(`[data-qg-f="${j.id}"]`);
+    if (!c || !f || c.value === "" || f.value === "") return;
+    if (comecouQG(j)) { fechados++; return; }
+    const nc = Math.max(0, Math.min(20, parseInt(c.value,10)||0)), nf = Math.max(0, Math.min(20, parseInt(f.value,10)||0));
+    if (!p[j.id] || p[j.id].c !== nc || p[j.id].f !== nf) { p[j.id] = { c:nc, f:nf, em:Date.now() }; n++; }
+  });
+  if (!n) return avisar(fechados ? "Esses jogos já começaram — palpite fechado." : "Preencha o placar de pelo menos um jogo.");
+  await gravar("qgPalpites", { de:quem, semana:sem, p, em:Date.now() }, idQG(sem, quem));
+  const i = estado.qgPalpites.findIndex(x => x.id === idQG(sem, quem));
+  if (i >= 0) estado.qgPalpites[i] = { ...estado.qgPalpites[i], p }; else estado.qgPalpites.push({ id:idQG(sem, quem), de:quem, semana:sem, p });
+  desenhar(); avisar(`${plural(n,"palpite salvo","palpites salvos")}. Boa sorte!`);
+}
+
+/* ---- admin: jogos da semana e resultados ---- */
+function formJogoQG(){
+  const hoje = hojeISO();
+  abrirModal("Jogo para os palpites", `
+    <div class="campo"><label>Competição</label><select id="qj_comp">${QG_COMPETICOES.map(c => `<option>${c}</option>`).join("")}</select></div>
+    <div class="dupla"><div class="campo"><label>Mandante</label><input id="qj_casa" placeholder="Ex.: Flamengo"></div>
+      <div class="campo"><label>Visitante</label><input id="qj_fora" placeholder="Ex.: Vasco"></div></div>
+    <div class="dupla"><div class="campo"><label>Data</label><input type="date" id="qj_data" value="${hoje}"></div>
+      <div class="campo"><label>Hora</label><input type="time" id="qj_hora" value="16:00"></div></div>
+    <div class="sub" style="margin-bottom:10px">O jogo entra na semana do quiz da data dele (quarta a terça). O palpite fecha na hora do jogo.</div>
+    <div class="btn-linha"><button class="btn-main" style="flex:1" id="qj_ok">Adicionar jogo</button></div>`);
+  document.getElementById("qj_ok").onclick = async () => {
+    const casa = document.getElementById("qj_casa").value.trim(), fora = document.getElementById("qj_fora").value.trim();
+    const data = document.getElementById("qj_data").value, hora = document.getElementById("qj_hora").value || "16:00";
+    if (!casa || !fora || !data) return avisar("Preencha os dois times e a data.");
+    const [a,m,d] = data.split("-").map(Number), sem = semanaQuiz(new Date(a, m-1, d));
+    if (jogosDaSemanaQG(sem).length >= QG_MAX_JOGOS) return avisar(`Essa semana já tem ${QG_MAX_JOGOS} jogos.`);
+    const id = "qj" + Date.now().toString(36);
+    await gravar("qgJogos", { semana:sem, comp:document.getElementById("qj_comp").value, casa, fora,
+      quando:`${data}T${hora}`, golsCasa:null, golsFora:null, em:Date.now() }, id);
+    fecharModal(); desenhar(); avisar("Jogo adicionado.");
+  };
+}
+function formResultadoQG(id){
+  const j = estado.qgJogos.find(x => x.id === id); if (!j) return;
+  abrirModal("Resultado do jogo", `
+    <div class="sub" style="margin-bottom:8px">${escapar(j.comp||"")} · ${quandoTxt(j)}</div>
+    <div class="qg-placar-form"><span>${escapar(j.casa)}</span>
+      <input type="number" min="0" max="30" id="qr_c" value="${temResultadoQG(j)?j.golsCasa:""}">
+      <b>×</b><input type="number" min="0" max="30" id="qr_f" value="${temResultadoQG(j)?j.golsFora:""}">
+      <span>${escapar(j.fora)}</span></div>
+    <div class="btn-linha" style="margin-top:12px"><button class="btn-main" style="flex:1" id="qr_ok">Salvar resultado</button>
+      ${temResultadoQG(j) ? `<button class="btn-sec" id="qr_limpar">Apagar resultado</button>` : ""}</div>`);
+  document.getElementById("qr_ok").onclick = async () => {
+    const c = document.getElementById("qr_c").value, f = document.getElementById("qr_f").value;
+    if (c === "" || f === "") return avisar("Preencha os dois placares.");
+    await gravar("qgJogos", { golsCasa:Number(c), golsFora:Number(f) }, id);
+    fecharModal(); desenhar(); avisar("Resultado salvo. Pontos calculados.");
+  };
+  const l = document.getElementById("qr_limpar");
+  if (l) l.onclick = async () => { await gravar("qgJogos", { golsCasa:null, golsFora:null }, id); fecharModal(); desenhar(); };
+}
+
+/* ---- ranking: quiz + palpites ---- */
+function pontosSemanaQG(sem, quem){
+  const r = minhaRodadaQG(sem, quem), p = palpitesDe(sem, quem);
+  let palp = 0, exatos = 0;
+  jogosDaSemanaQG(sem).forEach(j => { const pts = pontosPalpite(p && (p.p||{})[j.id], j); if (pts) { palp += pts; if (pts === QG_PTS.exato) exatos++; } });
+  return { quiz: Number(r && r.pontos) || 0, palpites: palp, exatos };
+}
+function rankingQG(filtro){
+  const por = {};
+  const semanas = [...new Set([...estado.qgRodadas.map(r => r.semana), ...estado.qgPalpites.map(p => p.semana)].filter(Boolean))].filter(filtro);
+  const quems = [...new Set([...estado.qgRodadas.map(r => r.de), ...estado.qgPalpites.map(p => p.de)].filter(Boolean))];
+  semanas.forEach(sem => quems.forEach(q => {
+    const s = pontosSemanaQG(sem, q); if (!s.quiz && !s.palpites && !minhaRodadaQG(sem, q) && !palpitesDe(sem, q)) return;
+    const x = por[q] || (por[q] = { id:q, quiz:0, palpites:0, exatos:0 });
+    x.quiz += s.quiz; x.palpites += s.palpites; x.exatos += s.exatos;
+  }));
+  return Object.values(por).map(x => ({ ...x, total: x.quiz + x.palpites }))
+    .sort((a,b) => b.total - a.total || b.exatos - a.exatos || nomeDe(a.id).localeCompare(nomeDe(b.id),"pt-BR"));
+}
+function textoRankingQG(){
+  const temp = temporadaDe(semanaQuiz()), lista = rankingQG(w => temporadaDe(w) === temp);
+  const L = [`🏆 *QUIZ GAME ${temp}${qgTeste(semanaQuiz()) ? " (teste)" : ""}*`, "_quiz + palpites_", ""];
+  lista.forEach((x,i) => L.push(`${["🥇","🥈","🥉"][i] || (i+1)+"."} ${nomeDe(x.id)} — *${x.total}* (📖⚽ ${x.quiz} · 🎯 ${x.palpites})`));
+  if (!lista.length) L.push("_ninguém pontuou ainda_");
+  return L.join("\n");
+}
+
+/* ---- tela ---- */
+function telaQG(){
+  const el = document.getElementById("tela-qg");
+  if (!el || qgAo.rodada) return;
+  if (!qgVisivel()) { el.innerHTML = `<div class="cartao"><div class="vazio">O Quiz Game chega em 2027. Aguarde!</div></div>`; return; }
+  const sem = semanaQuiz(), quem = jogadorQG(), temp = temporadaDe(sem);
+  const r = quem && minhaRodadaQG(sem, quem), jogos = jogosDaSemanaQG(sem), pal = quem && palpitesDe(sem, quem);
+  const minha = quem ? pontosSemanaQG(sem, quem) : null;
+
+  const capa = `<div class="quiz-capa"><div class="quiz-capa-ico">🏆</div>
+      <b>Quiz Game ${temp}${qgTeste(sem) ? " · teste" : ""}</b>
+      <span>Quiz (60% Bíblia, 40% futebol) + palpites de ${QG_MAX_JOGOS} jogos por semana</span></div>
+    ${estado.admin && !estado.config.qgAberto ? `<div class="aviso" style="margin-bottom:12px">🔒 Só você (admin) está vendo esta aba.${qgTeste(sem) ? " Os pontos de 2026 são de teste e não entram na temporada 2027." : ""}</div>` : ""}`;
+
+  const cQuiz = `<div class="cartao"><div class="titulo">📖⚽ Quiz · ${nomeRodadaQG(sem)} · ${rotuloSemana(sem)}</div>
+    ${!quem ? `<div class="sub">Entre com sua senha para jogar.</div>`
+      : r && r.fim ? `<div class="aviso pago-ok">✅ Você fez <b>${r.pontos} pontos</b> (${r.acertos} de ${r.perguntas.length}). Volte na quarta-feira!</div>`
+      : `<div class="sub" style="margin-bottom:10px">${QG_QTD.b} perguntas da Bíblia e ${QG_QTD.f} de futebol, 15 segundos cada. Acerto vale 10, e quem responde rápido ganha até 5 de bônus.</div>
+         <button class="btn-main" style="width:100%" data-acao="qg-comecar">${r ? `Continuar (${r.respostas.length+1}/${r.perguntas.length})` : "▶️ Jogar o quiz"}</button>`}</div>`;
+
+  const cPalp = `<div class="cartao"><div class="titulo">🎯 Palpites da semana</div>
+    <div class="sub" style="margin-bottom:10px">Placar exato: <b>${QG_PTS.exato}</b> · vencedor ou empate certo: <b>${QG_PTS.resultado}</b> · cada placar de time certo: <b>+${QG_PTS.gols}</b>. O palpite fecha na hora do jogo.</div>
+    ${!jogos.length ? `<div class="vazio">${estado.admin ? "Adicione os jogos da semana logo abaixo." : "Os jogos da semana ainda não foram escolhidos."}</div>`
+      : jogos.map(j => { const mp = pal && (pal.p||{})[j.id], fechado = comecouQG(j), pts = pontosPalpite(mp, j);
+        return `<div class="qg-jogo">
+          <div class="qg-jogo-topo"><span>${escapar(j.comp||"")}</span><span>${quandoTxt(j)}</span></div>
+          <div class="qg-placar"><span class="qg-time">${escapar(j.casa)}</span>
+            <input type="number" inputmode="numeric" min="0" max="20" data-qg-c="${j.id}" value="${mp ? mp.c : ""}" ${fechado || !quem ? "disabled" : ""}>
+            <b>×</b>
+            <input type="number" inputmode="numeric" min="0" max="20" data-qg-f="${j.id}" value="${mp ? mp.f : ""}" ${fechado || !quem ? "disabled" : ""}>
+            <span class="qg-time fora">${escapar(j.fora)}</span></div>
+          <div class="qg-jogo-pe"><span>${temResultadoQG(j) ? `Resultado: <b>${j.golsCasa} × ${j.golsFora}</b>${mp ? ` · <b class="${pts?"pos":""}">${pts === QG_PTS.exato ? "🎯 placar exato! " : ""}+${pts||0}</b>` : " · sem palpite"}`
+              : fechado ? (mp ? "⏳ Jogo em andamento — palpite fechado" : "Jogo começou — sem palpite") : (mp ? "✔️ Palpite salvo — dá para mudar até o início" : "Faça seu palpite")}</span>
+            ${estado.admin ? `<span class="qg-admin"><button class="btn-sec btn-mini" data-qg-resultado="${j.id}">Resultado</button>
+              <button class="btn-sec btn-mini" data-qg-apagar-jogo="${j.id}">Apagar</button></span>` : ""}</div>
+        </div>`; }).join("")}
+    ${jogos.some(j => !comecouQG(j)) && quem ? `<button class="btn-main" style="width:100%;margin-top:12px" data-acao="qg-salvar">💾 Salvar palpites</button>` : ""}
+    ${estado.admin && jogos.length < QG_MAX_JOGOS ? `<button class="btn-sec" style="width:100%;margin-top:10px" data-acao="qg-jogo-novo">➕ Adicionar jogo (${jogos.length}/${QG_MAX_JOGOS})</button>` : ""}
+  </div>`;
+
+  const linhas = (lista, vazio) => lista.length ? lista.map((x,i) => `<div class="item">
+      <div class="num" style="font-size:20px">${["🥇","🥈","🥉"][i] || i+1}</div>
+      <div class="item-corpo"><div class="nome">${escapar(nomeDe(x.id))}</div>
+        <div class="sub">📖⚽ ${x.quiz} · 🎯 ${x.palpites}${x.exatos ? ` · ${plural(x.exatos,"placar exato","placares exatos")}` : ""}</div></div>
+      <div class="valor">${x.total}</div></div>`).join("") : `<div class="vazio">${vazio}</div>`;
+  const cRank = `<div class="cartao"><div class="titulo">🏆 Ranking ${temp}${qgTeste(sem) ? " (teste)" : ""}</div>
+      ${minha ? `<div class="sub" style="margin-bottom:8px">Sua semana: 📖⚽ ${minha.quiz} + 🎯 ${minha.palpites} = <b>${minha.quiz + minha.palpites}</b></div>` : ""}
+      ${linhas(rankingQG(w => temporadaDe(w) === temp), "Ninguém pontuou ainda.")}
+      <details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Ranking só desta semana</summary>
+        ${linhas(rankingQG(w => w === sem), "Ninguém pontuou nesta semana.")}</details>
+      <button class="btn-zap" style="width:100%;margin-top:12px" data-acao="qg-compartilhar">📤 Mandar ranking no grupo</button></div>`;
+
+  const cAdmin = estado.admin ? `<div class="cartao"><div class="titulo">🔒 Admin</div>
+      <div class="sub" style="margin-bottom:10px">Perguntas no banco: ${todasPerguntas().filter(q => q.t === "b").length} de Bíblia e ${todasPerguntas().filter(q => q.t === "f").length} de futebol (inclui ${QUIZ_FUT_NOVAS.length} novas atualizadas até 2026).</div>
+      <button class="${estado.config.qgAberto ? "btn-sec" : "btn-main"}" style="width:100%" data-acao="qg-liberar">${estado.config.qgAberto ? "🔒 Esconder de novo (só admin)" : "🔓 Liberar o Quiz Game para todos"}</button></div>` : "";
+
+  el.innerHTML = capa + cQuiz + cPalp + cRank + cAdmin;
 }
 
 /* ---------- montar os times: sorteio com um goleiro para cada lado, ou na mão ---------- */
@@ -3748,7 +4077,7 @@ function desenhar(){
 
   if (window.__menuPronto) desenharMenu();
   conferirPagamento();
-  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaTimes(); telaQuiz(); telaEu(); telaUniforme(); telaValores(); telaEstatuto();
+  telaJogo(); telaAgenda(); telaAtletas(); telaCaixa(); telaTimes(); telaQuiz(); telaQG(); telaEu(); telaUniforme(); telaValores(); telaEstatuto();
 }
 
 /* ---------- instalar no celular ---------- */
@@ -4462,9 +4791,10 @@ function ordemDoMenu(){
   const ids = ITENS_MENU.map(x => x.id);
   return [...salva.filter(id => ids.includes(id)), ...ids.filter(id => !salva.includes(id))];   // seção nova entra no fim
 }
+const qgVisivel = () => estado.admin || !!estado.config.qgAberto;
 function desenharMenu(){
-  const ordem = ordemDoMenu();
-  const assin = ordem.join(",") + "|" + reordenando + "|" + estado.admin + "|" + estado.tela;
+  const ordem = ordemDoMenu().filter(id => id !== "qg" || qgVisivel());
+  const assin = ordem.join(",") + "|" + reordenando + "|" + estado.admin + "|" + estado.tela + "|" + !!estado.config.qgAberto;
   if (assin === assinaturaMenu) return;
   assinaturaMenu = assin;
   if (!estado.admin) reordenando = false;
@@ -4559,7 +4889,7 @@ document.body.addEventListener("click", async e => {
     if (j) await soltar(j, estado.escolhido, casa);
     return;
   }
-  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-isento],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-quiz-retro],[data-quadra],[data-cobrar],[data-extrato],[data-lupa],[data-apagar-peca]");
+  const alvo = e.target.closest("[data-confirmar],[data-pagar],[data-copiar],[data-acao],[data-editar-jogo],[data-editar-atleta],[data-apagar-despesa],[data-abrir-jogo],[data-fechar],[data-compartilhar],[data-compartilhar-texto],[data-mensal],[data-mensal-atleta],[data-mes-passo],[data-formacao],[data-meu-link],[data-link-atleta],[data-senha-atleta],[data-ordem],[data-modo-times],[data-por-time],[data-isento],[data-pagar-tipo],[data-quiz-op],[data-quiz-apagar],[data-qg-op],[data-qg-resultado],[data-qg-apagar-jogo],[data-quiz-retro],[data-quadra],[data-cobrar],[data-extrato],[data-lupa],[data-apagar-peca]");
   if (!alvo) return;
   const d = alvo.dataset;
 
@@ -4683,6 +5013,16 @@ document.body.addEventListener("click", async e => {
   else if (d.quizOp !== undefined) await responderQuiz(Number(d.quizOp));
   else if (d.acao === "quiz-comecar") await comecarQuiz();
   else if (d.quizRetro) await comecarQuiz(d.quizRetro);
+  else if (d.qgOp !== undefined) await responderQG(Number(d.qgOp));
+  else if (d.acao === "qg-comecar") await comecarQG();
+  else if (d.acao === "qg-proxima") mostrarPerguntaQG();
+  else if (d.acao === "qg-jogo-novo") formJogoQG();
+  else if (d.acao === "qg-salvar") await salvarPalpitesQG();
+  else if (d.acao === "qg-liberar") { await gravarConfig({ qgAberto: !estado.config.qgAberto }); desenhar(); desenharMenu();
+    avisar(estado.config.qgAberto ? "Quiz Game liberado para todos." : "Quiz Game visível só para o admin."); }
+  else if (d.qgResultado) formResultadoQG(d.qgResultado);
+  else if (d.qgApagarJogo) { if (confirm("Apagar este jogo e os palpites dele?")) { await apagar("qgJogos", d.qgApagarJogo); desenhar(); } }
+  else if (d.acao === "qg-compartilhar") await compartilharTexto(textoRankingQG());
   else if (d.acao === "quiz-resetar") {
     if (!estado.admin) return;
     const sem = semanaQuiz(), daSemana = estado.quizRodadas.filter(r => semanaDaRodada(r) === sem);
